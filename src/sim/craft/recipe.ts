@@ -1,6 +1,7 @@
 // Recipe = weapon type + main-material band + optional 대보스 material (기획서 4.2.3).
 
 import type { UniqueId, WeaponType } from '../core/types.ts';
+import { POW_INT_MAX_EXPONENT, powInt } from '../data/common.ts';
 import {
   CONDITIONS,
   CONDITION_WEIGHTS,
@@ -48,12 +49,23 @@ export function conditionsOf(grade: RecipeGrade): Condition[] {
   return CONDITIONS.filter((c) => present.has(c));
 }
 
+/**
+ * Size on top of the band growth (4.2.3): the grade's, except that the last 기본 band
+ * (just below 고급) is already part way there.
+ */
+export function recipeSize(materialTier: number, grade: RecipeGrade): { progress: number; quality: number } {
+  if (grade === 'basic' && materialTier === RECIPE.advancedFromBand - 1) return RECIPE.bridgeMult;
+  return RECIPE.gradeMult[grade];
+}
+
 export function recipeFor(input: RecipeInput): Recipe {
-  const tier = Math.max(1, Math.floor(input.materialTier));
+  const tier = Number.isFinite(input.materialTier) ? Math.max(1, Math.floor(input.materialTier)) : 1;
   const grade = recipeGrade(tier, input.bossMaterial);
-  const legendary = grade === 'legendary';
-  const progress = RECIPE.progressBase * RECIPE.progressGrowth ** (tier - 1) * (legendary ? RECIPE.legendaryProgressMult : 1);
-  const quality = RECIPE.qualityCapBase * RECIPE.qualityGrowth ** (tier - 1) * (legendary ? RECIPE.legendaryQualityMult : 1);
+  const mult = recipeSize(tier, grade);
+  // Repeated products, not `**` (3.6); a band past the power table is a broken save.
+  const steps = Math.min(tier - 1, POW_INT_MAX_EXPONENT);
+  const progress = RECIPE.progressBase * powInt(RECIPE.progressGrowth, steps) * mult.progress;
+  const quality = RECIPE.qualityCapBase * powInt(RECIPE.qualityGrowth, steps) * mult.quality;
   return {
     weaponType: input.weaponType,
     materialTier: tier,

@@ -49,16 +49,18 @@ const master = (over: Partial<CareerRecord> = {}): CareerRecord => ({
 });
 
 describe('level and strength (7.4)', () => {
-  it('reaches level 30 at about 200 cumulative floors', () => {
+  it('reaches level 30 at 140 cumulative floors', () => {
     expect(levelFor(0)).toBe(1);
-    expect(levelFor(100)).toBe(15);
-    expect(levelFor(199)).toBe(29);
-    expect(levelFor(200)).toBe(30);
+    expect(levelFor(4)).toBe(1);
+    expect(levelFor(5)).toBe(2);
+    expect(levelFor(70)).toBe(15);
+    expect(levelFor(139)).toBe(29);
+    expect(levelFor(140)).toBe(30);
     expect(levelFor(5000)).toBe(30);
   });
 
   it('follows 힘 = 1.0 + (상한 − 1.0) × 성장률 × (레벨 − 1) ÷ 29', () => {
-    expect(heroPower('S', 1, 30)).toBeCloseTo(9);
+    expect(heroPower('S', 1, 30)).toBeCloseTo(8);
     expect(heroPower('N', 0.5, 30)).toBeCloseTo(1.1);
     expect(heroPower('A', 0.3, 1)).toBeCloseTo(1);
     expect(heroPower('B', 0.6, 15)).toBeCloseTo(1 + 1.4 * 0.6 * (14 / 29));
@@ -114,12 +116,12 @@ describe('fame stages (6.2, 9.2)', () => {
 
   it('maps fame to stages, with ★n doubling past stage 7', () => {
     expect(fameStageFor(0)).toBe(1);
-    expect(fameStageFor(299)).toBe(1);
-    expect(fameStageFor(300)).toBe(2);
-    expect(fameStageFor(999_999)).toBe(6);
-    expect(fameStageFor(1_000_000)).toBe(7);
-    expect(fameThreshold(8)).toBe(2_000_000);
-    expect(fameStageFor(4_000_000)).toBe(9);
+    expect(fameStageFor(799)).toBe(1);
+    expect(fameStageFor(800)).toBe(2);
+    expect(fameStageFor(1_099_999)).toBe(6);
+    expect(fameStageFor(1_100_000)).toBe(7);
+    expect(fameThreshold(8)).toBe(2_200_000);
+    expect(fameStageFor(4_400_000)).toBe(9);
     expect(newHeroesPerDay(1)).toBe(8);
     expect(newHeroesPerDay(7)).toBe(35);
     expect(newHeroesPerDay(9)).toBe(41);
@@ -144,6 +146,21 @@ describe('inheritance (6.5)', () => {
       if (roll.inherit.picks.includes('talent')) expect(roll.grade).toBe('A');
       else expect(roll.grade).toBe('B');
     }
+  });
+
+  it('passes on 재능 only from a master who filled most of the hidden growth', () => {
+    let talents = 0;
+    for (let n = 0; n < 300; n++) {
+      const low = rollDisciple(rngFor(5, 'disciple', n), master({ grade: 'B', growth: 0.85 }), 6);
+      expect(low.inherit.picks).not.toContain('talent');
+      expect(low.grade).toBe('B');
+      const high = rollDisciple(rngFor(5, 'disciple', n), master({ grade: 'B', growth: 0.95 }), 6);
+      if (high.inherit.picks.includes('talent')) {
+        talents++;
+        expect(high.grade).toBe('A');
+      }
+    }
+    expect(talents).toBeGreaterThan(0);
   });
 
   it('never passes on a below-average growth or talent past S', () => {

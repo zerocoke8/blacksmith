@@ -15,17 +15,34 @@ export const CRAFT_STREAM = 'craft';
 export const BASE_SMITH = { craftsmanship: 100, control: 100, cp: 100 } as const;
 
 /**
- * Tool facilities (9.4).
- * 모루·숫돌 compound (×1.04 per level). Recipes grow ×1.18 per band (RECIPE below); with
- * materials ×2.5 and tool costs ×1.25 per band a shop buys about log 2.5 / log 1.25 ≈ 4.1
- * levels per band, and 1.04^4.1 ≈ 1.175 keeps pace. Adding instead would fall behind forever.
- * 화로 adds 3% of the base CP per level: action CP costs do not grow with bands, so CP
- * does not have to chase the recipes (compounding would make CP ×5 by 3달).
+ * Tool facilities (9.4): 모루·숫돌 multiply, ×1.04 per level. Recipes grow ×1.18 per band
+ * (RECIPE below); with materials ×2.5 and tool costs ×1.25 per band a shop buys about
+ * log 2.5 / log 1.25 ≈ 4.1 levels per band, and 1.04^4.1 ≈ 1.175 keeps pace. Adding
+ * instead would fall behind forever.
  */
 export const TOOL_BONUS = {
-  anvil: { perLevel: 0.04, compound: true }, // 모루: 작업 숙련도
-  whetstone: { perLevel: 0.04, compound: true }, // 숫돌: 가공 숙련도
-  furnace: { perLevel: 0.03, compound: false }, // 화로: 제작력
+  anvil: { perLevel: 0.04 }, // 모루: 작업 숙련도
+  whetstone: { perLevel: 0.04 }, // 숫돌: 가공 숙련도
+} as const;
+
+/**
+ * 화로 (9.4): whole CP added to the base, +1 per level up to level 20, then +1 every 2 levels.
+ * Action CP costs do not grow with bands, so CP does not chase the recipes. It sets how long
+ * a craft runs and how much quality it buys (once 열기 is up, about one more 다듬기 per
+ * 10 CP plus its durability), so it grows slowly:
+ * - The old +3 per level made CP 160 at 1주 and 265 at 3달: basic actions alone reached
+ *   100% at 5구간·도구 20, and every 고급 craft was a sure 걸작.
+ * - +2 per level gave 108 at 도구 4. There the stage-1 board (첫 손질) at band 1 can end on
+ *   신중한 두드리기 and fit one more touch, and its best all-보통 line is a 걸작; at +1 per
+ *   level it stays under 걸작 through 도구 6 (at 7 three hammers already finish band 1).
+ * Pace points (10장): 110 at 3일차 (도구 10), 120 at 1주 (20), 127 at 1달 (35), 137 at 3달 (55).
+ */
+export const FURNACE = {
+  /** CP per level for the first `fastLevels` levels. */
+  fastCp: 1,
+  fastLevels: 20,
+  /** After that, +1 CP every this many levels. */
+  slowLevelsPerCp: 2,
 } as const;
 
 export const TOOL_LABEL = { anvil: '모루', whetstone: '숫돌', furnace: '화로' } as const;
@@ -48,11 +65,16 @@ export const RECIPE_GRADE_LABEL: Record<RecipeGrade, string> = {
 };
 
 export const RECIPE = {
-  /** Band 1 progress = 4 basic hammers at starting craftsmanship (4.2.1). */
-  progressBase: 400,
+  /**
+   * Band 1 progress: 4 basic hammers at starting craftsmanship (4.2.1), 3 fall short.
+   * A little under 400 so a shop just behind the tool pace (2구간 at 모루 4 = 117) still
+   * finishes in 4; at exactly 400 one point short meant a 5th hammer and a ★2.
+   */
+  progressBase: 390,
   /**
    * Band 1 quality cap. The 4.2.1 example flow at all-normal makes 903 (56%, ★3).
-   * Basic actions under an optimal reactive policy: ★4 ~22%, ★5 ~4%.
+   * With basic actions, a player who re-plans every turn (craft/play.test.ts) makes
+   * ★4 ~16%, ★5 ~2~3% (1,000 crafts, two seeds); the 4.2.1 player ★4 7%, ★5 1%.
    */
   qualityCapBase: 1600,
   /** Growth per main-material band (약 15~20%); 모루·숫돌 keep pace (TOOL_BONUS). */
@@ -60,10 +82,35 @@ export const RECIPE = {
   qualityGrowth: 1.18,
   /** Bands from this one up are 고급. */
   advancedFromBand: 5,
-  durability: { basic: 60, advanced: 70, legendary: 80 } as Record<RecipeGrade, number>,
-  /** A 대보스 material makes a longer, harder recipe on top of the band scaling. */
-  legendaryProgressMult: 1.2,
-  legendaryQualityMult: 1.25,
+  /**
+   * Durability is the one resource a recipe brings (CP is the smith's), so it sets the
+   * length: a bigger progress gauge alone is eaten in a few turns by 첫 망치 and
+   * 크게 내려치기. 전설 at 80 left the best all-보통 line at 17 turns; 150 makes it 21~24.
+   * Real play adds the turns 단단함·부드러움·좋음 pay for: at 160 a player who re-plans
+   * every turn averaged 25.3 turns on the first 전설 (1주), past 4.2's 최대 25턴; 150 gives 24.
+   */
+  durability: { basic: 60, advanced: 70, legendary: 150 } as Record<RecipeGrade, number>,
+  /**
+   * Size per grade, on top of the band scaling (4.2.3). Without it a 고급 recipe was a
+   * 기본 one with 10 more durability, and the skill board made it shorter and easier than
+   * band 1 (100% with basic actions at 5구간·도구 20). With these, the best all-보통 line on
+   * the strongest legal board is ★3~★4 at every pace point: 고급 15~20 turns, 전설 20~25.
+   * craft/balance.test.ts checks every pace point; craft/play.test.ts the real 전설 length.
+   */
+  gradeMult: {
+    basic: { progress: 1, quality: 1 },
+    advanced: { progress: 2, quality: 1.75 },
+    legendary: { progress: 3, quality: 2.4 },
+  } as Record<RecipeGrade, { progress: number; quality: number }>,
+  /**
+   * The last 기본 band (4구간) is a bridge to 고급: this size instead of 기본's ×1 (still 기본
+   * conditions and durability). It is the shop's top band from 3일차 to 1주 (도구 ~11~19,
+   * 명성 단계 3~4). At ×1 the strongest board there was a sure 걸작 from 도구 13 (once four
+   * plain hammers finish, the 신중한 두드리기 CP buys one more touch) and 고급 then fell to 58%
+   * at 1주. Now the strongest board makes 57~94% at 도구 11~19 (97% at 20); basic actions
+   * alone only ★2 (33~59%), but by then every shop has a stage-3 board.
+   */
+  bridgeMult: { progress: 1.1, quality: 1.45 },
 } as const;
 
 // ---------- Conditions (4.2.3) ----------
@@ -365,16 +412,17 @@ export const CRAFT_ACTIONS: Record<CraftActionId, CraftActionSpec> = {
     requires: 'firstTurn',
     short: '공정 +300%, 다음 공정 +100%',
   }),
+  // 첫 손질: 300% made the stage-1 board a sure 걸작 at band 1 from 도구 6; 200% tops out in ★4.
   reflect: action({
     id: 'reflect',
     name: '첫 손질',
     origin: 'Reflect',
     cp: 6,
     durability: 10,
-    quality: 3.0,
+    quality: 2.0,
     innerQuiet: 2,
     requires: 'firstTurn',
-    short: '품질 +300%, 열기 +2',
+    short: '품질 +200%, 열기 +2',
   }),
   veneration: action({
     id: 'veneration',

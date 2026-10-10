@@ -21,6 +21,12 @@ export const FAMILY_BODY: Record<Exclude<EnchantFamily, 'crystal'>, BodyType> = 
 };
 
 /**
+ * An enchant that suits the weapon type (4.8) moves this many times as far from its
+ * neutral value: ×(1+a) → ×(1+1.5a), ×(1−b) → ×(1−1.5b), +x → +1.5x (4.5).
+ */
+export const ENCHANT_AFFINITY_SCALE = 1.5;
+
+/**
  * How an enchant enters the tower calculation (기획서 4.5 '탑 계산' 열).
  * - attackMult: multiplies attack; affinity raises (m − 1) by 1.5x.
  * - critRateAdd: adds to crit rate; affinity 1.5x.

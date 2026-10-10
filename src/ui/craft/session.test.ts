@@ -14,8 +14,11 @@ import {
 
 const recipe = { weaponType: 'dagger', materialTier: 1, bossMaterial: null } as const;
 
-/** A store that records writes, can be slow, and can fail one key on demand. */
-function recordingStore(opts: { delayMs?: number; failKey?: string } = {}) {
+/**
+ * A store that records writes, can be slow, and can fail one key on demand: by throwing
+ * (a native store) or by answering false (localStorage full or blocked).
+ */
+function recordingStore(opts: { delayMs?: number; failKey?: string; refuseKey?: string } = {}) {
   const inner = memoryStore();
   const writes: string[] = [];
   const wait = () => new Promise<void>((r) => setTimeout(r, opts.delayMs ?? 0));
@@ -24,8 +27,9 @@ function recordingStore(opts: { delayMs?: number; failKey?: string } = {}) {
     async save(key, value) {
       await wait();
       if (key === opts.failKey) throw new Error('disk full');
+      if (key === opts.refuseKey) return false;
       writes.push(key);
-      await inner.save(key, value);
+      return inner.save(key, value);
     },
     async remove(key) {
       await wait();
@@ -124,11 +128,23 @@ describe('craft saves', () => {
   });
 
   it('skips the session when the craft number could not be written', async () => {
-    const { store, writes } = recordingStore({ failKey: DEV_KEY });
+    for (const opts of [{ failKey: DEV_KEY }, { refuseKey: DEV_KEY }]) {
+      const { store, writes } = recordingStore(opts);
+      const saves = craftSaves(store);
+      await expect(beginCraft(saves, defaultDev(), recipe).saved).rejects.toThrow();
+      expect(writes).toEqual([]);
+      expect(await saves.loadSession()).toBeNull();
+    }
+  });
+
+  it('tells the caller when the store refuses a write', async () => {
+    const { store } = recordingStore({ refuseKey: SESSION_KEY });
     const saves = craftSaves(store);
-    await expect(beginCraft(saves, defaultDev(), recipe).saved).rejects.toThrow();
-    expect(writes).toEqual([]);
-    expect(await saves.loadSession()).toBeNull();
+    const begun = beginCraft(saves, defaultDev(), recipe);
+    await expect(begun.saved).rejects.toThrow();
+    expect(await saves.saveSession(begun.session)).toBe(false);
+    expect(await saves.saveDev(begun.dev)).toBe(true);
+    expect(await saves.saveSession(null)).toBe(true);
   });
 
   it('lands writes in call order even on a slow store, so an older state never wins', async () => {

@@ -30,6 +30,40 @@ export const BODY_LABEL: Record<BodyType, string> = {
   spirit: '영체',
 };
 
+// ---------- Deterministic powers (기획서 3.6, 13) ----------
+
+/** |n| past this is a bug, not a floor or a tool level; the cache would only eat memory. */
+export const POW_INT_MAX_EXPONENT = 100_000;
+
+/** One table per base: base^0, base^1, … */
+const powTables = new Map<number, number[]>();
+
+/**
+ * base^n for an integer n, from a per-base cache built by repeated multiplication.
+ * The one power function for all of src/sim (tower curve, material tables, fame, craft).
+ *
+ * ECMAScript leaves `**` and Math.pow "implementation-approximated", so a fractional
+ * base can round differently on another engine (a server replaying the game, 3.6).
+ * IEEE-754 multiplication and division are correctly rounded everywhere, so the same
+ * products in the same order give the same bits on every device.
+ *
+ * Negative n gives 1 ÷ base^|n|. A non-integer n (NaN included) or |n| above
+ * POW_INT_MAX_EXPONENT throws RangeError: callers floor and clamp their own inputs.
+ */
+export function powInt(base: number, n: number): number {
+  if (!Number.isInteger(n)) throw new RangeError(`powInt: integer exponent expected, got ${n}`);
+  const k = Math.abs(n);
+  if (k > POW_INT_MAX_EXPONENT) throw new RangeError(`powInt: exponent ${n} out of range`);
+  let table = powTables.get(base);
+  if (table === undefined) {
+    table = [1];
+    powTables.set(base, table);
+  }
+  while (table.length <= k) table.push((table[table.length - 1] as number) * base);
+  const v = table[k] as number;
+  return n < 0 ? 1 / v : v;
+}
+
 // ---------- Weapon types (기획서 4.8, 7.6) ----------
 
 export type BodyFit = 'good' | 'normal' | 'bad'; // ◎ ○ △
@@ -91,7 +125,7 @@ export const CRIT_DAMAGE = 1.5;
 /** BEATS[a] is the element that a beats. 수 > 화 > 지 > 풍 > 수. */
 export const BEATS: Record<Element, Element> = { water: 'fire', fire: 'earth', earth: 'wind', wind: 'water' };
 
-export const ELEMENT_MULT = { advantage: 1.5, neutral: 1.0, disadvantage: 0.75, same: 0.75, none: 1.0 } as const;
+export const ELEMENT_MULT = { advantage: 1.3, neutral: 1.0, disadvantage: 0.75, same: 0.75, none: 1.0 } as const;
 
 export function elementMultiplier(weapon: Element | null, tower: Element): number {
   if (weapon === null) return ELEMENT_MULT.none;
@@ -143,15 +177,20 @@ export function materialName(tier: number): string {
   return `아다만 +${tier - MATERIAL_NAMES.length}`;
 }
 
-/** Attack multiplier per material tier: ×1.2 per band. */
-export const MATERIAL_ATTACK_STEP = 1.2;
+/** Attack multiplier per material tier: ×1.15 per band. */
+export const MATERIAL_ATTACK_STEP = 1.15;
+
 export function materialAttack(tier: number): number {
-  return MATERIAL_ATTACK_STEP ** (tier - 1);
+  return powInt(MATERIAL_ATTACK_STEP, tier - 1);
 }
+
+/** Merchant price of band-1 main material, and its growth per band (10장). */
+export const MATERIAL_PRICE_BASE = 10;
+export const MATERIAL_PRICE_STEP = 2.5;
 
 /** Merchant price of one unit of main material in band n: 10G × 2.5^(n−1). */
 export function materialPrice(tier: number): number {
-  return Math.round(10 * 2.5 ** (tier - 1));
+  return Math.round(MATERIAL_PRICE_BASE * powInt(MATERIAL_PRICE_STEP, tier - 1));
 }
 
 /** Material cost of one weapon ≈ 6 units (10장). */
@@ -185,10 +224,17 @@ export const BOSS_POWER_MULT = 1.3;
 export const DEMON_LORD_POWER_MULT = 2.0;
 
 export function enemyBasePower(floor: number): number {
-  return ENEMY_BASE_POWER * ENEMY_GROWTH_PER_FLOOR ** (floor - 1);
+  return ENEMY_BASE_POWER * powInt(ENEMY_GROWTH_PER_FLOOR, floor - 1);
 }
 
 // ---------- Hero grades (기획서 6.2, 7.4) ----------
 
-export const GRADE_POWER_CAP: Record<Grade, number> = { N: 1.2, C: 1.6, B: 2.4, A: 4.0, S: 9.0 };
+export const GRADE_POWER_CAP: Record<Grade, number> = { N: 1.2, C: 1.6, B: 2.4, A: 4.0, S: 8.0 };
 export const GRADE_START_SHARE: Record<Grade, number> = { N: 0.4, C: 0.3, B: 0.2, A: 0.08, S: 0.02 };
+
+// ---------- Weapon mastery (기획서 4.7) ----------
+
+/** 능숙 from this best floor (all towers, plus any inherited bonus): upper enchants wake. */
+export const MASTERY_SKILLED_FLOOR = 15;
+/** 달인 from this best floor: the 고유능력 wakes. */
+export const MASTERY_MASTER_FLOOR = 40;

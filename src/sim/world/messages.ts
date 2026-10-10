@@ -20,9 +20,10 @@ export function deathLine(grade: Grade, type: WeaponType): string {
   return `${heroLabel(grade, type)}가 돌아오지 않았다. 그의 ${weapon}도.`;
 }
 
-export function retireLine(grade: Grade, type: WeaponType): string {
+export function retireLine(grade: Grade, type: WeaponType, discipleComing = true): string {
   const weapon = WEAPON_LABEL[type];
-  return `${heroLabel(grade, type)}가 ${weapon}${josa(weapon, '을', '를')} 내려놓았다. 곧 그의 제자가 온다고 한다.`;
+  const line = `${heroLabel(grade, type)}가 ${weapon}${josa(weapon, '을', '를')} 내려놓았다.`;
+  return discipleComing ? `${line} 곧 그의 제자가 온다고 한다.` : line;
 }
 
 export const RETIRE_HINT_LINE = '"슬슬 은퇴를 생각 중이야."';

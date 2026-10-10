@@ -2,7 +2,7 @@
 // It does not block layouts 9.3 would refuse; it says so, so results are not mistaken for reachable ones.
 
 import { useState } from 'react';
-import { checkLayout, skillBoardCap, type ToolLevels } from '../../sim/craft/index.ts';
+import { checkLayout, furnaceCp, skillBoardCap, smithStats, type ToolLevels, toolMultiplier } from '../../sim/craft/index.ts';
 import {
   CRAFT_BRANCH_LABEL,
   CRAFT_NODE_IDS,
@@ -24,11 +24,17 @@ function stageName(stage: number): string {
   return stage > 7 ? `전설 ★${stage - 7}` : `${stage}`;
 }
 
+/** What one tool's level gives (9.4): 모루·숫돌 multiply a stat, 화로 adds CP. */
+function toolEffect(k: keyof ToolLevels, lv: number): string {
+  return k === 'furnace' ? `제작력 +${furnaceCp(lv)}` : `×${toolMultiplier(k, lv).toFixed(2)}`;
+}
+
 export function DevPanel({ dev, craftActive, onChange }: Props) {
   const [seedText, setSeedText] = useState(String(dev.worldSeed));
   const on = new Set(dev.nodes);
   const cap = skillBoardCap(dev.fameStage);
   const illegal = checkLayout(dev.nodes, dev.fameStage);
+  const stats = smithStats({ nodes: dev.nodes, tools: dev.tools });
 
   const toggle = (id: CraftNodeId) =>
     onChange((d) => {
@@ -91,6 +97,9 @@ export function DevPanel({ dev, craftActive, onChange }: Props) {
 
       <div className="dev-block">
         <h4>도구 레벨</h4>
+        <p className="hint">
+          작업 숙련도 {stats.craftsmanship} · 가공 숙련도 {stats.control} · 제작력 {stats.maxCp}
+        </p>
         {(Object.keys(TOOL_LABEL) as (keyof ToolLevels)[]).map((k) => (
           <div key={k} className="row tool">
             <span>{TOOL_LABEL[k]}</span>
@@ -104,6 +113,7 @@ export function DevPanel({ dev, craftActive, onChange }: Props) {
             <button type="button" className="btn small" onClick={() => addTool(k, 5)}>
               +5
             </button>
+            <small className="muted">{toolEffect(k, dev.tools[k])}</small>
           </div>
         ))}
       </div>

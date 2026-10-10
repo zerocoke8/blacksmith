@@ -1,7 +1,7 @@
 // Fame stages and what they change (기획서 6.2, 9.2).
 
 import { GRADES, type Grade } from '../core/types.ts';
-import { GRADE_START_SHARE } from '../data/common.ts';
+import { GRADE_START_SHARE, powInt } from '../data/common.ts';
 import {
   FAME_STAGES,
   GRADE_SHARE_LAST_SHIFT_STAGE,
@@ -15,7 +15,7 @@ const LAST = FAME_STAGES[FAME_STAGES.length - 1] as (typeof FAME_STAGES)[number]
 /** Fame needed for a stage. Stages past 7 are ★n: the previous threshold ×2. */
 export function fameThreshold(stage: number): number {
   if (stage <= LAST.stage) return (FAME_STAGES[stage - 1] ?? FAME_STAGES[0])?.fame ?? 0;
-  return LAST.fame * STAR_STAGE_FAME_MULT ** (stage - LAST.stage);
+  return LAST.fame * powInt(STAR_STAGE_FAME_MULT, stage - LAST.stage);
 }
 
 export function fameStageFor(fame: number): number {

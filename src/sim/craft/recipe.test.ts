@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { BASIC_ACTIONS, CRAFT_NODES, type CraftNodeId } from '../data/craft.ts';
-import { recipeFor } from './recipe.ts';
-import { checkLayout, enabledActions, NO_TOOLS, skillBoardCap, smithStats, toolMultiplier } from './smith.ts';
+import { BASE_SMITH, BASIC_ACTIONS, CRAFT_NODES, type CraftNodeId, RECIPE, type RecipeGrade, TOOL_BONUS } from '../data/craft.ts';
+import { recipeFor, recipeSize } from './recipe.ts';
+import { checkLayout, enabledActions, furnaceCp, NO_TOOLS, skillBoardCap, smithStats, toolMultiplier } from './smith.ts';
 
 const recipe = (materialTier: number, boss = false) =>
   recipeFor({ weaponType: 'dagger', materialTier, bossMaterial: boss ? 'rebirth' : null });
@@ -14,25 +14,78 @@ describe('recipes (4.2.3)', () => {
     expect(recipe(7, true).grade).toBe('legendary');
   });
 
-  it('has durability 60 / 70 / 80', () => {
+  it('has durability 60 / 70 / 150', () => {
     expect(recipe(1).durability).toBe(60);
+    expect(recipe(4).durability).toBe(60);
     expect(recipe(5).durability).toBe(70);
-    expect(recipe(5, true).durability).toBe(80);
+    expect(recipe(5, true).durability).toBe(150);
   });
 
-  it('band 1 progress is four basic hammers at starting stats', () => {
-    expect(recipe(1).progressRequired).toBe(4 * smithStats({ nodes: [], tools: NO_TOOLS }).craftsmanship);
+  it('band 1 progress: three basic hammers at starting stats fall short, four finish (4.2.1)', () => {
+    const { craftsmanship } = smithStats({ nodes: [], tools: NO_TOOLS });
+    expect(recipe(1).progressRequired).toBeGreaterThan(3 * craftsmanship);
+    expect(recipe(1).progressRequired).toBeLessThanOrEqual(4 * craftsmanship);
   });
 
-  it('progress and quality cap rise about 15~20% per band', () => {
-    for (let t = 1; t < 10; t++) {
-      const a = recipe(t);
-      const b = recipe(t + 1);
-      for (const ratio of [b.progressRequired / a.progressRequired, b.qualityCap / a.qualityCap]) {
-        expect(ratio).toBeGreaterThanOrEqual(1.15 - 0.005);
-        expect(ratio).toBeLessThanOrEqual(1.2 + 0.005);
+  it('progress and quality cap rise about 15~20% per band within a size', () => {
+    for (const boss of [false, true]) {
+      for (let t = 1; t < 15; t++) {
+        const a = recipe(t, boss);
+        const b = recipe(t + 1, boss);
+        if (recipeSize(a.materialTier, a.grade) !== recipeSize(b.materialTier, b.grade)) continue;
+        for (const ratio of [b.progressRequired / a.progressRequired, b.qualityCap / a.qualityCap]) {
+          expect(ratio).toBeGreaterThanOrEqual(1.15 - 0.005);
+          expect(ratio).toBeLessThanOrEqual(1.2 + 0.005);
+        }
       }
     }
+  });
+
+  it('고급 and 전설 are bigger recipes on top of the band growth, and 4구간 is part way to 고급', () => {
+    expect(RECIPE.gradeMult.basic).toEqual({ progress: 1, quality: 1 });
+    expect(recipeSize(3, 'basic')).toBe(RECIPE.gradeMult.basic);
+    expect(recipeSize(RECIPE.advancedFromBand - 1, 'basic')).toBe(RECIPE.bridgeMult);
+    expect(recipeSize(RECIPE.advancedFromBand - 1, 'legendary')).toBe(RECIPE.gradeMult.legendary);
+    for (const k of ['progress', 'quality'] as const) {
+      expect(RECIPE.bridgeMult[k]).toBeGreaterThan(RECIPE.gradeMult.basic[k]);
+      expect(RECIPE.bridgeMult[k]).toBeLessThan(RECIPE.gradeMult.advanced[k]);
+    }
+    const band1 = recipe(1);
+    for (let t = 1; t <= 12; t++) {
+      for (const boss of [false, true]) {
+        const r = recipe(t, boss);
+        const m = recipeSize(t, r.grade);
+        expect(r.progressRequired / (band1.progressRequired * RECIPE.progressGrowth ** (t - 1))).toBeCloseTo(m.progress, 2);
+        expect(r.qualityCap / (band1.qualityCap * RECIPE.qualityGrowth ** (t - 1))).toBeCloseTo(m.quality, 2);
+      }
+    }
+    expect(RECIPE.gradeMult.advanced.progress).toBeGreaterThan(1);
+    expect(RECIPE.gradeMult.advanced.quality).toBeGreaterThan(1);
+    expect(RECIPE.gradeMult.legendary.progress).toBeGreaterThan(RECIPE.gradeMult.advanced.progress);
+    expect(RECIPE.gradeMult.legendary.quality).toBeGreaterThan(RECIPE.gradeMult.advanced.quality);
+  });
+
+  it('builds the band growth from repeated products, giving the numbers `**` gives (3.6)', () => {
+    const grades: [RecipeGrade, boolean][] = [
+      ['basic', false],
+      ['advanced', false],
+      ['legendary', true],
+    ];
+    for (let t = 1; t <= 40; t++) {
+      for (const [grade, boss] of grades) {
+        if (!boss && grade !== (t >= RECIPE.advancedFromBand ? 'advanced' : 'basic')) continue;
+        const m = recipeSize(t, grade);
+        const r = recipe(t, boss);
+        expect(r.progressRequired).toBe(Math.round(RECIPE.progressBase * RECIPE.progressGrowth ** (t - 1) * m.progress));
+        expect(r.qualityCap).toBe(Math.round(RECIPE.qualityCapBase * RECIPE.qualityGrowth ** (t - 1) * m.quality));
+      }
+    }
+  });
+
+  it('treats a broken band as band 1, and a huge one does not throw', () => {
+    const at = (materialTier: number) => recipeFor({ weaponType: 'bow', materialTier, bossMaterial: null });
+    expect(at(Number.NaN)).toEqual(at(1));
+    expect(() => at(1e9)).not.toThrow();
   });
 
   it('lists the conditions each grade can show: 식음 joins at 고급, 잘 펴짐·불티 at 전설', () => {
@@ -58,11 +111,25 @@ describe('smith stats (9.3, 9.4)', () => {
     expect(s.actions).toEqual([...BASIC_ACTIONS]);
   });
 
-  it('모루·숫돌 compound ×1.04 per level, 화로 adds 3 CP per level', () => {
-    expect(toolMultiplier('anvil', 1)).toBeCloseTo(1.04);
-    expect(toolMultiplier('anvil', 2)).toBeCloseTo(1.0816);
-    expect(toolMultiplier('whetstone', 10)).toBeCloseTo(1.04 ** 10);
-    expect(toolMultiplier('furnace', 10)).toBeCloseTo(1.3);
+  it('모루·숫돌 multiply ×1.04 per level by repeated products, giving the numbers `**` gives (3.6)', () => {
+    expect(toolMultiplier('anvil', 0)).toBe(1);
+    expect(toolMultiplier('anvil', 1)).toBe(1.04);
+    expect(toolMultiplier('anvil', 2)).toBe(1.04 * 1.04);
+    let product = 1;
+    for (let lv = 1; lv <= 200; lv++) {
+      product *= 1 + TOOL_BONUS.whetstone.perLevel;
+      expect(toolMultiplier('whetstone', lv)).toBe(product);
+      expect(toolMultiplier('whetstone', lv) / 1.04 ** lv).toBeCloseTo(1, 12);
+      const stats = smithStats({ nodes: [], tools: { anvil: lv, whetstone: lv, furnace: 0 } });
+      expect(stats.control).toBe(Math.round(100 * 1.04 ** lv));
+      expect(stats.craftsmanship).toBe(Math.round(100 * 1.04 ** lv));
+    }
+  });
+
+  it('화로 adds 1 CP per level up to level 20, then 1 per 2 levels (9.4)', () => {
+    expect([0, 1, 4, 6, 10, 20, 21, 22, 35, 55].map(furnaceCp)).toEqual([0, 1, 4, 6, 10, 20, 20, 21, 27, 37]);
+    expect(smithStats({ nodes: [], tools: { anvil: 0, whetstone: 0, furnace: 20 } }).maxCp).toBe(BASE_SMITH.cp + 20);
+    for (let lv = 1; lv <= 100; lv++) expect(furnaceCp(lv)).toBeGreaterThanOrEqual(furnaceCp(lv - 1));
   });
 
   it('passives multiply on top of the tools', () => {
@@ -72,7 +139,7 @@ describe('smith stats (9.3, 9.4)', () => {
     });
     expect(s.craftsmanship).toBe(Math.round(100 * 1.04 ** 10 * 1.1)); // 163
     expect(s.control).toBe(Math.round(100 * 1.04 ** 5 * 1.1)); // 134
-    expect(s.maxCp).toBe(130);
+    expect(s.maxCp).toBe(110);
     expect(s.durabilityBonus).toBe(15);
     expect(s.foresight).toBe(true);
   });

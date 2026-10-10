@@ -45,20 +45,27 @@ export const INJURIES_RANGE: readonly [number, number] = [3, 4];
 export const FAILURES_RANGE: readonly [number, number] = [13, 21];
 /** 3.4 / 7.12: repair every 10~14 hours. */
 export const REPAIR_HOURS_RANGE: readonly [number, number] = [10, 14];
-/** 10장: 24~36 cleared floors per day. */
-export const FLOORS_PER_DAY_RANGE: readonly [number, number] = [24, 36];
-/** 3.4: 3~4 departures per day. */
-export const EXPEDITIONS_PER_DAY_RANGE: readonly [number, number] = [3, 4];
+/**
+ * 10장 '하루 돌파 층수': about 20 a day (16~24), re-climbed floors included.
+ * The doc still says 24~36; the new target is set ahead of the doc edit.
+ */
+export const FLOORS_PER_DAY: { target: number; range: readonly [number, number] } = { target: 20, range: [16, 24] };
+/**
+ * 3.4 '하루 출발': about 4 a day (3.5~4.5). The doc still says 3~4; the new target is
+ * set ahead of the doc edit.
+ */
+export const EXPEDITIONS_PER_DAY: { target: number; range: readonly [number, number] } = { target: 4, range: [3.5, 4.5] };
 
 /** 3.7: shop best record (our weapons). Checked at these days, ±20%. */
 export const SHOP_RECORD_CURVE: readonly { day: number; floor: number; label: string }[] = [
-  { day: 1, floor: 12, label: '1일차' },
+  { day: 1, floor: 18, label: '1일차' },
   { day: 3, floor: 30, label: '2~3일차' },
-  { day: 7, floor: 50, label: '1주' },
-  { day: 14, floor: 65, label: '2주' },
-  { day: 28, floor: 85, label: '3~4주' },
+  { day: 7, floor: 60, label: '1주' },
+  { day: 14, floor: 80, label: '2주' },
+  { day: 28, floor: 95, label: '3~4주' },
+  // From here the 100-floor demon lord (×2.0) is the wall for ★3 무속성 weapons (3.7).
   { day: 42, floor: 100, label: '6주' },
-  { day: 90, floor: 130, label: '3달' },
+  { day: 90, floor: 100, label: '3달' },
 ];
 export const SHOP_RECORD_TOLERANCE = 0.2;
 

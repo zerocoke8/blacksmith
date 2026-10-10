@@ -15,6 +15,7 @@ import {
   CREDIT_SLOTS_START,
   DAY_MINUTES,
   DEMON_LORD_REVIVE_MINUTES,
+  DISCIPLE_CHANCE_PER_HEART,
   DISCIPLE_DELAY_MINUTES,
   DISCIPLES_REPLACE_NEW_HEROES,
   FAME_PER_FIRST_CLEAR,
@@ -30,6 +31,7 @@ import {
   REPAIR_VISIT_BELOW,
   RETIRE_AT_DAYS,
   RETIRE_AT_INJURIES,
+  RETIRE_HINT_DAYS_EARLY,
   RETIRE_HINT_STAGNANT_MINUTES,
   RETIRE_MIN_DAYS,
   RETIRE_STAGNANT_MINUTES,
@@ -92,6 +94,7 @@ export function createWorld(seed: number, rules: Partial<WorldRules> = {}): Worl
     seed,
     rules: {
       disciplesReplaceNewHeroes: DISCIPLES_REPLACE_NEW_HEROES,
+      discipleChance: null,
       creditSlots: CREDIT_SLOTS_START,
       ignoreBudget: false,
       ...rules,
@@ -154,6 +157,23 @@ export function retireReason(
   if (days >= RETIRE_AT_DAYS) return 'maxDays';
   if (now - h.recordAt >= RETIRE_STAGNANT_MINUTES && days >= RETIRE_MIN_DAYS[h.grade]) return 'stagnant';
   return null;
+}
+
+/** 6.5: a retired hero's disciple comes with chance hearts × 20%, sure at 5 hearts. */
+export function discipleChanceFor(hearts: number): number {
+  return Math.min(1, Math.max(0, hearts * DISCIPLE_CHANCE_PER_HEART));
+}
+
+/**
+ * Whether a retiring hero's disciple will come (6.5). The chance comes from the master's
+ * hearts unless rules.discipleChance overrides it. One draw on the stream
+ * (world seed, 'discipleComes', master id); a sure chance draws nothing.
+ */
+export function discipleComes(world: Pick<WorldState, 'seed' | 'rules'>, masterId: string, hearts: number): boolean {
+  const p = world.rules.discipleChance ?? discipleChanceFor(hearts);
+  if (p >= 1) return true;
+  if (p <= 0) return false;
+  return rngFor(world.seed, 'discipleComes', masterId).chance(p);
 }
 
 /** 가게 방문 ②~④ after a return (① first visit and ⑤ farewell are handled elsewhere). */
@@ -540,7 +560,13 @@ function endExpedition(
     retireHero(ctx, hero, at, retire);
     return;
   }
-  if (!hero.retireHinted && at - hero.recordAt >= RETIRE_HINT_STAGNANT_MINUTES) {
+  // The farewell hint only comes once retiring is actually possible within about a day.
+  const careerDays = (at - hero.arrivedAt) / DAY_MINUTES;
+  if (
+    !hero.retireHinted &&
+    at - hero.recordAt >= RETIRE_HINT_STAGNANT_MINUTES &&
+    careerDays >= RETIRE_MIN_DAYS[hero.grade] - RETIRE_HINT_DAYS_EARLY
+  ) {
     hero.retireHinted = true;
     ctx.out.push({ kind: 'retireHint', at, heroId: hero.id, message: RETIRE_HINT_LINE });
   }
@@ -739,16 +765,21 @@ function retireHero(ctx: Ctx, hero: HeroState, at: number, reason: RetireReason)
   const career = careerOf(hero, at, 'retired', null);
   world.careers.push(career);
   removeHero(ctx, hero);
-  const pending: PendingDisciple = { at: at + DISCIPLE_DELAY_MINUTES, master: career, hearts: ASSUMED_LOYALTY_HEARTS };
-  world.disciples.push(pending);
-  ctx.queue.push(discipleEntry(pending));
+  // Loyalty is not simulated yet; every master is assumed to have the same hearts.
+  const hearts = ASSUMED_LOYALTY_HEARTS;
+  const coming = discipleComes(world, hero.id, hearts);
+  if (coming) {
+    const pending: PendingDisciple = { at: at + DISCIPLE_DELAY_MINUTES, master: career, hearts };
+    world.disciples.push(pending);
+    ctx.queue.push(discipleEntry(pending));
+  }
   ctx.out.push({
     kind: 'retire',
     at,
     heroId: hero.id,
     record: hero.record,
     reason,
-    message: retireLine(hero.grade, hero.weaponType),
+    message: retireLine(hero.grade, hero.weaponType, coming),
   });
   if (hero.held.mine) addFame(ctx, at, hero.record * FAME_PER_RETIRE_RECORD, 'retire');
 }

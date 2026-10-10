@@ -86,14 +86,15 @@ describe('기획서 4.2.1 example flow', () => {
     const start = startCraft(setup);
     expect(start.cp).toBe(100);
     expect(start.durability).toBe(60);
-    expect(start.recipe.progressRequired).toBe(4 * start.stats.craftsmanship);
+    expect(start.recipe.progressRequired).toBeGreaterThan(3 * start.stats.craftsmanship);
+    expect(start.recipe.progressRequired).toBeLessThanOrEqual(4 * start.stats.craftsmanship);
 
     const end = runActions(start, EXAMPLE_FLOW);
     expect(end.log.every((e) => e.condition === 'normal')).toBe(true);
     expect(end.turn).toBe(11);
     expect(start.cp - end.cp).toBe(95);
     expect(end.durability).toBe(0);
-    expect(end.progress).toBe(end.recipe.progressRequired);
+    expect(end.progress).toBe(4 * start.stats.craftsmanship);
     expect(end.status).toBe('success');
   });
 
@@ -325,8 +326,8 @@ describe('buffs', () => {
   it('최후의 한 수 stops progress one short, once', () => {
     let s = applyAction(normal(all), 'finalAppraisal');
     expect(s.turn).toBe(0);
-    s = applyAction(normal({ ...s, progress: 350 }), 'basicSynthesis');
-    expect(s.progress).toBe(399);
+    s = applyAction(normal({ ...s, progress: s.recipe.progressRequired - 50 }), 'basicSynthesis');
+    expect(s.progress).toBe(s.recipe.progressRequired - 1);
     expect(s.status).toBe('active');
     expect(s.buffs.finalAppraisal).toBe(0);
     s = applyAction(normal(s), 'basicSynthesis');

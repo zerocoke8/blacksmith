@@ -8,30 +8,25 @@ import {
   type BodyFit,
   CRIT_DAMAGE,
   elementMultiplier,
+  MASTERY_MASTER_FLOOR,
+  MASTERY_SKILLED_FLOOR,
   materialAttack,
   QUALITY,
   WEAPON_SPEC,
 } from '../data/common.ts';
-import { ENCHANTS } from '../data/enchants.ts';
+import { ENCHANT_AFFINITY_SCALE, ENCHANTS } from '../data/enchants.ts';
+import { UNIQUES } from '../data/uniques.ts';
 import {
   BASE_ATTACK,
   BOSS_DEATH_MULT,
   BOSS_HP_LOSS_MULT,
   CLEAR_CHANCE_POINTS,
   DULL_ATTACK_MULT,
-  ENCHANT_AFFINITY_SCALE,
   FAIL_HP_THRESHOLD,
   FAIL_ODDS_HIGH_HP,
   FAIL_ODDS_LOW_HP,
   type FailOdds,
   HP_LOSS_ON_CLEAR,
-  MASTERY_MASTER_FLOOR,
-  MASTERY_SKILLED_FLOOR,
-  UNIQUE_BOSS_POWER_MULT,
-  UNIQUE_EXTRA_FLOORS,
-  UNIQUE_NON_BOSS_POWER_MULT,
-  UNIQUE_PARTY_BONUS_ADD,
-  UNIQUE_RISK_MULT,
 } from '../data/world.ts';
 import type { FailOutcome, FloorInfo } from './types.ts';
 
@@ -146,30 +141,31 @@ export function weaponProfile(w: Omit<Weapon, 'id'>, masteryFloor: number): Weap
   p.attackMult *= 1 + p.critRate * pursuitPerCrit;
 
   if (w.unique !== null && mastery === 'master') {
-    switch (w.unique) {
-      case 'dragonFury':
-        p.bossPowerMult *= UNIQUE_BOSS_POWER_MULT;
+    const effect = UNIQUES[w.unique].effect;
+    switch (effect.kind) {
+      case 'bossPowerMult':
+        p.bossPowerMult *= effect.value;
+        break;
+      case 'nonBossPowerMult':
+        p.nonBossPowerMult *= effect.value;
+        break;
+      case 'partyAdd':
+        p.partyAdd += effect.value;
+        break;
+      case 'extraFloors':
+        p.extraFloors += effect.value;
+        break;
+      case 'riskMult':
+        p.riskMult *= effect.value;
         break;
       case 'rebirth':
         p.rebirth = true;
         break;
-      case 'earthBlessing':
-        p.partyAdd += UNIQUE_PARTY_BONUS_ADD;
-        break;
       case 'allPierce':
         p.allPierce = true;
         break;
-      case 'dash':
-        p.extraFloors += UNIQUE_EXTRA_FLOORS;
-        break;
       case 'fairWind':
         p.fairWind = true;
-        break;
-      case 'tidalWave':
-        p.nonBossPowerMult *= UNIQUE_NON_BOSS_POWER_MULT;
-        break;
-      case 'iceArmor':
-        p.riskMult *= UNIQUE_RISK_MULT;
         break;
     }
   }

@@ -4,37 +4,49 @@
 
 export interface SaveStore {
   load(key: string): Promise<string | null>;
-  save(key: string, value: string): Promise<void>;
+  /** true when the value was written; false when storage is missing, full or blocked. */
+  save(key: string, value: string): Promise<boolean>;
   remove(key: string): Promise<void>;
 }
 
 const PREFIX = 'blacksmith:';
 
+/** localStorage, or null where there is none (Node, some private modes). */
+function localStore(): Storage | null {
+  const store = globalThis.localStorage as Storage | undefined;
+  return store !== undefined && store !== null && typeof store.setItem === 'function' ? store : null;
+}
+
 export const webStore: SaveStore = {
   async load(key) {
     try {
-      return globalThis.localStorage?.getItem(PREFIX + key) ?? null;
+      return localStore()?.getItem(PREFIX + key) ?? null;
     } catch {
       return null;
     }
   },
   async save(key, value) {
+    // Storage can be missing, full or blocked (private mode). The game keeps running,
+    // and the caller learns the write did not happen.
     try {
-      globalThis.localStorage?.setItem(PREFIX + key, value);
+      const store = localStore();
+      if (store === null) return false;
+      store.setItem(PREFIX + key, value);
+      return true;
     } catch {
-      // Storage can be full or blocked (private mode); the game keeps running.
+      return false;
     }
   },
   async remove(key) {
     try {
-      globalThis.localStorage?.removeItem(PREFIX + key);
+      localStore()?.removeItem(PREFIX + key);
     } catch {
       // ignore
     }
   },
 };
 
-/** In-memory store for tests and tools. */
+/** In-memory store for tests and tools. Writes always succeed. */
 export function memoryStore(): SaveStore {
   const data = new Map<string, string>();
   return {
@@ -43,6 +55,7 @@ export function memoryStore(): SaveStore {
     },
     async save(key, value) {
       data.set(key, value);
+      return true;
     },
     async remove(key) {
       data.delete(key);

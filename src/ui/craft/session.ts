@@ -123,9 +123,13 @@ export function readSession(data: unknown): CraftSession | null {
 export interface CraftSaves {
   loadDev(): Promise<DevSettings>;
   loadSession(): Promise<CraftSession | null>;
-  saveDev(dev: DevSettings): Promise<void>;
-  saveSession(session: CraftSession | null): Promise<void>;
-  /** The bumped craft number first, then the new session; the session is skipped if the first write fails. */
+  /** Resolves false when the store refused the write (missing, full or blocked). */
+  saveDev(dev: DevSettings): Promise<boolean>;
+  saveSession(session: CraftSession | null): Promise<boolean>;
+  /**
+   * The bumped craft number first, then the new session. Rejects if either write fails,
+   * and the session is skipped when the craft number could not be written.
+   */
   saveStart(dev: DevSettings, session: CraftSession): Promise<void>;
 }
 
@@ -147,8 +151,11 @@ export function craftSaves(store: SaveStore): CraftSaves {
         return null;
       }
     });
-  const writeSession = (session: CraftSession | null) =>
-    session === null ? store.remove(SESSION_KEY) : store.save(SESSION_KEY, JSON.stringify(session));
+  const writeSession = async (session: CraftSession | null): Promise<boolean> => {
+    if (session !== null) return store.save(SESSION_KEY, JSON.stringify(session));
+    await store.remove(SESSION_KEY);
+    return true;
+  };
 
   return {
     loadDev: async () => readDev(await loadJson(DEV_KEY)),
@@ -157,8 +164,8 @@ export function craftSaves(store: SaveStore): CraftSaves {
     saveSession: (session) => inOrder(() => writeSession(session)),
     saveStart: (dev, session) =>
       inOrder(async () => {
-        await store.save(DEV_KEY, JSON.stringify(dev));
-        await writeSession(session);
+        if (!(await store.save(DEV_KEY, JSON.stringify(dev)))) throw new Error('craft number not saved');
+        if (!(await writeSession(session))) throw new Error('craft session not saved');
       }),
   };
 }

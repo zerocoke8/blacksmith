@@ -179,6 +179,12 @@ export interface ShopLedger {
 export interface WorldRules {
   /** A disciple's arrival uses up one of the day's new-hero arrivals (9.2). */
   disciplesReplaceNewHeroes: boolean;
+  /**
+   * Chance (0~1) that a retired hero's disciple comes at all. null = the game rule,
+   * master's hearts × 20% (6.5); a number overrides it for comparisons. Rolled once per
+   * retirement on its own stream. A disciple who never comes takes no arrival.
+   */
+  discipleChance: number | null;
   /** Credits open at once, shop-wide (5.3: 2, up to 6 with the 외상 장부 facility). */
   creditSlots: number;
   /**

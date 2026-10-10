@@ -45,11 +45,15 @@ export const DEMON_LORD_BODY: Record<TowerId, BodyType> = { ...TOWER_HOME_BODY }
 // ---------- Combat (7.3, 7.9) ----------
 
 /**
- * Helper constant (7.3): base weapon attack. Chosen so a strength-1.0 rookie with the
- * basic weapon (★1 iron, no element), mid 인망 and a neutral body matchup clears floor 9
- * (R ≈ 1.15) and turns back at the floor 10 boss (R ≈ 0.85, clear chance < 50%).
+ * Helper constant (7.3): base weapon attack. A strength-1.0 rookie with the basic
+ * weapon (★1 iron, no element), mid 인망 and a neutral body matchup clears floor 9 and
+ * turns back at the floor 10 boss (clear chance < 50%): R ≈ 1.26 / 0.93 with the
+ * physical weapons, 1.07 / 0.79 with the staff (attack ×0.85).
+ * On real tower layouts the stall floor's median is 8 for 인망 하, 10 for 중, 13 for 상;
+ * about half of 인망 상 rookies still stall at the floor 10 boss.
+ * Raised from 110 with the 7.4 retune (추천 묶음 A·C).
  */
-export const BASE_ATTACK = 110;
+export const BASE_ATTACK = 120;
 
 /** Clear chance by R; values in between are joined by straight lines. */
 export const CLEAR_CHANCE_POINTS: readonly (readonly [r: number, chance: number])[] = [
@@ -80,22 +84,6 @@ export const BOSS_DEATH_MULT = 2;
 /** Weapon attack ×0.5 when durability hits 0 on a floor (무뎌짐, 7.12). */
 export const DULL_ATTACK_MULT = 0.5;
 
-/**
- * An enchant that suits the weapon type moves 1.5x as far from neutral (4.5).
- * Belongs with enchants.ts; kept here until that file exports it.
- */
-export const ENCHANT_AFFINITY_SCALE = 1.5;
-
-/**
- * Numeric side of 고유능력 (4.6). Belongs with uniques.ts, which only carries the
- * descriptions; kept here until that file exports numbers.
- */
-export const UNIQUE_BOSS_POWER_MULT = 1.5; // 용의 분노
-export const UNIQUE_NON_BOSS_POWER_MULT = 1.5; // 해일
-export const UNIQUE_PARTY_BONUS_ADD = 0.2; // 대지의 가호
-export const UNIQUE_EXTRA_FLOORS = 4; // 질주
-export const UNIQUE_RISK_MULT = 0.5; // 빙갑
-
 // ---------- Return rules (7.10) ----------
 
 export const RETURN_AT_HP = 0.4;
@@ -105,7 +93,7 @@ export const RETURN_BELOW_CLEAR_CHANCE = 0.5;
 
 // ---------- Durability (7.12) ----------
 
-export const WEAR_NORMAL_FLOOR = 0.03;
+export const WEAR_NORMAL_FLOOR = 0.04;
 export const WEAR_BOSS_MIN = 0.1;
 export const WEAR_BOSS_MAX = 0.3;
 /** Back from an expedition below 50% → visits the shop for repair. */
@@ -130,13 +118,9 @@ export const LUCK_DEATH_TO_INJURY: Record<StatTier, number> = { low: 0.1, mid: 0
 export const GROWTH_MIN = 0.3;
 export const GROWTH_MAX = 1.0;
 
-/** Level 1~30 by cumulative cleared floors; about 200 floors (day 7) reaches 30. */
+/** Level 1~30 by cumulative cleared floors; 140 floors (about day 7 at ~20 a day) reaches 30. */
 export const MAX_LEVEL = 30;
-export const FLOORS_FOR_MAX_LEVEL = 200;
-
-/** Weapon mastery by best floor (4.7). */
-export const MASTERY_SKILLED_FLOOR = 15;
-export const MASTERY_MASTER_FLOOR = 40;
+export const FLOORS_FOR_MAX_LEVEL = 140;
 
 /** The tower whose home body each weapon type hits for ◎ (6.3). */
 export const WEAPON_HOME_TOWER: Record<WeaponType, TowerId> = {
@@ -162,6 +146,8 @@ export const STAGNATION_EXPEDITIONS = 2;
 /** Retirement, judged on every return (6.3). */
 export const RETIRE_STAGNANT_MINUTES = 24 * HOUR_MINUTES;
 export const RETIRE_HINT_STAGNANT_MINUTES = 12 * HOUR_MINUTES;
+/** The hint waits until the career is at most this many days short of the grade minimum. */
+export const RETIRE_HINT_DAYS_EARLY = 1;
 export const RETIRE_MIN_DAYS: Record<Grade, number> = { N: 3, C: 4, B: 6, A: 6, S: 7 };
 export const RETIRE_AT_INJURIES = 5;
 export const RETIRE_AT_DAYS = 10;
@@ -234,14 +220,15 @@ export interface FameStageSpec {
   newHeroesPerDay: number;
 }
 
+// Thresholds fitted by simulation (standard policy, 4 seeds) to the 3.7 target days. [튜닝]
 export const FAME_STAGES: readonly FameStageSpec[] = [
   { stage: 1, name: '무명 대장간', fame: 0, newHeroesPerDay: 8 },
-  { stage: 2, name: '마을 대장간', fame: 300, newHeroesPerDay: 12 },
-  { stage: 3, name: '소문난 대장간', fame: 2_000, newHeroesPerDay: 16 },
-  { stage: 4, name: '도시의 명장', fame: 10_000, newHeroesPerDay: 20 },
-  { stage: 5, name: '왕국의 명장', fame: 50_000, newHeroesPerDay: 25 },
-  { stage: 6, name: '대륙의 명장', fame: 250_000, newHeroesPerDay: 30 },
-  { stage: 7, name: '전설의 대장장이', fame: 1_000_000, newHeroesPerDay: 35 },
+  { stage: 2, name: '마을 대장간', fame: 800, newHeroesPerDay: 12 },
+  { stage: 3, name: '소문난 대장간', fame: 4_000, newHeroesPerDay: 16 },
+  { stage: 4, name: '도시의 명장', fame: 32_000, newHeroesPerDay: 20 },
+  { stage: 5, name: '왕국의 명장', fame: 125_000, newHeroesPerDay: 25 },
+  { stage: 6, name: '대륙의 명장', fame: 300_000, newHeroesPerDay: 30 },
+  { stage: 7, name: '전설의 대장장이', fame: 1_100_000, newHeroesPerDay: 35 },
 ];
 /** ★n stages beyond 7: threshold ×2 each, +3 new heroes per day each. */
 export const STAR_STAGE_FAME_MULT = 2;
@@ -251,11 +238,14 @@ export const STAR_STAGE_NEW_HEROES = 3;
 export const GRADE_SHARE_SHIFT_PER_STAGE: Record<Grade, number> = { N: -0.02, C: 0, B: 0.01, A: 0.006, S: 0.004 };
 export const GRADE_SHARE_LAST_SHIFT_STAGE = 7;
 
-/**
- * Helper: 9.2 '새 용사/일' does not say whether disciples count. false = disciples come
- * on top of the daily new heroes (as written); true = each disciple takes one arrival.
- */
-export const DISCIPLES_REPLACE_NEW_HEROES = false;
+/** A disciple's arrival takes one of the day's new-hero arrivals (6.5, 9.2). */
+export const DISCIPLES_REPLACE_NEW_HEROES = true;
+
+/** A retired hero's disciple comes with chance hearts × 20%, sure at 5 hearts (6.5). */
+export const DISCIPLE_CHANCE_PER_HEART = 0.2;
+
+/** 재능 (grade +1) is only passed on by a master who filled most of the hidden growth (6.5). */
+export const TALENT_MIN_MASTER_GROWTH = 0.9;
 
 /** Helper: gap between arrivals = (1 day ÷ rate) × uniform(0.5, 1.5). */
 export const SPAWN_GAP_JITTER_MIN = 0.5;

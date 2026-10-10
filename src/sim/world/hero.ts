@@ -26,6 +26,7 @@ import {
   STAT_TIER_WEIGHTS,
   STAT_TIERS,
   type StatTier,
+  TALENT_MIN_MASTER_GROWTH,
   TOUGHNESS_INJURY_MULT,
   TOWER_ADAPT_MULT,
   WEAPON_HOME_TOWER,
@@ -240,7 +241,7 @@ export function rollDisciple(rng: Rng, master: CareerRecord, hearts: number): Di
       case 'luck':
         return ownLuck !== 'high';
       case 'talent':
-        return master.grade !== 'S';
+        return master.grade !== 'S' && master.growth >= TALENT_MIN_MASTER_GROWTH;
       default:
         return true;
     }

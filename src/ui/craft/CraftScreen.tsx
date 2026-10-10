@@ -72,6 +72,8 @@ export function CraftScreen({ onExit }: Props) {
     const d = devRef.current;
     if (!d || sessionRef.current) return;
     const begun = beginCraft(craftStore, d, recipe);
+    // A store that cannot write (full, blocked) must not stop the craft; it just is not kept.
+    begun.saved.catch(() => undefined);
     showDev(begun.dev);
     showSession(begun.session);
   };

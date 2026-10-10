@@ -1,20 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Grade, TowerId, Weapon } from '../core/types.ts';
 import { listPrice } from '../data/common.ts';
-import {
-  CREDIT_PREMIUM_FIRST_VISIT,
-  CREDIT_PREMIUM_LATER,
-  DAY_MINUTES,
-  DEMON_LORD_REVIVE_MINUTES,
-  FLOOR_MINUTES,
-  HOUR_MINUTES,
-  INJURY_REST_MINUTES,
-  RETIRE_AT_DAYS,
-  RETIRE_AT_INJURIES,
-  RETIRE_MIN_DAYS,
-  RETIRE_STAGNANT_MINUTES,
-  TOWN_STAY_MINUTES,
-} from '../data/world.ts';
+import { ASSUMED_LOYALTY_HEARTS, CREDIT_PREMIUM_FIRST_VISIT, CREDIT_PREMIUM_LATER, DAY_MINUTES, DEMON_LORD_REVIVE_MINUTES, FLOOR_MINUTES, HOUR_MINUTES, INJURY_REST_MINUTES, RETIRE_AT_DAYS, RETIRE_AT_INJURIES, RETIRE_MIN_DAYS, RETIRE_STAGNANT_MINUTES, TOWN_STAY_MINUTES } from '../data/world.ts';
 import { DEMON_LORD_LINE } from './messages.ts';
 import { newHero, NO_INHERIT } from './hero.ts';
 import {
@@ -29,16 +16,7 @@ import {
 } from './supply.ts';
 import { floorInfo } from './tower.ts';
 import type { HeroState, WorldEvent, WorldRules, WorldState } from './types.ts';
-import {
-  advanceWorld,
-  createWorld,
-  openCredits,
-  retireReason,
-  returnReason,
-  type SaleInput,
-  saleTerms,
-  visitReasons,
-} from './world.ts';
+import { advanceWorld, createWorld, discipleChanceFor, discipleComes, openCredits, retireReason, returnReason, saleTerms, type SaleInput, visitReasons } from './world.ts';
 
 function run(seed: number, days: number, policy: PolicyId | SupplyPolicy, stepMinutes = days * DAY_MINUTES) {
   const world = createWorld(seed);
@@ -251,11 +229,13 @@ describe('expedition flow (7.8, 3.4)', () => {
     expect(records).toBeGreaterThan(100);
   });
 
-  it('sends a disciple after each retirement', () => {
+  it('sends a disciple after exactly the retirements whose roll comes up (6.5)', () => {
     const retired = world.careers.filter((c) => c.end === 'retired' && c.endedAt < 7 * DAY_MINUTES).map((c) => c.id);
     const disciples = new Set<string | null>();
     for (const e of events) if (e.kind === 'arrival' && e.disciple) disciples.add(e.masterId);
-    for (const id of retired) expect(disciples.has(id)).toBe(true);
+    for (const id of retired) expect(disciples.has(id)).toBe(discipleComes(world, id, ASSUMED_LOYALTY_HEARTS));
+    expect(retired.some((id) => disciples.has(id))).toBe(true);
+    expect(retired.some((id) => !disciples.has(id))).toBe(true);
   });
 
 });
@@ -466,10 +446,76 @@ describe('rookies with the basic weapon (7.3)', () => {
 describe('disciples taking new-hero arrivals (rule switch)', () => {
   it('keeps the arrival count close to the daily rate', () => {
     const p = createPolicy('standard');
-    const extra = createWorld(4);
-    const replace = createWorld(4, { disciplesReplaceNewHeroes: true });
+    const extra = createWorld(4, { disciplesReplaceNewHeroes: false });
+    const replace = createWorld(4);
     const e1 = advanceWorld(extra, 12 * DAY_MINUTES, p).filter((e) => e.kind === 'arrival').length;
     const e2 = advanceWorld(replace, 12 * DAY_MINUTES, p).filter((e) => e.kind === 'arrival').length;
     expect(e2).toBeLessThan(e1);
+  });
+});
+
+describe('disciple chance (rule switch for comparison)', () => {
+  const days = 14;
+  const play = (rules: Partial<WorldRules>) => {
+    const world = createWorld(6, rules);
+    const events = advanceWorld(world, days * DAY_MINUTES, createPolicy('standard'));
+    const retires = events.filter((e) => e.kind === 'retire');
+    const disciples = events.filter((e) => e.kind === 'arrival' && e.disciple);
+    return { world, events, retires, disciples };
+  };
+
+  it('defaults to the game rule: hearts × 20%, disciples taking arrivals (6.5)', () => {
+    const rules = createWorld(1).rules;
+    expect(rules.discipleChance).toBeNull();
+    expect(rules.disciplesReplaceNewHeroes).toBe(true);
+    expect(discipleChanceFor(0)).toBe(0);
+    expect(discipleChanceFor(2)).toBeCloseTo(0.4);
+    expect(discipleChanceFor(5)).toBe(1);
+    expect(discipleChanceFor(9)).toBe(1);
+    // Loyalty is not simulated yet (every master has ASSUMED_LOYALTY_HEARTS = 2),
+    // so the default world is the same world as a fixed 40% chance.
+    const a = play({});
+    const b = play({ discipleChance: 0.4 });
+    expect(b.events).toEqual(a.events);
+  });
+
+  it('sends a disciple for every retirement at chance 1', () => {
+    const a = play({ discipleChance: 1 });
+    expect(a.disciples.length + a.world.disciples.length).toBe(a.retires.length);
+  });
+
+  it('sends none at 0 and says nothing about a disciple', () => {
+    const r = play({ discipleChance: 0 });
+    expect(r.retires.length).toBeGreaterThan(10);
+    expect(r.disciples).toHaveLength(0);
+    expect(r.world.disciples).toHaveLength(0);
+    for (const e of r.retires) if (e.kind === 'retire') expect(e.message).not.toContain('제자');
+  });
+
+  it('sends about the given share, decided per master on its own stream', () => {
+    const r = play({ discipleChance: 0.4 });
+    const sent = r.disciples.length + r.world.disciples.length;
+    expect(r.retires.length).toBeGreaterThan(30);
+    expect(sent / r.retires.length).toBeGreaterThan(0.2);
+    expect(sent / r.retires.length).toBeLessThan(0.6);
+    // The retire line promises a disciple exactly when one is on the way.
+    const coming = new Set([...r.disciples.map((e) => (e.kind === 'arrival' ? e.masterId : null)), ...r.world.disciples.map((d) => d.master.id)]);
+    for (const e of r.retires) {
+      if (e.kind === 'retire') expect(e.message.includes('제자')).toBe(coming.has(e.heroId));
+    }
+  });
+
+  it('combines with replace: only disciples who come take an arrival', () => {
+    const replace = play({ disciplesReplaceNewHeroes: true, discipleChance: 1 });
+    const fewer = play({ disciplesReplaceNewHeroes: true, discipleChance: 0.4 });
+    const rookies = (r: ReturnType<typeof play>) =>
+      r.events.filter((e) => e.kind === 'arrival' && !e.disciple).length;
+    expect(fewer.disciples.length).toBeLessThan(replace.disciples.length);
+    // Each arrived disciple cancels exactly one spawn; the fixed S is the one rookie that is not a spawn.
+    for (const r of [replace, fewer]) {
+      const skipped = r.world.spawnCount - (rookies(r) - 1);
+      expect(skipped).toBe(r.disciples.length - r.world.spawnSkips);
+    }
+    expect(rookies(fewer)).toBeGreaterThan(rookies(replace));
   });
 });

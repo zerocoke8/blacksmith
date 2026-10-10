@@ -9,10 +9,10 @@ import {
   ACTIVE_HEROES_BY_STAGE,
   ACTIVE_HEROES_TOLERANCE,
   DEATH_RATE_RANGE,
-  EXPEDITIONS_PER_DAY_RANGE,
+  EXPEDITIONS_PER_DAY,
   FAILURES_RANGE,
   FAME_STAGE_DAYS,
-  FLOORS_PER_DAY_RANGE,
+  FLOORS_PER_DAY,
   GRADE_TARGETS,
   INJURIES_RANGE,
   MID_GROWTH,
@@ -135,6 +135,8 @@ export interface Population {
   activeTarget: number;
   activeGrades: Record<Grade, number>;
   activeGenerationMean: number;
+  /** Share of last-day active heroes that are disciples (generation 2+). */
+  activeDiscipleShare: number;
   generationMax: number;
   fameStageEnd: number;
 }
@@ -151,6 +153,7 @@ export interface Metrics {
   policy: string;
   material: string;
   disciplesReplaceNewHeroes: boolean;
+  discipleChance: number | null;
   ignoreBudget: boolean;
   days: number;
   seeds: number[];
@@ -238,6 +241,7 @@ function population(runs: readonly RunResult[], days: number): Population {
   let disciples = 0;
   let generationSum = 0;
   let active = 0;
+  let activeDisciples = 0;
   let generationMax = 0;
   for (const r of runs) {
     let stage = 1;
@@ -258,6 +262,7 @@ function population(runs: readonly RunResult[], days: number): Population {
     for (const h of r.world.heroes) {
       activeCounts[h.grade]++;
       generationSum += h.generation;
+      if (h.generation > 1) activeDisciples++;
       active++;
       generationMax = Math.max(generationMax, h.generation);
     }
@@ -275,6 +280,7 @@ function population(runs: readonly RunResult[], days: number): Population {
     activeTarget: mean(runs.map((r) => activeHeroesTarget(r.world.fameStage))),
     activeGrades: toShares(activeCounts),
     activeGenerationMean: active > 0 ? generationSum / active : NaN,
+    activeDiscipleShare: active > 0 ? activeDisciples / active : NaN,
     generationMax,
     fameStageEnd: mean(runs.map((r) => r.world.fameStage)),
   };
@@ -393,6 +399,7 @@ export function computeMetrics(runs: readonly RunResult[]): Metrics {
     policy: first.config.policy,
     material: first.config.material,
     disciplesReplaceNewHeroes: first.world.rules.disciplesReplaceNewHeroes,
+    discipleChance: first.world.rules.discipleChance,
     ignoreBudget: first.world.rules.ignoreBudget,
     days,
     seeds: runs.map((r) => r.config.seed),
@@ -437,6 +444,11 @@ export interface Check {
   ok: boolean | null;
 }
 
+/** The 7.4 record column a policy stands for: standard = '보통', matched = '최상'. */
+function recordColumnOf(policy: string): 'normal' | 'best' | null {
+  return policy === 'standard' ? 'normal' : policy === 'matched' ? 'best' : null;
+}
+
 /** Inclusive on both ends. */
 export const within = (v: number, lo: number, hi: number): boolean => Number.isFinite(v) && v >= lo && v <= hi;
 const near = (v: number, target: number, tol: number): boolean => within(v, target * (1 - tol), target * (1 + tol));
@@ -446,18 +458,27 @@ const pct = (v: number): string => (Number.isFinite(v) ? `${(v * 100).toFixed(1)
 const pct0 = (v: number): string => (Number.isFinite(v) ? `${Math.round(v * 100)}%` : '—');
 const gradeRow = (s: Record<Grade, number>): string => GRADES.map((g) => `${g} ${pct0(s[g])}`).join(' · ');
 
-export function buildChecks(m: Metrics): Check[] {
+/**
+ * Target checks (✓/✗).
+ * The 7.4 table (career best, 하루 새 층, 은퇴 시점) describes the power curve with the
+ * weapon handed over on time, so those rows are judged on `power`: the same seeds and
+ * policy run with rules.ignoreBudget. Every other row is judged on `m`, the run under
+ * the doc's economy. With a single run, pass it alone and it is used for both.
+ */
+export function buildChecks(m: Metrics, power: Metrics = m): Check[] {
   const out: Check[] = [];
-  const recordColumn = m.policy === 'standard' ? 'normal' : m.policy === 'matched' ? 'best' : null;
+  const recordColumn = recordColumnOf(m.policy);
+  const curve = power.ignoreBudget ? ' · 예산 무시' : '';
 
-  for (const g of m.grades) {
+  for (const own of m.grades) {
+    const g = power.grades.find((x) => x.grade === own.grade) ?? own;
     const t = GRADE_TARGETS[g.grade];
     if (recordColumn !== null) {
       const target = t[recordColumn];
       const actual = recordColumn === 'normal' ? g.midGrowthMean : g.topGrowthMean;
       const who = recordColumn === 'normal' ? `성장률 ${MID_GROWTH[0]}~${MID_GROWTH[1]}` : `성장률 ≥${TOP_GROWTH_MIN}`;
       out.push({
-        group: '커리어 최고층 (7.4)',
+        group: `커리어 최고층 (7.4${curve})`,
         name: `${g.grade}급 ${recordColumn === 'normal' ? '보통' : '최상'} 평균 (1대, ${who})`,
         target: `${target}층 ±${RECORD_TOLERANCE * 100}%`,
         actual: `${f0(actual)}층`,
@@ -468,7 +489,7 @@ export function buildChecks(m: Metrics): Check[] {
     const hi = t.retireDays[1] + RETIRE_DAYS_TOLERANCE;
     const doc = t.retireDays[0] === t.retireDays[1] ? `약 ${t.retireDays[0]}일` : `${t.retireDays[0]}~${t.retireDays[1]}일`;
     out.push({
-      group: '은퇴 시점 (6.3, 7.4)',
+      group: `은퇴 시점 (6.3, 7.4${curve})`,
       name: `${g.grade}급 커리어 일수 (중앙값)`,
       target: `${doc} (${f1(lo)}~${f1(hi)})`,
       actual: `${f1(g.retireDaysMedian)}일`,
@@ -476,7 +497,7 @@ export function buildChecks(m: Metrics): Check[] {
     });
     // 7.4 '하루 새 층' is the '보통' record over the retirement time, so only 'standard' is judged.
     out.push({
-      group: '하루 새 층 (7.4)',
+      group: `하루 새 층 (7.4${curve})`,
       name: `${g.grade}급 기록 ÷ 커리어 일수 (1대)`,
       target: `약 ${t.newFloorsPerDay}층 ±${NEW_FLOORS_TOLERANCE * 100}%`,
       actual: `${f1(g.newFloorsPerDay)}층`,
@@ -523,16 +544,16 @@ export function buildChecks(m: Metrics): Check[] {
   out.push({
     group: '시간 (3.4, 7.12, 10)',
     name: '하루 출발 횟수',
-    target: `${EXPEDITIONS_PER_DAY_RANGE[0]}~${EXPEDITIONS_PER_DAY_RANGE[1]}번`,
+    target: `약 ${EXPEDITIONS_PER_DAY.target}번 (${EXPEDITIONS_PER_DAY.range[0]}~${EXPEDITIONS_PER_DAY.range[1]})`,
     actual: `${f1(m.expeditionsPerDay)}번`,
-    ok: within(m.expeditionsPerDay, EXPEDITIONS_PER_DAY_RANGE[0], EXPEDITIONS_PER_DAY_RANGE[1]),
+    ok: within(m.expeditionsPerDay, EXPEDITIONS_PER_DAY.range[0], EXPEDITIONS_PER_DAY.range[1]),
   });
   out.push({
     group: '시간 (3.4, 7.12, 10)',
     name: '하루 돌파 층수 (이미 넘은 층 포함)',
-    target: `${FLOORS_PER_DAY_RANGE[0]}~${FLOORS_PER_DAY_RANGE[1]}층`,
+    target: `약 ${FLOORS_PER_DAY.target}층 (${FLOORS_PER_DAY.range[0]}~${FLOORS_PER_DAY.range[1]})`,
     actual: `${f1(m.floorsPerDay)}층`,
-    ok: within(m.floorsPerDay, FLOORS_PER_DAY_RANGE[0], FLOORS_PER_DAY_RANGE[1]),
+    ok: within(m.floorsPerDay, FLOORS_PER_DAY.range[0], FLOORS_PER_DAY.range[1]),
   });
 
   const shopTargets = m.policy !== 'none';
@@ -581,6 +602,65 @@ export function buildChecks(m: Metrics): Check[] {
   return out;
 }
 
+// ---------- economy loss (shown, not judged) ----------
+
+/** One grade: the power curve (budget ignored) against the doc's economy, same seeds. */
+export interface EconomyLossRow {
+  grade: Grade;
+  /** 7.4 '보통' cohort mean record. */
+  normalPower: number;
+  normalBudget: number;
+  /** 7.4 '최상' cohort mean record. */
+  bestPower: number;
+  bestBudget: number;
+  /** All retirees' median record. */
+  medianPower: number;
+  medianBudget: number;
+  retireDaysPower: number;
+  retireDaysBudget: number;
+  /**
+   * The 7.4 record row this policy is judged on ('보통' for standard, '최상' for matched),
+   * checked on the doc-economy run instead: what the old judging would say. null for 'none'.
+   */
+  docEconomyRecordOk: boolean | null;
+}
+
+export interface EconomyLossCurvePoint {
+  day: number;
+  label: string;
+  power: number;
+  budget: number;
+}
+
+/** Floors the doc's economy (budget, credit) costs, against the same seeds with the weapon always handed over. */
+export function economyLoss(m: Metrics, power: Metrics): { grades: EconomyLossRow[]; curve: EconomyLossCurvePoint[] } {
+  const column = recordColumnOf(m.policy);
+  const grades = m.grades.map((b) => {
+    const p = power.grades.find((x) => x.grade === b.grade) ?? b;
+    const budgetRecord = column === 'normal' ? b.midGrowthMean : b.topGrowthMean;
+    return {
+      grade: b.grade,
+      normalPower: p.midGrowthMean,
+      normalBudget: b.midGrowthMean,
+      bestPower: p.topGrowthMean,
+      bestBudget: b.topGrowthMean,
+      medianPower: p.recordMedian,
+      medianBudget: b.recordMedian,
+      retireDaysPower: p.retireDaysMedian,
+      retireDaysBudget: b.retireDaysMedian,
+      docEconomyRecordOk:
+        column === null ? null : near(budgetRecord, GRADE_TARGETS[b.grade][column], RECORD_TOLERANCE),
+    };
+  });
+  const curve = m.curve.map((b) => ({
+    day: b.day,
+    label: b.label,
+    power: power.curve.find((x) => x.day === b.day)?.shopRecord ?? NaN,
+    budget: b.shopRecord,
+  }));
+  return { grades, curve };
+}
+
 // ---------- markdown ----------
 
 const mark = (ok: boolean | null): string => (ok === null ? '—' : ok ? '✓' : '✗');
@@ -590,16 +670,29 @@ function table(head: string[], rows: string[][]): string {
   return [line(head), line(head.map(() => '---')), ...rows.map(line)].join('\n');
 }
 
-export function renderMarkdown(m: Metrics, checks: readonly Check[]): string {
+/**
+ * Markdown report for one policy. `power` is the same seeds run with the budget ignored;
+ * when given, the 7.4 rows in `checks` come from it (see buildChecks) and an
+ * '경제 손실' table compares the two runs.
+ */
+export function renderMarkdown(m: Metrics, checks: readonly Check[], power?: Metrics): string {
   const parts: string[] = [];
   const passed = checks.filter((c) => c.ok === true).length;
   const judged = checks.filter((c) => c.ok !== null).length;
+  const split = power !== undefined && power !== m ? power : null;
   parts.push(
     `## 정책 \`${m.policy}\` · 주재료 \`${m.material}\` · ${m.days}일 · 시드 ${m.seeds.join(', ')}` +
       (m.ignoreBudget ? ' · 예산 무시 (무기를 늘 넘김, 경제와 분리한 측정)' : ` · 동시 외상 ${m.credit.creditSlots}건`) +
-      (m.disciplesReplaceNewHeroes ? ' · 제자가 신규 유입을 대신함' : ''),
+      (m.disciplesReplaceNewHeroes ? ' · 제자가 신규 유입을 대신함' : '') +
+      (m.discipleChance !== null ? ` · 제자 확률 ${pct0(m.discipleChance)} (고정)` : ' · 제자 확률 하트×20%'),
   );
   parts.push(`목표 통과 ${passed}/${judged}. 집계 대상: ${m.cohortNote}, ${m.careers}명.`);
+  if (split !== null) {
+    parts.push(
+      '7.4 판정(커리어 최고층·하루 새 층·은퇴 시점)은 같은 시드를 예산 무시로 돌린 측정(무기를 제때 쥔 경우의 힘 곡선)으로 한다. ' +
+        "나머지 판정과 아래 표는 기획서 경제(예산·외상)를 따른 측정이다. 둘의 차이는 '경제 손실' 표에 있다.",
+    );
+  }
 
   parts.push('### 목표 대비');
   parts.push(
@@ -653,6 +746,51 @@ export function renderMarkdown(m: Metrics, checks: readonly Check[]): string {
       '부상·실패는 사망 포함 전체 커리어 평균.',
   );
 
+  if (split !== null) {
+    const loss = economyLoss(m, split);
+    const trio = (p: number, b: number): string =>
+      `${f0(p)} / ${f0(b)} / ${Number.isFinite(p - b) ? (p - b).toFixed(1) : '—'}`;
+    parts.push('### 경제 손실 (판정 아님)');
+    const column = recordColumnOf(m.policy);
+    parts.push(
+      '같은 시드에서 무기를 예산과 관계없이 제때 넘긴 측정(힘 곡선)과 기획서 경제를 따른 측정을 나란히 둔다. ' +
+        '칸마다 힘 곡선 / 예산 적용 / 경제 때문에 잃은 층.' +
+        (column === null
+          ? ''
+          : ` 마지막 열은 7.4 '${column === 'normal' ? '보통' : '최상'}' 기록을 예산 적용 측정으로 판정하면 어떻게 되는지 보여 준다 (참고, 통과 수에 넣지 않음).`),
+    );
+    parts.push(
+      table(
+        [
+          '등급',
+          '보통 평균 (1대)',
+          '최상 평균 (1대)',
+          '은퇴 기록 중앙값',
+          '은퇴 일수 (힘 곡선 / 예산 적용)',
+          ...(column === null ? [] : ['예산 적용으로 본 7.4 기록']),
+        ],
+        loss.grades.map((r) => [
+          r.grade,
+          trio(r.normalPower, r.normalBudget),
+          trio(r.bestPower, r.bestBudget),
+          trio(r.medianPower, r.medianBudget),
+          `${f1(r.retireDaysPower)} / ${f1(r.retireDaysBudget)}`,
+          ...(column === null
+            ? []
+            : [
+                `${mark(r.docEconomyRecordOk)} ${f0(column === 'normal' ? r.normalBudget : r.bestBudget)}층 (목표 ${GRADE_TARGETS[r.grade][column]}층 ±${RECORD_TOLERANCE * 100}%)`,
+              ]),
+        ]),
+      ),
+    );
+    parts.push(
+      table(
+        ['일', '가게 최고 기록: 힘 곡선 / 예산 적용 / 잃은 층'],
+        loss.curve.map((p) => [`${p.day} (${p.label})`, trio(p.power, p.budget)]),
+      ),
+    );
+  }
+
   parts.push('### 원정과 방문');
   const rr = m.returnReasons;
   const cr = m.credit;
@@ -689,6 +827,7 @@ export function renderMarkdown(m: Metrics, checks: readonly Check[]): string {
         ['마지막 날 활동 용사', `${f0(pop.activeEnd)}명 (9.2 단계 기준 ~${f0(pop.activeTarget)}명)`],
         ['활동 용사 등급 비율', gradeRow(pop.activeGrades)],
         ['활동 용사 평균 세대 / 최고 세대', `${f1(pop.activeGenerationMean)} / ${pop.generationMax}`],
+        ['활동 용사 중 제자', pct(pop.activeDiscipleShare)],
       ],
     ),
   );

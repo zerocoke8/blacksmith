@@ -8,10 +8,12 @@ import {
   CRAFT_NODES,
   type CraftActionId,
   type CraftNodeId,
+  FURNACE,
   PASSIVE_BONUS,
   SKILL_BOARD_CAP,
   TOOL_BONUS,
 } from '../data/craft.ts';
+import { POW_INT_MAX_EXPONENT, powInt } from '../data/common.ts';
 
 export interface ToolLevels {
   anvil: number; // 모루
@@ -44,11 +46,16 @@ function level(n: number): number {
   return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : 0;
 }
 
-/** Stat multiplier a tool gives at a level (9.4; compound or linear per data). */
-export function toolMultiplier(tool: keyof ToolLevels, lv: number): number {
-  const { perLevel, compound } = TOOL_BONUS[tool];
+/** Stat multiplier 모루 or 숫돌 gives at a level: (1 + perLevel)^level by repeated products (9.4, 3.6). */
+export function toolMultiplier(tool: 'anvil' | 'whetstone', lv: number): number {
+  return powInt(1 + TOOL_BONUS[tool].perLevel, Math.min(level(lv), POW_INT_MAX_EXPONENT));
+}
+
+/** CP 화로 adds at a level (9.4): fast for the first levels, then slow. */
+export function furnaceCp(lv: number): number {
   const n = level(lv);
-  return compound ? (1 + perLevel) ** n : 1 + perLevel * n;
+  const fast = Math.min(n, FURNACE.fastLevels);
+  return fast * FURNACE.fastCp + Math.floor((n - fast) / FURNACE.slowLevelsPerCp);
 }
 
 /** Basic six plus every action whose node is on, in canonical order. */
@@ -71,7 +78,7 @@ export function smithStats(setup: SmithSetup): SmithStats {
     BASE_SMITH.control *
     toolMultiplier('whetstone', setup.tools.whetstone) *
     (1 + (on.has('deftHand') ? PASSIVE_BONUS.deftHand : 0));
-  const maxCp = BASE_SMITH.cp * toolMultiplier('furnace', setup.tools.furnace);
+  const maxCp = BASE_SMITH.cp + furnaceCp(setup.tools.furnace);
   return {
     craftsmanship: Math.round(craftsmanship),
     control: Math.round(control),
