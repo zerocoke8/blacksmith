@@ -1,0 +1,101 @@
+/* Portrait, touch-first base (CLAUDE.md). Shop = warm forge colors (기획서 1.1). */
+
+:root {
+  --bg: #1c1612;
+  --panel: #2a211b;
+  --panel-2: #352a22;
+  --line: #4a3a2e;
+  --text: #f3e6d4;
+  --muted: #b39d85;
+  --accent: #f0a04b; /* 화로 빛 */
+  --accent-2: #ffcf7a;
+  --danger: #d8604a;
+  --good: #8fc27a;
+  --cool: #7fa6c9; /* 탑의 차가운 색 */
+
+  color-scheme: dark;
+  font-family: system-ui, -apple-system, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--text);
+  background: var(--bg);
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+}
+
+body {
+  overscroll-behavior: none;
+  user-select: none;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  touch-action: manipulation;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+.app-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.app-header h1 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: var(--accent-2);
+  letter-spacing: 0.02em;
+}
+
+.app-main {
+  flex: 1;
+  padding: 16px;
+}
+
+.placeholder {
+  text-align: center;
+  padding-top: 30vh;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.home-entry {
+  margin-top: 24px;
+  min-width: 200px;
+  min-height: 52px;
+  padding: 10px 20px;
+  border: 1px solid var(--accent);
+  border-radius: 12px;
+  background: var(--accent);
+  color: #2a1608;
+  font-weight: 700;
+  font-size: 1.05rem;
+  cursor: pointer;
+}
+
+.home-entry:active {
+  transform: translateY(1px);
+  filter: brightness(1.1);
+}
