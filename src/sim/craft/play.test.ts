@@ -32,7 +32,7 @@ describe('a player who re-plans every turn', () => {
 
   // Real crafts run longer than the all-보통 line: 단단함·부드러움·좋음 pay for extra turns.
   // The first 전설 (1주, weakest board) runs longest; later ones fill the cap and stop sooner.
-  it('finishes the first 전설 (1주) in 25 turns or fewer on average (4.2: 최대 25턴)', { timeout: 120_000 }, () => {
+  it('finishes the first 전설 (1주) in 25 turns or fewer on average (4.2: 첫 전설, 상태에 맞춰 평균 25턴 이하)', { timeout: 120_000 }, () => {
     const p = LATE_PACE[0];
     if (p === undefined) throw new Error('no pace point');
     const setup = makeSetup({

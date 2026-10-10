@@ -201,9 +201,9 @@ describe('balance report', () => {
 
   it('takes the 9.2 active-hero target from the fame stage', () => {
     expect(activeHeroesTarget(1)).toBe(30);
-    expect(activeHeroesTarget(4)).toBe(75);
-    expect(activeHeroesTarget(7)).toBe(135);
-    expect(activeHeroesTarget(9)).toBe(135); // ★n keeps the stage-7 value
+    expect(activeHeroesTarget(4)).toBe(85);
+    expect(activeHeroesTarget(7)).toBe(170);
+    expect(activeHeroesTarget(9)).toBe(170); // ★n keeps the stage-7 value
   });
 
   it('interpolates quantiles', () => {

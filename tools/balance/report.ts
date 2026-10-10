@@ -568,7 +568,7 @@ export function buildChecks(m: Metrics, power: Metrics = m): Check[] {
   out.push({
     group: '인구 (9.2)',
     name: '참고: 도착 중 제자 비율',
-    target: '— (9.2에 제자 포함 여부 미정)',
+    target: '— (9.2 새 용사/일에 포함, 6.5)',
     actual: pct(pop.discipleShare),
     ok: null,
   });

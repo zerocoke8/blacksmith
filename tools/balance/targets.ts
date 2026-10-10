@@ -45,15 +45,9 @@ export const INJURIES_RANGE: readonly [number, number] = [3, 4];
 export const FAILURES_RANGE: readonly [number, number] = [13, 21];
 /** 3.4 / 7.12: repair every 10~14 hours. */
 export const REPAIR_HOURS_RANGE: readonly [number, number] = [10, 14];
-/**
- * 10장 '하루 돌파 층수': about 20 a day (16~24), re-climbed floors included.
- * The doc still says 24~36; the new target is set ahead of the doc edit.
- */
+/** 10장 '하루 돌파 층수': about 20 a day (16~24), re-climbed floors included. */
 export const FLOORS_PER_DAY: { target: number; range: readonly [number, number] } = { target: 20, range: [16, 24] };
-/**
- * 3.4 '하루 출발': about 4 a day (3.5~4.5). The doc still says 3~4; the new target is
- * set ahead of the doc edit.
- */
+/** 3.4 '하루 출발': about 4 a day (3.5~4.5). */
 export const EXPEDITIONS_PER_DAY: { target: number; range: readonly [number, number] } = { target: 4, range: [3.5, 4.5] };
 
 /** 3.7: shop best record (our weapons). Checked at these days, ±20%. */
@@ -69,8 +63,16 @@ export const SHOP_RECORD_CURVE: readonly { day: number; floor: number; label: st
 ];
 export const SHOP_RECORD_TOLERANCE = 0.2;
 
-/** 9.2 '활동 용사' by fame stage 1~7 (★n stages keep the stage-7 value). */
-export const ACTIVE_HEROES_BY_STAGE: readonly number[] = [30, 45, 60, 75, 95, 115, 135];
+/**
+ * 9.2 '활동 용사' by fame stage 1~7 (★n stages keep the stage-7 value): a stage's
+ * population once it fills up, new heroes/day × an average life of about 4 days.
+ * Measured in v0.6 (standard policy, doc economy, mean over the days spent in each stage):
+ * about 10 / 15 / 50 / 85 / 110 / 140 / 170. Stages 1~3 pass before they fill (a shop that
+ * stays at stage 1 levels off near 30), and from stage 4 lives run 4~5 days, so stages 6~7
+ * end above ±25%. balance.test.ts pins these values; moving them waits for the user (14.2).
+ */
+// Stages 1~3: headcount if the shop stayed there. Stages 4~7: measured (standard, v0.6).
+export const ACTIVE_HEROES_BY_STAGE: readonly number[] = [30, 45, 60, 85, 110, 140, 170];
 /** The doc gives these as '~N'; ±25% counts as on target. */
 export const ACTIVE_HEROES_TOLERANCE = 0.25;
 
