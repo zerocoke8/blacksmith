@@ -46,6 +46,13 @@ interface Props {
   onSeen(line: string): void;
   /** The craft is over and its last moment has been shown: go to the result screen. */
   onFinished(): void;
+  /**
+   * A 육성 한 판 단조 (13.8): its hand size is the run's own rule, not a [검증] switch, and its
+   * cards have no 작업대 to evolve at, so the 실험 chip and the 단련 line are left out.
+   */
+  inRun?: boolean;
+  /** A 육성 한 판's 시즌 보스 재료 (13.2.1) goes by the season's name, not the 4.6 material's. */
+  bossMaterialName?: string;
 }
 
 type SheetState =
@@ -85,7 +92,7 @@ function previewParts(p: PlayPreview): string[] {
 }
 
 export function Table(props: Props) {
-  const { session, profile, onPlay, onEndTurn, onAbandon, onPileOpen, onInfoOpen, onSeen, onFinished } = props;
+  const { session, profile, onPlay, onEndTurn, onAbandon, onPileOpen, onInfoOpen, onSeen, onFinished, inRun } = props;
   const craft = session.craft;
   const r = craft.recipe;
   const views = handView(craft);
@@ -94,7 +101,7 @@ export function Table(props: Props) {
   const effects = activeEffects(craft);
   const next = nextFirePreview(craft);
   // 식는 쇠 has its own line in `effects`; the other [검증] switches get one reminder chip.
-  const ruleNotes = cardRuleNotes(craft.rules).filter((n) => n !== '식는 쇠');
+  const ruleNotes = inRun === true ? [] : cardRuleNotes(craft.rules).filter((n) => n !== '식는 쇠');
   const active = craft.status === 'active';
 
   const [sheet, setSheet] = useState<SheetState | null>(null);
@@ -397,6 +404,7 @@ export function Table(props: Props) {
           craft={craft}
           profile={profile}
           uid={sheet.uid}
+          showTemper={inRun !== true}
           onClose={() => setSheet(null)}
           onPlay={(v) => {
             setSheet(null);
@@ -408,7 +416,7 @@ export function Table(props: Props) {
         <Sheet title={cardName(craft.cards[sheet.uid] as CardId, r.materialTier)} tone="danger" onClose={() => setSheet(null)}>
           <p>이 카드로 내구도가 바닥난다. 공정을 채우기 전에 쇠가 갈라진다.</p>
           <p className="kc-hint">
-            {r.bossMaterial !== null ? `재료도, ${UNIQUES[r.bossMaterial].material}도 돌아오지 않는다.` : '재료는 돌아오지 않는다.'}
+            {r.bossMaterial !== null ? `재료도, ${props.bossMaterialName ?? UNIQUES[r.bossMaterial].material}도 돌아오지 않는다.` : '재료는 돌아오지 않는다.'}
           </p>
           <div className="kc-row">
             <button type="button" className="kc-btn danger" onClick={() => commitPlay(sheet.uid, sheet.opts)}>
@@ -696,10 +704,11 @@ function InfoSheet(props: {
   craft: CardCraftState;
   profile: CardProfile;
   uid: string;
+  showTemper: boolean;
   onClose(): void;
   onPlay(v: HandCardView): void;
 }) {
-  const { craft, profile, uid, onClose, onPlay } = props;
+  const { craft, profile, uid, showTemper, onClose, onPlay } = props;
   const v = handView(craft).find((x) => x.uid === uid);
   if (v === undefined) return null;
   const p = v.block === null ? safePreview(craft, uid) : null;
@@ -735,7 +744,7 @@ function InfoSheet(props: {
           {p.breaks && <em className="brk">내구도가 바닥나 쇠가 갈라진다</em>}
         </div>
       )}
-      {need !== null && (
+      {showTemper && need !== null && (
         <p className="kc-hint">
           단련 {Math.min(temper, need)} / {need}
           {temper >= need && ' — 작업대에서 진화할 수 있다'}

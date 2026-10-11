@@ -114,3 +114,27 @@ button {
   text-underline-offset: 3px;
   cursor: pointer;
 }
+
+/* 시즌 악마의 탑: the tower's cool color next to the forge's warm one (기획서 1.1). */
+.home-run {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 14px auto 0;
+  border-color: var(--cool);
+  background: #2a3a48;
+  color: var(--text);
+}
+
+.home-run small {
+  color: #bcd3e6;
+  font-size: 0.75rem;
+  font-weight: 400;
+}
+
+/* '모루 위에 쇠가 기다린다' under the card craft entry. */
+.home-entry small {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 400;
+}

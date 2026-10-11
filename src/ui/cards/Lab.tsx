@@ -58,7 +58,7 @@ const FIRE_PRESET_NOTE: Record<FirePreset, string> = {
 };
 
 /** Copies text: Clipboard API where allowed, the old way on plain http (a phone on the dev server). */
-async function copyText(text: string): Promise<boolean> {
+export async function copyText(text: string): Promise<boolean> {
   try {
     if (window.isSecureContext && navigator.clipboard !== undefined) {
       await navigator.clipboard.writeText(text);
@@ -85,7 +85,7 @@ async function copyText(text: string): Promise<boolean> {
   }
 }
 
-function download(text: string, name: string): void {
+export function download(text: string, name: string): void {
   const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
   const a = document.createElement('a');
   a.href = url;
