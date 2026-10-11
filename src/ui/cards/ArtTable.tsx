@@ -1,10 +1,11 @@
 // 제작 화면, 그림판 (기획서 4.2.9 + 아트): the workshop scene on top (dwarf, anvil, furnace),
-// a fan of real cards below, the durability orb and the piles at the bottom left, 다시 달구기
-// at the bottom right. Every number shown is the engine's (CLAUDE.md 규칙 2): while effects play
-// the bars follow the engine's own log step by step (render/forge/fx.ts), and they rest on the
-// engine state when the effects are done. Loaded on demand with the scene.
+// the gauge band (공정·품질·열기·화로) right over a fan of real cards, the durability orb and the
+// piles at the bottom left, 다시 달구기 at the bottom right; the rows are sized by tableLayout.ts.
+// Every number shown is the engine's (CLAUDE.md 규칙 2): while effects play the bars follow the
+// engine's own log step by step (render/forge/fx.ts), and they rest on the engine state when the
+// effects are done. Loaded on demand with the scene.
 
-import { type RefObject, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { type CSSProperties, type RefObject, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   activeEffects,
   cardCraftOutcome,
@@ -20,14 +21,17 @@ import {
 import { CARD_RECIPE_GRADE_LABEL, DWARF_LINES, FIRE_HINT, FIRE_LABEL } from '../../sim/data/cards.ts';
 import { uiArtUrl } from '../../render/forge/assets.ts';
 import { effectsForPlay, effectsForStart, FIRE_BUFFS, type FxStep, type GaugeSnap, snapOf } from '../../render/forge/fx.ts';
-import { END_HOLD_MS, TABLE_TIMING } from '../../render/forge/layout.ts';
+import { END_HOLD_MS, TABLE_ROWS, TABLE_TIMING } from '../../render/forge/layout.ts';
 import type { SceneView } from '../../render/forge/scene.ts';
 import { ArtHand, type HandApi, type PileKind } from './ArtHand.tsx';
 import { type Floater, ForgeStage, type StageApi } from './ForgeStage.tsx';
+import { absorbDelay, type BandTargets, GaugeBand } from './GaugeBand.tsx';
 import { UiIcon } from './GameCard.tsx';
+import { useBandRise } from './artPref.ts';
 import { reducedMotion, Sheet } from './parts.tsx';
 import type { TableProps } from './Table.tsx';
 import { safePreview, TableSheets, useTableFlow } from './tableFlow.tsx';
+import { bandRise, tableRows } from './tableLayout.ts';
 import { outcomeLines, signed, stars, tierName, weaponTitle } from './text.ts';
 import './art.css';
 
@@ -44,6 +48,32 @@ export default function ArtTable(props: TableProps & { onUnavailable(): void }) 
   const drawRef = useRef<HTMLButtonElement>(null);
   const discardRef = useRef<HTMLButtonElement>(null);
   const exhaustRef = useRef<HTMLButtonElement>(null);
+  const orbRef = useRef<HTMLDivElement>(null);
+  const bandProgress = useRef<HTMLDivElement>(null);
+  const bandQuality = useRef<HTMLDivElement>(null);
+  const bandHeat = useRef<HTMLDivElement>(null);
+  const bandEl = useRef<HTMLDivElement>(null);
+  const bandTargets = useMemo<BandTargets>(() => ({ band: bandEl, progress: bandProgress, quality: bandQuality, heat: bandHeat }), []);
+  const bandRises = useBandRise();
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  // The rows (top band, scene, gauge band, hand, bottom row) from the table's safe area.
+  const [box, setBox] = useState(() => ({ w: Math.min(480, window.innerWidth), h: window.innerHeight }));
+  useLayoutEffect(() => {
+    const el = rootRef.current;
+    if (el === null) return;
+    const measure = () => {
+      const cs = getComputedStyle(el);
+      const w = el.clientWidth;
+      const h = el.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+      setBox((b) => (Math.abs(b.w - w) < 0.5 && Math.abs(b.h - h) < 0.5 ? b : { w, h }));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const rows = useMemo(() => tableRows(box.w, box.h), [box.w, box.h]);
 
   const [selected, setSelected] = useState<string | null>(null);
   const [dragUid, setDragUid] = useState<string | null>(null);
@@ -60,6 +90,8 @@ export default function ArtTable(props: TableProps & { onUnavailable(): void }) 
   const [shown, setShown] = useState<GaugeSnap | null>(null);
   const [fxIdle, setFxIdle] = useState(true);
   const [endBeat, setEndBeat] = useState(false);
+  /** The end banner is up (a moment after the last blow: the hand has gone, the weapon lies on the anvil). */
+  const [bannerUp, setBannerUp] = useState(false);
   const [floaters, setFloaters] = useState<Floater[]>([]);
   const [orbFloat, setOrbFloat] = useState<{ key: number; text: string; up: boolean } | null>(null);
   const [say, setSay] = useState<{ key: number; text: string } | null>(null);
@@ -78,11 +110,13 @@ export default function ArtTable(props: TableProps & { onUnavailable(): void }) 
     setSay({ key: keyRef.current, text });
     setFloaters((f) => (f.some((x) => x.hush !== true && x.id < keepFrom) ? f.map((x) => (x.id < keepFrom ? { ...x, hush: true } : x)) : f));
   }, []);
-  /** The closing line's timer (cleared if the table goes away first). */
+  /** The closing line's and the end banner's timers (cleared if the table goes away first). */
   const lineTimer = useRef<number | null>(null);
+  const bannerTimer = useRef<number | null>(null);
   useEffect(
     () => () => {
       if (lineTimer.current !== null) window.clearTimeout(lineTimer.current);
+      if (bannerTimer.current !== null) window.clearTimeout(bannerTimer.current);
     },
     [],
   );
@@ -132,6 +166,12 @@ export default function ArtTable(props: TableProps & { onUnavailable(): void }) 
         case 'complete':
         case 'break': {
           setEndBeat(true);
+          // The hand sinks away first; the banner follows once the anvil shows how it ended.
+          if (bannerTimer.current !== null) window.clearTimeout(bannerTimer.current);
+          bannerTimer.current = window.setTimeout(() => {
+            bannerTimer.current = null;
+            setBannerUp(true);
+          }, skipped ? 0 : TABLE_TIMING.bannerAfterEnd);
           const line = outcomeLines(cardCraftOutcome(cur))[0];
           // The closing line waits for the last blow's numbers to rise and fade.
           if (line !== undefined) {
@@ -238,7 +278,9 @@ export default function ArtTable(props: TableProps & { onUnavailable(): void }) 
     [craft.heat, craft.fire, craft.status, craft.abandoned, r.weaponType, tier, r.grade, stoked],
   );
   const nothingToPlay = active && views.every((v) => v.block !== null);
+  // The craft is over: the hand sinks away at the last blow, the banner comes a moment later.
   const showEnd = !active && (endBeat || fxIdle);
+  const showBanner = !active && (bannerUp || fxIdle);
   const turnWord = props.turnWord ?? '턴';
   const shownTier = g.tier;
 
@@ -276,7 +318,48 @@ export default function ArtTable(props: TableProps & { onUnavailable(): void }) 
     </>
   );
 
-  const ending = showEnd ? (
+  // A card is lifted: the gauge band rises just over it (tableLayout.ts), so the card and its
+  // share on the bars read together; held still (실험 패널), the lifted card stays under it instead.
+  const rise = bandRises && active && selected !== null ? bandRise(rows, views.length) : 0;
+
+  /**
+   * Where a floating number is drawn to as it sets off: the tip of its bar's fill, the 열기 badge,
+   * the durability orb. The band may still be sliding up or down: aim where it is going.
+   */
+  const floatTarget = (kind: Floater['kind']): { x: number; y: number } | null => {
+    const band = bandEl.current;
+    let slide = 0;
+    if (band !== null && kind !== 'restore') {
+      const t = getComputedStyle(band).transform;
+      const now = t === 'none' || t === '' ? 0 : new DOMMatrixReadOnly(t).m42;
+      slide = -rise - now;
+    }
+    const center = (el: Element | null) => {
+      if (el === null) return null;
+      const b = el.getBoundingClientRect();
+      return { x: b.left + b.width / 2, y: b.top + b.height / 2 + slide };
+    };
+    if (kind === 'progress' || kind === 'quality') {
+      const track = kind === 'progress' ? bandProgress.current : bandQuality.current;
+      if (track === null) return null;
+      // Where the fill is going (it may still be sliding there).
+      const b = track.getBoundingClientRect();
+      const share = kind === 'progress' ? g.progress / Math.max(1, r.progressRequired) : g.quality / Math.max(1, r.qualityCap);
+      const tip = b.left + Math.max(0, Math.min(1, share)) * b.width;
+      return { x: Math.max(b.left + 14, Math.min(b.right - 14, tip)), y: b.top + b.height / 2 + slide };
+    }
+    if (kind === 'heat') return center(bandHeat.current);
+    if (kind === 'restore') return center(orbRef.current);
+    return null;
+  };
+  const rowVars = {
+    '--ft-top-h': `${rows.top.h}px`,
+    '--ft-band-h': `${rows.band.h}px`,
+    '--ft-hand-h': `${rows.hand.h}px`,
+    '--ft-foot-h': `${rows.foot.h}px`,
+  } as CSSProperties;
+
+  const ending = showBanner ? (
     <button
       type="button"
       className={`fs-end ${craft.status === 'success' ? 'ok' : 'fail'} fs-end-tier-${tier}`}
@@ -303,7 +386,7 @@ export default function ArtTable(props: TableProps & { onUnavailable(): void }) 
   const durShown = Math.max(0, g.durability);
 
   return (
-    <div className={`ft-root${reduced ? ' reduced' : ''}`}>
+    <div ref={rootRef} className={`ft-root${reduced ? ' reduced' : ''}${rows.top.h < TABLE_ROWS.top ? ' short' : ''}`} style={rowVars}>
       <header className="ft-top">
         {props.onExit !== undefined && (
           <button type="button" className="ft-iconbtn" onClick={props.onExit} aria-label={props.exitLabel ?? '나가기'}>
@@ -332,24 +415,34 @@ export default function ArtTable(props: TableProps & { onUnavailable(): void }) 
 
       <ForgeStage
         view={view}
-        shown={g}
-        engine={engine}
-        progressRequired={r.progressRequired}
-        qualityCap={r.qualityCap}
-        preview={preview}
         floaters={floaters}
         say={say}
-        tierFx={tierFx}
-        done={showEnd}
-        chips={chips}
-        nextFire={nextFire}
+        reduced={reduced}
+        floatTarget={floatTarget}
         apiRef={stageApi}
         onReady={onStageReady}
         onBeat={handleBeat}
         onIdle={handleIdle}
         onUnavailable={props.onUnavailable}
         onTap={tapStage}
+      />
+
+      <GaugeBand
+        shown={g}
+        engine={engine}
+        preview={preview}
+        progressRequired={r.progressRequired}
+        qualityCap={r.qualityCap}
+        tierFx={tierFx}
+        done={showEnd}
+        rise={rise}
+        chips={chips}
+        nextFire={nextFire}
+        floaters={floaters}
+        reduced={reduced}
+        targets={bandTargets}
         onFireTap={() => setSheet({ kind: 'fire' })}
+        onTap={tapStage}
       />
 
       <div className={`ft-hand${showEnd ? ' ended' : ''}`}>
@@ -379,12 +472,14 @@ export default function ArtTable(props: TableProps & { onUnavailable(): void }) 
           apiRef={handApi}
           pileEl={pileEl}
           target={() => stageApi.current?.cardClient() ?? null}
+          liftMaxH={bandRises ? rows.liftMaxH : rows.liftMaxHStill}
           reduced={reduced}
         />
       </div>
 
       <footer className="ft-foot">
         <div
+          ref={orbRef}
           className={`ft-orb${g.durability <= 6 ? ' danger' : ''}${preview?.breaks === true ? ' breaks' : ''}`}
           role="meter"
           aria-label={`내구도 ${durShown} / ${craft.maxDurability}`}
@@ -400,6 +495,15 @@ export default function ArtTable(props: TableProps & { onUnavailable(): void }) 
               {orbFloat.text}
             </span>
           )}
+          {floaters
+            .filter((f) => f.kind === 'restore' && f.hush !== true)
+            .map((f) => (
+              <span
+                key={f.id}
+                className="ft-orb-absorb"
+                style={{ animationDelay: `${absorbDelay(f, reduced)}ms` }}
+              />
+            ))}
         </div>
         <PileButton refEl={drawRef} kind="draw" count={piles.draw} label="뽑을 더미" onClick={openPiles} />
         <span className="ft-foot-gap" />

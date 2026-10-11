@@ -706,7 +706,8 @@ export async function createForgeScene(
   };
 
   // ---- Resting state ----
-  const refreshIron = () => {
+  /** The bar's colour and glow from its heat and how far it has cooled (every frame while it cools). */
+  const tintIron = () => {
     const heat = Math.max(0, Math.min(HEAT_TINT.length - 1, Math.round(shownHeat)));
     const hot = HEAT_TINT[heat] as number;
     const broken = finished === 'broken' || finished === 'abandoned';
@@ -715,6 +716,10 @@ export async function createForgeScene(
     iron.tint = broken ? COLD_IRON : mixColor(body, COLD_IRON, ironCool * 0.7);
     ironGlow.tint = hot;
     ironGlow.alpha = broken || finished === 'weapon' ? 0 : (0.22 + heat * 0.045) * (1 - ironCool * 0.6);
+  };
+  /** The resting anvil: the bar (hot, split or gone) or the finished weapon, as the craft stands. */
+  const refreshIron = () => {
+    tintIron();
     const split = finished === 'broken' && crackedTex !== null;
     iron.visible = finished !== 'weapon' && !split;
     ironFlash.visible = iron.visible;
@@ -1274,7 +1279,8 @@ export async function createForgeScene(
     if (ironCool > 0) {
       ironCool *= Math.exp(-dt / 700);
       if (ironCool < 0.02) ironCool = 0;
-      refreshIron();
+      // Only the colour: a running step (the finishing blow bringing in the weapon) owns what is shown.
+      tintIron();
     }
     if (finished === 'none' && !reduced) ironGlow.alpha *= 1 + Math.sin(time / 260) * 0.004;
     if (raysS.alpha > 0) raysS.rotation += dt / 9000;

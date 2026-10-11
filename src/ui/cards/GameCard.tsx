@@ -142,6 +142,12 @@ export interface GameCardProps {
   variant?: 'full' | 'mini';
   /** Small cards that are read (the hand, the 작업대 grid): text and notes keep their floor sizes (CARD_TYPE). */
   floor?: boolean;
+  /**
+   * A card half under the next one in the fan: the share of its width that shows from the left.
+   * A short text wraps inside that strip, so it shows whole ("공정 / +100%"), not a number cut
+   * short ("공정 +10").
+   */
+  shown?: number;
   className?: string;
   children?: ReactNode;
 }
@@ -189,9 +195,30 @@ export function GameCard(props: GameCardProps) {
   const textLen = body.length + keywords.length * 5;
   const textK = textLen > T.veryLong ? 0.72 : textLen > T.longText ? 0.78 : 0.84;
   const textPx = Math.max(props.floor === true ? T.textMin : 0, base * textK);
-  const textStyle = { ...box(f.text), fontSize: px(textPx), ...(textLen > T.longText ? { '--gc-lines': 5 } : {}) } as CSSProperties;
   const notePx = Math.max(props.floor === true ? T.noteMin : 0, base * 0.7);
   const keyPx = Math.max(T.keyMin, textPx * 0.8);
+  const hasNote = note !== undefined && note !== null;
+  const noteH = Math.max(width * 0.16, notePx * 1.6);
+  // Half under the next card: a short text keeps to the strip that shows (its right edge a little
+  // inside it, above the note) when it fits there whole; a longer one stays as it is, cut by the next card.
+  const cutRight = (() => {
+    const shown = props.shown;
+    if (shown === undefined || shown >= f.text.x + f.text.w) return 0;
+    const strip = (shown - f.text.x - 0.05) * width - T.cutPad;
+    const lineH = textPx * 1.22;
+    const keysH = keywords.length > 0 ? keyPx * 1.3 + 0.03 * width : 0;
+    const room = f.text.h * height - 0.06 * width - keysH - (hasNote ? noteH : 0);
+    const lines = Math.min(textLen > T.longText ? 5 : 4, Math.floor(room / lineH));
+    const need = Math.ceil((nameEms(body) * textPx * 1.15) / Math.max(1, strip));
+    return strip > textPx * 3 && need <= lines ? f.text.x + f.text.w - shown : 0;
+  })();
+  const textStyle = {
+    ...box(f.text),
+    fontSize: px(textPx),
+    ...(textLen > T.longText ? { '--gc-lines': 5 } : {}),
+    ...(cutRight > 0 ? { paddingRight: px(cutRight * width + T.cutPad) } : {}),
+    ...(cutRight > 0 && hasNote ? { paddingBottom: px(noteH) } : {}),
+  } as CSSProperties;
   const showRibbon = !mini && width >= T.ribbonMinW;
   const cls = [
     'gc',
@@ -243,8 +270,8 @@ export function GameCard(props: GameCardProps) {
       >
         {printed === null ? '각' : cost}
       </span>
-      {note !== undefined && note !== null && (
-        <span className="gc-note" style={{ top: px((f.text.y + f.text.h) * height - Math.max(width * 0.16, notePx * 1.6)), fontSize: px(notePx) }}>
+      {hasNote && (
+        <span className="gc-note" style={{ top: px((f.text.y + f.text.h) * height - noteH), fontSize: px(notePx) }}>
           {note}
         </span>
       )}

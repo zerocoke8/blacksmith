@@ -1,6 +1,16 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { floatAt, OVERLAY_PLACE, SCENE_ART_KEYS, SCENE_PLACE, type SceneArtKey, sceneLayout, UI_ART_KEYS, WEAPON_ART } from './layout.ts';
+import {
+  floatAt,
+  OVERLAY_PLACE,
+  SCENE_ART_KEYS,
+  SCENE_PLACE,
+  type SceneArtKey,
+  sceneLayout,
+  TABLE_ROWS,
+  UI_ART_KEYS,
+  WEAPON_ART,
+} from './layout.ts';
 
 // The delivered pictures' width÷height, read from the art pipeline's meta.json, so the checks
 // follow the real art when a picture is redrawn.
@@ -14,15 +24,15 @@ for (const k of SCENE_ART_KEYS) {
   if (e !== undefined) ART_ASPECT[k] = e.w / e.h;
 }
 
-// Scene boxes measured on the art table: 390×844 and 360×640 phones, and a wide one.
+// Scene boxes of the art table (ui/cards/tableLayout.ts tableRows): 390×844, 360×640 and 412×915
+// phones, a 320×568 one and a wide one.
 const BOXES = [
-  [390, 466],
-  [360, 290],
-  [480, 540],
+  [390, 434],
+  [360, 263],
+  [412, 496],
+  [320, 208],
+  [480, 452],
 ] as const;
-
-/** The gauge plate's bottom edge (px) for a box of height h (ForgeStage measures the real one). */
-const plateBottom = (h: number) => OVERLAY_PLACE.gauges.top * h + 92;
 
 describe('sceneLayout', () => {
   for (const [w, h] of BOXES) {
@@ -51,25 +61,40 @@ describe('sceneLayout', () => {
         expect(L.cardHover.x).toBeGreaterThan(0);
         expect(L.cardHover.x).toBeLessThan(w);
         expect(L.cardHover.y).toBeLessThan(L.iron.y - L.iron.h);
-        expect(L.fire.y).toBeGreaterThan(0);
+        // Its box (at most maxH tall) stays between the scene's top and the iron.
+        expect(L.cardHover.y - L.cardHover.maxH / 2).toBeGreaterThanOrEqual(OVERLAY_PLACE.cardHover.top - 0.5);
+        expect(L.cardHover.y + L.cardHover.maxH / 2).toBeLessThanOrEqual(L.iron.y - L.iron.h * 0.7 + 0.5);
       });
 
-      it(`${tag}: floating numbers rise over the iron, under the plate, left of the hovering card`, () => {
-        const plate = plateBottom(h);
+      it(`${tag}: floating numbers rise over the iron, under the scene's top, left of the hovering card`, () => {
         for (let order = 0; order < 4; order++) {
-          const at = floatAt(L, order, plate);
+          const at = floatAt(L, order);
           expect(at.y).toBeLessThan(L.iron.y - L.iron.h / 2);
-          expect(at.y).toBeGreaterThanOrEqual(plate);
+          expect(at.y).toBeGreaterThanOrEqual(OVERLAY_PLACE.floats.top);
           expect(at.x).toBeLessThan(L.cardHover.x);
         }
         // Later numbers of a beat start higher.
-        expect(floatAt(L, 1, plate).y).toBeLessThan(floatAt(L, 0, plate).y);
+        expect(floatAt(L, 1).y).toBeLessThan(floatAt(L, 0).y);
+      });
+
+      it(`${tag}: the bubble stays in the scene, over the chips of the gauge band even when it rises`, () => {
+        const half = OVERLAY_PLACE.bubble.half;
+        expect(L.bubble.y - half).toBeGreaterThanOrEqual(0);
+        expect(L.bubble.y + half).toBeLessThanOrEqual(h * (1 - TABLE_ROWS.riseShare) - TABLE_ROWS.ledge);
+        expect(L.bubble.x + Math.min(L.bubble.maxW, 120)).toBeLessThanOrEqual(w);
+      });
+
+      it.runIf(aspect === ART_ASPECT)(`${tag}: the dwarf, the anvil and the furnace fill the scene (no HUD over its top)`, () => {
+        // The head in the top third, the anvil and the furnace a good share of the height.
+        expect(L.dwarf.y - L.dwarf.bodyH).toBeLessThan(h * 0.3);
+        expect(L.anvil.h).toBeGreaterThan(h * 0.22);
+        expect(L.furnace.h).toBeGreaterThan(h * 0.4);
       });
     }
   }
 
   it('keeps the hover inside the box on narrow phones', () => {
-    const L = sceneLayout(320, 240, ART_ASPECT);
+    const L = sceneLayout(320, 208, ART_ASPECT);
     expect(L.cardHover.x).toBeLessThanOrEqual(320 - 50);
     expect(SCENE_PLACE.lunge).toBeGreaterThan(0);
   });

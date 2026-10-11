@@ -32,13 +32,19 @@ export function handCardWidth(w: number, h: number, n: number): number {
   return Math.max(HAND_FAN.minW, Math.min(cap, fit));
 }
 
-/** Width of the lifted card. */
-export function liftedWidth(cw: number, w: number): number {
-  return Math.max(cw * HAND_FAN.minLift, Math.min(HAND_FAN.liftW, w * HAND_FAN.maxLiftShare));
+/**
+ * Width of the lifted card; maxH caps its height (a short screen, where the gauge band over the
+ * hand may rise only so far: ui/cards/tableLayout.ts).
+ */
+export function liftedWidth(cw: number, w: number, maxH = Number.POSITIVE_INFINITY): number {
+  return Math.min(Math.max(cw * HAND_FAN.minLift, Math.min(HAND_FAN.liftW, w * HAND_FAN.maxLiftShare)), maxH * CARD_ASPECT);
 }
 
-/** The fan for n cards of width cw in a box w×h; `selected` (an index, or −1) is lifted. */
-export function fanPlaces(n: number, w: number, h: number, cw: number, selected: number): FanPlace[] {
+/**
+ * The fan for n cards of width cw in a box w×h; `selected` (an index, or −1) is lifted, at most
+ * liftMaxH tall.
+ */
+export function fanPlaces(n: number, w: number, h: number, cw: number, selected: number, liftMaxH = Number.POSITIVE_INFINITY): FanPlace[] {
   const ch = cw / CARD_ASPECT;
   const mid = (n - 1) / 2;
   const spread = spreadOf(n);
@@ -48,7 +54,7 @@ export function fanPlaces(n: number, w: number, h: number, cw: number, selected:
   const step = n <= 1 ? 0 : Math.min(cw * 0.84, (avail - cw) / (n - 1));
   const total = cw + step * (n - 1);
   const x0 = (w - total) / 2;
-  const baseY = h - ch - 4;
+  const baseY = h - ch - HAND_FAN.bottom;
   const out: FanPlace[] = [];
   for (let i = 0; i < n; i++) {
     const off = i - mid;
@@ -56,10 +62,10 @@ export function fanPlaces(n: number, w: number, h: number, cw: number, selected:
     const y = baseY + off * off * ch * 0.012;
     if (selected >= 0 && i === selected) {
       // Laid out bigger, upright, its bottom near the box's bottom, kept inside the box's sides.
-      const lw = liftedWidth(cw, w);
+      const lw = liftedWidth(cw, w, liftMaxH);
       const lh = lw / CARD_ASPECT;
       const centre = Math.max(lw / 2 + 4, Math.min(w - lw / 2 - 4, x + cw / 2));
-      out.push({ x: centre - lw / 2, y: h - 4 - lh - lh * HAND_FAN.liftUp, w: lw, h: lh, rot: 0, z: 100 });
+      out.push({ x: centre - lw / 2, y: h - HAND_FAN.bottom - lh - lh * HAND_FAN.liftUp, w: lw, h: lh, rot: 0, z: 100 });
       continue;
     }
     if (selected >= 0) {

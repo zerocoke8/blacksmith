@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { CARD_FACE, HAND_FAN } from '../../render/forge/layout.ts';
+import { CARD_ASPECT, CARD_FACE, HAND_FAN } from '../../render/forge/layout.ts';
 import { fanPlaces, handCardWidth, liftedWidth, shownWidths } from './fan.ts';
 
-// Hand boxes of the art table (art.css .ft-hand): 390×844, 360×640 and 412×915 phones.
+// Hand boxes of the art table (tableLayout.ts tableRows): 390×844, 360×640 and 412×915 phones.
 const BOXES = [
-  [390, 204],
-  [360, 191],
-  [412, 213],
+  [390, 200],
+  [360, 187],
+  [412, 209],
 ] as const;
 
 describe('the hand fan', () => {
@@ -43,6 +43,20 @@ describe('the hand fan', () => {
   }
 
   it('small hands keep bigger cards than full ones', () => {
-    expect(handCardWidth(390, 204, 3)).toBeGreaterThan(handCardWidth(390, 204, 5));
+    expect(handCardWidth(390, 200, 3)).toBeGreaterThan(handCardWidth(390, 200, 5));
+  });
+
+  it('a short screen caps the lifted card (liftMaxH), upright and bottom-aligned as before', () => {
+    const cw = handCardWidth(360, 187, 5);
+    const free = fanPlaces(5, 360, 187, cw, 2)[2];
+    const capped = fanPlaces(5, 360, 187, cw, 2, 240)[2];
+    expect(capped?.h ?? 0).toBeLessThanOrEqual(240 + 1e-6);
+    expect(capped?.h ?? 0).toBeLessThan(free?.h ?? 0);
+    expect((capped?.w ?? 0) / (capped?.h ?? 1)).toBeCloseTo(CARD_ASPECT, 6);
+    expect(liftedWidth(cw, 360, 240)).toBeCloseTo(240 * CARD_ASPECT, 6);
+    // Its bottom stays where an uncapped one's is (the band over it only needs its top).
+    const bottom = (p: { y: number; h: number } | undefined) => (p?.y ?? 0) + (p?.h ?? 0) * (1 + HAND_FAN.liftUp);
+    expect(bottom(capped)).toBeCloseTo(187 - HAND_FAN.bottom, 6);
+    expect(bottom(free)).toBeCloseTo(187 - HAND_FAN.bottom, 6);
   });
 });

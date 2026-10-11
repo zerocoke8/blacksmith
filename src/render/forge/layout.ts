@@ -153,53 +153,92 @@ export const DEFAULT_ASPECT: Record<SceneArtKey, number> = {
 /**
  * x, y = where the picture's foot point lands; h = its height as a share of the scene height,
  * capped so its width stays under maxW of the scene width (narrow phones). The dwarf's h is
- * head→foot. The scene box is the top half of a portrait screen (about 390×450).
+ * head→foot. The scene box is what the table's rows leave between the top band and the gauge
+ * band (TABLE_ROWS: about 390×430 on a 390×844 phone, 360×260 on a 360×640 one); nothing of the
+ * HUD covers it, so the dwarf, the anvil and the furnace fill it to near its top.
  * Depth: the background's floor meets the wall at about 0.59 of the height. The dwarf stands a
  * little further back than the anvil (his feet higher, drawn behind it), so his hammer, held
  * low in the strike picture, lands on the iron while the anvil keeps a smith's size; the
  * furnace stands further back on the right, the bellows and the tub in front.
  */
 export const SCENE_PLACE = {
-  dwarf: { x: 0.225, y: 0.855, h: 0.56, maxW: 0.44 },
-  anvil: { x: 0.54, y: 0.975, h: 0.29, maxW: 0.36 },
-  furnace: { x: 0.85, y: 0.86, h: 0.56, maxW: 0.34 },
-  bellows: { x: 0.8, y: 0.95, h: 0.17, maxW: 0.28 },
-  quench: { x: 0.1, y: 0.995, h: 0.18, maxW: 0.22 },
+  dwarf: { x: 0.23, y: 0.88, h: 0.7, maxW: 0.5 },
+  anvil: { x: 0.55, y: 0.985, h: 0.35, maxW: 0.4 },
+  furnace: { x: 0.85, y: 0.89, h: 0.68, maxW: 0.36 },
+  bellows: { x: 0.8, y: 0.975, h: 0.19, maxW: 0.28 },
+  quench: { x: 0.09, y: 1.0, h: 0.2, maxW: 0.22 },
   /** Hot bar width as a share of the anvil face. */
   iron: { w: 0.95 },
   /** How far the dwarf may lean (share of scene width) so the hammer or the tongs meet the iron. */
   lunge: 0.12,
 } as const;
 
-/** DOM overlay over the scene: gauge plate (like an enemy's HP bar), fire badge, speech bubble. */
+/**
+ * DOM overlay over the scene: the speech bubble, the played card's hover point and the floating
+ * numbers. The gauges and the fire's state are not over the scene but in the gauge band under it
+ * (TABLE_ROWS), right over the cards; the furnace shows its state by its glow alone.
+ */
 export const OVERLAY_PLACE = {
-  /** Plate centre x (share of width), top (share of height), width (share, clamped in px). */
-  gauges: { x: 0.45, top: 0.035, w: 0.6, minW: 200, maxW: 310 },
-  /**
-   * Fire badge: px above the furnace top, kept inside the scene; col = the width (px) kept free
-   * for it on the right, so the gauge plate never runs into it.
-   */
-  fire: { above: 4, size: 50, col: 78 },
   /**
    * Bubble: its left edge and vertical middle, from the dwarf's feet point, as shares of the
-   * dwarf's head→foot height (right of the head, over the open floor before the anvil).
+   * dwarf's head→foot height (right of the head, over the open wall before the furnace). It is
+   * kept edge px inside the scene, its middle at least half px from the top and the bottom.
    */
-  bubble: { dx: 0.16, dy: -0.86, maxW: 0.58 },
+  bubble: { dx: 0.15, dy: -0.8, maxW: 0.58, edge: 8, half: 30 },
   /**
    * Where a played card hovers while its effect starts (its centre): above and right of the
-   * iron, clear of the hammer's path and the blow, under the gauge plate. x from the iron as a
-   * share of the width, y as a share of the height.
+   * iron, clear of the hammer's path and the blow. x from the iron as a share of the width; the
+   * card fits between top px under the scene's top edge and the iron.
    */
-  cardHover: { dx: 0.17, y: 0.36 },
+  cardHover: { dx: 0.19, top: 8 },
   /**
    * Floating numbers (공정 +100 …) rise from above the hammer head that lands on the iron, left
    * of the played card hovering to its right: x = the iron's middle + dx × its width, the first
    * number lift × the scene's height over the iron's top edge (the strike pose's hammer head
    * stands about 0.15 of it over the iron), each next one of the same beat step px higher and
    * alt × the iron's width to the side. A short scene squeezes lift and step so the stack stays
-   * gap px under the gauge plate.
+   * top px under the scene's top edge. Then each one is drawn down into its bar in the gauge
+   * band (FLOAT_FLIGHT).
    */
-  floats: { dx: -0.24, lift: 0.21, step: 26, alt: 0.2, gap: 6 },
+  floats: { dx: -0.24, lift: 0.17, step: 26, alt: 0.2, top: 8 },
+} as const;
+
+/**
+ * A floating number's life (ms): it pops up by the anvil, rises a little and holds until `fly`
+ * of its life, then is drawn into its bar (공정, 품질), the 열기 badge or the durability orb,
+ * arriving at `absorb`, where the bar flashes; the numbers of one beat follow each other by
+ * stagger. Its target is taken when it sets off (the band may have moved meanwhile). On the way
+ * the text fades into a spark (spark px wide), so only the spark lands on the bar's own number.
+ * Reduced motion: no flight, it shows for reducedMs where it rose, brightest (and the bar
+ * flashing) at reducedPeak of that.
+ */
+export const FLOAT_FLIGHT = { ms: 1250, fly: 0.56, absorb: 0.86, stagger: 90, spark: 9, reducedMs: 940, reducedPeak: 0.15 } as const;
+
+/**
+ * The art table's rows, top to bottom (ui/cards/tableLayout.ts tableRows): the top band, the
+ * scene, the gauge band (공정·품질 bars, ★ marks, 열기, the fire's state), the hand and the bottom
+ * row (durability orb, piles, 다시 달구기), px. A screen under shortH px gets the short sizes.
+ * The hand is sized from the width (a full hand's cards, about 0.28 of it, 2:3, and the hint
+ * line over them); the scene takes the rest, down to sceneMin, then the hand gives way down to
+ * its min. While a card is lifted, the gauge band rises over the scene's floor just enough to
+ * stay over the lifted card (riseGap px above it), at most riseShare of the scene's height (the
+ * lifted card is laid out smaller when that is not enough). With the band held still (실험 패널),
+ * the lifted card stays in the hand's row instead, riseGap px under the band.
+ */
+export const TABLE_ROWS = {
+  shortH: 700,
+  top: 50,
+  topShort: 46,
+  band: 84,
+  bandShort: 72,
+  foot: 80,
+  footShort: 72,
+  hand: { k: 0.42, add: 36, min: 150, max: 262 },
+  sceneMin: 170,
+  riseGap: 6,
+  riseShare: 0.3,
+  /** The chips over the band (풀무질 2턴, 다음 화로 …) take about this much of the scene's floor. */
+  ledge: 22,
 } as const;
 
 export interface Rect {
@@ -226,11 +265,9 @@ export interface SceneLayout {
   water: ArtPoint;
   /** The hot bar: middle point (where blows land), width and height. */
   iron: { x: number; y: number; w: number; h: number };
-  gauges: { x: number; y: number; w: number };
-  fire: ArtPoint;
   bubble: { x: number; y: number; maxW: number };
-  /** Centre of a played card while it hovers over the scene. */
-  cardHover: ArtPoint;
+  /** Centre of a played card while it hovers over the scene, and the most height it may take. */
+  cardHover: ArtPoint & { maxH: number };
 }
 
 function placed(
@@ -264,11 +301,15 @@ export function sceneLayout(w: number, h: number, aspect: Partial<Record<SceneAr
   const quench = placed(w, h, SCENE_PLACE.quench, a('quench'), PROP_ART.quench.foot);
   const ironW = face.w * SCENE_PLACE.iron.w;
   const ironH = ironW / a('iron_hot');
-  const gaugeW = Math.max(OVERLAY_PLACE.gauges.minW, Math.min(OVERLAY_PLACE.gauges.maxW, OVERLAY_PLACE.gauges.w * w));
-  const gaugeX = Math.max(gaugeW / 2 + 6, Math.min(w - gaugeW / 2 - OVERLAY_PLACE.fire.col, OVERLAY_PLACE.gauges.x * w));
+  const ironY = face.y - (PROP_ART.iron.rest.y - 0.5) * ironH;
   const furnaceTop = { x: furnace.x + furnace.w / 2, y: furnace.y + PROP_ART.furnace.top * furnace.h };
-  const fireSize = OVERLAY_PLACE.fire.size;
   const dwarfBody = SCENE_PLACE.dwarf.h * h;
+  // The played card hovers between the scene's top and the iron, so neither the numbers nor the blow hide.
+  const hoverFrom = OVERLAY_PLACE.cardHover.top;
+  const hoverH = Math.max(40, ironY - ironH * 0.7 - hoverFrom);
+  const bub = OVERLAY_PLACE.bubble;
+  const bubbleX = SCENE_PLACE.dwarf.x * w + bub.dx * dwarfBody;
+  const bubbleLow = Math.max(bub.half + bub.edge, h - bub.half - bub.edge - TABLE_ROWS.ledge);
   return {
     w,
     h,
@@ -282,21 +323,13 @@ export function sceneLayout(w: number, h: number, aspect: Partial<Record<SceneAr
     nozzle: { x: bellows.x + PROP_ART.bellows.nozzle.x * bellows.w, y: bellows.y + PROP_ART.bellows.nozzle.y * bellows.h },
     quench,
     water: { x: quench.x + PROP_ART.quench.water.x * quench.w, y: quench.y + PROP_ART.quench.water.y * quench.h },
-    iron: { x: face.x, y: face.y - (PROP_ART.iron.rest.y - 0.5) * ironH, w: ironW, h: ironH },
-    gauges: { x: gaugeX, y: OVERLAY_PLACE.gauges.top * h, w: gaugeW },
-    fire: {
-      x: w - OVERLAY_PLACE.fire.col / 2,
-      y: Math.max(fireSize / 2 + 4, furnaceTop.y - OVERLAY_PLACE.fire.above - fireSize / 2),
-    },
-    cardHover: { x: Math.min(w - 50, face.x + OVERLAY_PLACE.cardHover.dx * w), y: OVERLAY_PLACE.cardHover.y * h },
+    iron: { x: face.x, y: ironY, w: ironW, h: ironH },
+    cardHover: { x: Math.min(w - 50, face.x + OVERLAY_PLACE.cardHover.dx * w), y: hoverFrom + hoverH / 2, maxH: hoverH },
     bubble: {
-      x: SCENE_PLACE.dwarf.x * w + OVERLAY_PLACE.bubble.dx * dwarfBody,
-      y: SCENE_PLACE.dwarf.y * h + OVERLAY_PLACE.bubble.dy * dwarfBody,
-      // Kept clear of the fire badge over the furnace.
-      maxW: Math.max(
-        120,
-        Math.min(OVERLAY_PLACE.bubble.maxW * w, furnaceTop.x - fireSize / 2 - 8 - (SCENE_PLACE.dwarf.x * w + OVERLAY_PLACE.bubble.dx * dwarfBody)),
-      ),
+      x: bubbleX,
+      // Its middle stays clear of the scene's top and of the chips over the gauge band.
+      y: Math.min(bubbleLow, Math.max(bub.half + bub.edge, SCENE_PLACE.dwarf.y * h + bub.dy * dwarfBody)),
+      maxW: Math.max(120, Math.min(bub.maxW * w, w - bub.edge - bubbleX)),
     },
   };
 }
@@ -306,12 +339,12 @@ const FLOAT_STACK = 4;
 
 /**
  * Where the floating number of this order (0 = the beat's first) starts: its centre x and top y
- * in the scene box (px). plateBottom = the gauge plate's bottom edge in the same box.
+ * in the scene box (px), under the scene's top edge.
  */
-export function floatAt(l: SceneLayout, order: number, plateBottom: number): ArtPoint {
+export function floatAt(l: SceneLayout, order: number): ArtPoint {
   const f = OVERLAY_PLACE.floats;
   const top = l.iron.y - l.iron.h / 2;
-  const room = top - (plateBottom + f.gap);
+  const room = top - f.top;
   const lift = f.lift * l.h;
   const k = Math.max(0.3, Math.min(1, room / (lift + f.step * (FLOAT_STACK - 1))));
   const i = order % FLOAT_STACK;
@@ -378,6 +411,11 @@ export const END_HOLD_MS = 1600;
 export const TABLE_TIMING = {
   /** The dwarf's closing line comes this long after the iron is done (the numbers clear first). */
   lineAfterEnd: 700,
+  /**
+   * The end banner comes this long after the last blow lands: the hand has sunk away under it
+   * (art.css .ft-hand.ended, 0.45s) and the weapon (or the split bar) lies on the anvil.
+   */
+  bannerAfterEnd: 480,
   /** The longest the finished table waits for its effects before the result screen. */
   endSafety: 9000,
   /** How long a dwarf line stays. */
@@ -402,9 +440,10 @@ export const HAND_FAN = {
   show: 0.56,
   spread: 3,
   maxFan: 4.5,
-  /** Room over the cards for the hint line, and the side margin (px). */
+  /** Room over the cards for the hint line, the side margin and the room under the cards (px). */
   top: 34,
   margin: 6,
+  bottom: 4,
   liftW: 196,
   minLift: 1.25,
   maxLiftShare: 0.56,
@@ -494,10 +533,12 @@ export const CARD_FACE = {
  * rules text and notes never go under their floors (small phones), names shrink only to fit
  * their band. The kind ribbon is left out on cards narrower than ribbonMinW (the frame's colour
  * already says the kind). Long rules text (more than longText, or veryLong characters) steps
- * down and gets a fifth line; the long-press sheet has all of it.
+ * down and gets a fifth line; the long-press sheet has all of it. A card half under the next one
+ * in the fan wraps a short text cutPad px inside the strip that shows.
  */
 export const CARD_TYPE = {
   base: 0.088,
+  cutPad: 3,
   nameMin: 10.5,
   textMin: 10.5,
   noteMin: 10,

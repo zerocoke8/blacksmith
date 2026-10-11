@@ -42,6 +42,33 @@ export function setArtScreen(value: boolean): void {
   void webStore.save(KEY, value ? 'on' : 'off');
 }
 
+// 게이지 띠 따라 올리기 (실험 패널): while a card is lifted, the gauge band rises just over it
+// (on, the default), or stays put and the lifted card stays in the hand's row, smaller (off).
+// A screen preference too, its own key, read by both labs.
+const RISE_KEY = 'ui.bandRise';
+let rise = true;
+
+void webStore.load(RISE_KEY).then((v) => {
+  if (v === 'off' && rise) {
+    rise = false;
+    emit();
+  }
+});
+
+export function useBandRise(): boolean {
+  return useSyncExternalStore(
+    subscribe,
+    () => rise,
+    () => rise,
+  );
+}
+
+export function setBandRise(value: boolean): void {
+  rise = value;
+  emit();
+  void webStore.save(RISE_KEY, value ? 'on' : 'off');
+}
+
 let broken = false;
 let webgl: boolean | null = null;
 

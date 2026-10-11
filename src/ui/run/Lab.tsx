@@ -19,7 +19,7 @@ import {
   WALL_PRESETS,
 } from '../../sim/data/run.ts';
 import { resolveRunRules, type RunState, wallDeadlines } from '../../sim/run/index.ts';
-import { setArtScreen, useArtScreen } from '../cards/artPref.ts';
+import { setArtScreen, setBandRise, useArtScreen, useBandRise } from '../cards/artPref.ts';
 import { copyText, download } from '../cards/Lab.tsx';
 import { Seg, Sheet, Stepper, Toggle } from '../cards/parts.tsx';
 import { duration } from '../cards/text.ts';
@@ -78,6 +78,7 @@ export function RunLabPanel({ lab, records, run, hallCount, onLab, onDropRun, on
   };
 
   const artScreen = useArtScreen();
+  const bandRise = useBandRise();
 
   return (
     <div className="kc-lab">
@@ -95,6 +96,14 @@ export function RunLabPanel({ lab, records, run, hallCount, onLab, onDropRun, on
           label="아트 화면"
           sub="단조를 대장간 장면과 카드 연출로 친다. 끄면 예전 화면"
         />
+        {artScreen && (
+          <Toggle
+            on={bandRise}
+            onChange={setBandRise}
+            label="게이지 띠 따라 올리기"
+            sub="카드를 들면 공정·품질 띠가 카드 바로 위로 올라간다. 끄면 띠는 제자리, 든 카드가 작아진다"
+          />
+        )}
       </section>
 
       <section className="kc-panel">

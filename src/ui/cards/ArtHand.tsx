@@ -8,7 +8,7 @@ import { type CSSProperties, type MutableRefObject, type PointerEvent as ReactPo
 import type { CardCraftState, HandCardView } from '../../sim/cards/index.ts';
 import type { CardId } from '../../sim/data/cards.ts';
 import { CARD_ASPECT, CARD_FLIGHT, HAND_FAN } from '../../render/forge/layout.ts';
-import { fanPlaces, handCardWidth } from './fan.ts';
+import { fanPlaces, handCardWidth, shownWidths } from './fan.ts';
 import { GameCard, type GameCardState } from './GameCard.tsx';
 import { LONG_PRESS_MS } from './parts.tsx';
 
@@ -35,6 +35,8 @@ interface Props {
   pileEl(kind: PileKind): HTMLElement | null;
   /** Where a played card flies to and hovers (its centre, and its most height) while the blow lands, viewport coordinates. */
   target(): { x: number; y: number; maxH: number } | null;
+  /** The tallest the lifted card may be (the gauge band over the hand rises only so far: tableLayout.ts). */
+  liftMaxH: number;
   reduced: boolean;
 }
 
@@ -86,7 +88,7 @@ function centerOf(el: Element): { x: number; y: number } {
 const LIFT_EASE = 'cubic-bezier(0.2, 0.8, 0.25, 1)';
 
 export function ArtHand(props: Props) {
-  const { views, craft, active, selected, onSelect, onPlay, onInfo, onDrag, apiRef, pileEl, target, reduced } = props;
+  const { views, craft, active, selected, onSelect, onPlay, onInfo, onDrag, apiRef, pileEl, target, liftMaxH, reduced } = props;
   const boxRef = useRef<HTMLDivElement>(null);
   const [box, setBox] = useState({ w: 0, h: 0 });
   const [drag, setDrag] = useState<{ uid: string; x: number; y: number; ready: boolean } | null>(null);
@@ -132,7 +134,10 @@ export function ArtHand(props: Props) {
   const cw = handCardWidth(bw, bh, views.length);
   const ch = cw / CARD_ASPECT;
   const selIndex = selected === null ? -1 : views.findIndex((v) => v.uid === selected);
-  const places = fanPlaces(views.length, bw, bh, cw, selIndex);
+  const places = fanPlaces(views.length, bw, bh, cw, selIndex, liftMaxH);
+  // How much of each resting card shows from under the next (its text keeps to that strip). Taken
+  // from the fan at rest, so the text does not rewrap when a card is lifted and its neighbours step aside.
+  const shown = shownWidths(selIndex >= 0 ? fanPlaces(views.length, bw, bh, cw, -1, liftMaxH) : places);
 
   const measureCard = (uid: string): Seen | null => {
     const el = cardEls.current.get(uid);
@@ -381,10 +386,11 @@ export function ArtHand(props: Props) {
                 state={active ? cardStateOf(v) : null}
                 note={active ? noteOf(v, craft.durability) : null}
                 selected={selected === v.uid}
+                shown={selected === v.uid || dragging ? undefined : (shown[i] ?? p.w) / p.w}
                 floor
               />
               {selected === v.uid && !dragging && (
-                <span className={`ah-tip${tipSide(p.x + p.w / 2, bw)}`}>한 번 더 누르거나 위로 끌어 올리면 낸다</span>
+                <span className={`ah-tip under${tipSide(p.x + p.w / 2, bw)}`}>한 번 더 누르거나 위로 끌어 올리면 낸다</span>
               )}
               {dragging && drag.ready && <span className="ah-tip ready">놓으면 낸다</span>}
             </div>

@@ -23,7 +23,7 @@ import {
   REHEAT_COST_RANGE,
 } from '../../sim/data/cards.ts';
 import { systemClock } from '../../platform/clock.ts';
-import { setArtScreen, useArtScreen } from './artPref.ts';
+import { setArtScreen, setBandRise, useArtScreen, useBandRise } from './artPref.ts';
 import { rulesOf } from './flow.ts';
 import { Seg, Sheet, Stepper, Toggle } from './parts.tsx';
 import { recordsJson, type RecordSummary, summarize, summarizeBySettings } from './record.ts';
@@ -133,6 +133,7 @@ export function Lab({ profile, records, craftActive, onLab, onProfile, onClearRe
   const all = summarize(records);
   const groups = summarizeBySettings(records);
   const artScreen = useArtScreen();
+  const bandRise = useBandRise();
 
   return (
     <div className="kc-lab">
@@ -148,6 +149,14 @@ export function Lab({ profile, records, craftActive, onLab, onProfile, onClearRe
           label="아트 화면"
           sub="대장간 장면과 카드 연출. 끄면 예전 화면으로 비교한다. 바로 바뀐다"
         />
+        {artScreen && (
+          <Toggle
+            on={bandRise}
+            onChange={setBandRise}
+            label="게이지 띠 따라 올리기"
+            sub="카드를 들면 공정·품질 띠가 카드 바로 위로 올라간다. 끄면 띠는 제자리, 든 카드가 작아진다"
+          />
+        )}
       </section>
 
       <section className="kc-panel">

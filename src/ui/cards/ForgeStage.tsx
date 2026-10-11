@@ -1,19 +1,15 @@
 // The scene box of the art table: the PixiJS workshop (render/forge/scene.ts, loaded on demand)
-// with a DOM layer on top for what must stay crisp and tappable: the gauge plate over the anvil
-// (like an enemy's HP bar), the fire badge over the furnace (like an enemy's intent), the
-// dwarf's speech bubble and the floating numbers. Positions come from
-// render/forge/layout.ts, the same numbers the scene uses.
+// with a DOM layer on top for what must stay crisp: the dwarf's speech bubble and the floating
+// numbers, which rise by the anvil and are then drawn down into their bars in the gauge band
+// under the scene (GaugeBand). The gauges and the fire's state are not over the scene: the
+// furnace shows its state by its glow. Positions come from render/forge/layout.ts, the same
+// numbers the scene uses.
 
-import { type CSSProperties, type MutableRefObject, type ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import type { QualityTier } from '../../sim/core/types.ts';
-import type { PlayPreview } from '../../sim/cards/index.ts';
-import { QUALITY } from '../../sim/data/common.ts';
-import { FIRE_HINT, FIRE_LABEL, type FireState, HEAT } from '../../sim/data/cards.ts';
-import { sceneArtUrl, uiArtUrl } from '../../render/forge/assets.ts';
-import type { FxStep, GaugeSnap } from '../../render/forge/fx.ts';
-import { floatAt, type SceneLayout, sceneLayout, type UiArtKey } from '../../render/forge/layout.ts';
+import { type CSSProperties, type MutableRefObject, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { sceneArtUrl } from '../../render/forge/assets.ts';
+import type { FxStep } from '../../render/forge/fx.ts';
+import { FLOAT_FLIGHT, floatAt, type SceneLayout, sceneLayout } from '../../render/forge/layout.ts';
 import type { ForgeScene, SceneView } from '../../render/forge/scene.ts';
-import { type Glyph, UiIcon } from './GameCard.tsx';
 import { reducedMotion } from './parts.tsx';
 
 export interface StageApi {
@@ -22,7 +18,7 @@ export interface StageApi {
   busy(): boolean;
   /**
    * Where a played card hovers, in viewport coordinates: its centre, and the most height it may
-   * take (the gap between the gauge plate and the iron, so neither the numbers nor the blow hide).
+   * take (the gap between the scene's top and the iron, so neither the numbers nor the blow hide).
    */
   cardClient(): { x: number; y: number; maxH: number };
 }
@@ -39,19 +35,11 @@ export interface Floater {
 
 interface Props {
   view: SceneView;
-  shown: GaugeSnap;
-  progressRequired: number;
-  qualityCap: number;
-  /** Gauge values the engine has now (ghost bars start from these). */
-  engine: GaugeSnap;
-  preview: PlayPreview | null;
   floaters: Floater[];
   say: { key: number; text: string } | null;
-  tierFx: { key: number; tier: QualityTier } | null;
-  /** The craft is over and its end is shown (the plate dims). */
-  done: boolean;
-  chips: ReactNode;
-  nextFire: FireState | null;
+  reduced: boolean;
+  /** Where a floating number of this kind is drawn to (viewport coordinates), or null to fade where it rose. */
+  floatTarget(kind: Floater['kind']): { x: number; y: number } | null;
   apiRef: MutableRefObject<StageApi | null>;
   /** The scene is up and takes steps. */
   onReady(): void;
@@ -60,36 +48,79 @@ interface Props {
   onIdle(): void;
   onUnavailable(): void;
   onTap(): void;
-  onFireTap(): void;
 }
 
-const TIER_MARKS: readonly QualityTier[] = [2, 3, 4, 5];
+/** A floating number's text is about this tall (px): it flies so its middle lands on the target. */
+const FLOAT_HALF_H = 11;
 
-const FIRE_GLYPH: Glyph = 'flame';
+const at = (x: number, y: number, s: number) => `translate(calc(-50% + ${x}px), ${y}px) scale(${s})`;
+/** Where a number holds over the anvil before it is drawn into its bar (px from where it rose). */
+const HOLD_Y = -16;
+/** The pull into the bar: slow, then faster and faster. */
+const PULL = 'cubic-bezier(0.55, 0, 0.9, 0.45)';
 
-
-function pct(value: number, max: number): number {
-  return Math.max(0, Math.min(100, (value / Math.max(1, max)) * 100));
+/** Rise by the anvil and hold (the first `fly` of its life); reduced motion: show and fade where it rose. */
+function riseKeyframes(fly: boolean): Keyframe[] {
+  if (!fly) {
+    return [
+      { offset: 0, opacity: 0, transform: at(0, 6, 0.85) },
+      { offset: FLOAT_FLIGHT.reducedPeak, opacity: 1, transform: at(0, 0, 1) },
+      { offset: 0.8, opacity: 1, transform: at(0, -4, 1) },
+      { offset: 1, opacity: 0, transform: at(0, -6, 1) },
+    ];
+  }
+  const k = 1 / FLOAT_FLIGHT.fly;
+  return [
+    { offset: 0, opacity: 0, transform: at(0, 10, 0.7), easing: 'ease-out' },
+    { offset: 0.1 * k, opacity: 1, transform: at(0, 0, 1.18) },
+    { offset: 0.22 * k, opacity: 1, transform: at(0, -5, 1) },
+    { offset: 1, opacity: 1, transform: at(0, HOLD_Y, 1) },
+  ];
 }
 
-function num(n: number): string {
-  return n.toLocaleString('ko-KR');
+/** Share of the pull (the rest of its life) where it lands on its bar. */
+const LAND = (FLOAT_FLIGHT.absorb - FLOAT_FLIGHT.fly) / (1 - FLOAT_FLIGHT.fly);
+
+/** The text (or its spark) is drawn into the target (dx, dy from where it rose): slow, then faster and faster. */
+function pullKeyframes(dx: number, dy: number, s0: number, s1: number, s2: number): Keyframe[] {
+  return [
+    { offset: 0, transform: at(0, HOLD_Y, s0), easing: PULL },
+    { offset: LAND, transform: at(dx, dy, s1) },
+    { offset: 1, transform: at(dx, dy, s2) },
+  ];
 }
+
+/**
+ * On the way the text fades out (gone well before it reaches the bar, so it never sits on the
+ * bar's own number) and a spark fades in from it, lands, and flares out.
+ */
+const TEXT_FADE: Keyframe[] = [
+  { offset: 0, opacity: 1 },
+  { offset: LAND * 0.45, opacity: 1 },
+  { offset: LAND * 0.85, opacity: 0 },
+  { offset: 1, opacity: 0 },
+];
+const SPARK_FADE: Keyframe[] = [
+  { offset: 0, opacity: 0 },
+  { offset: LAND * 0.4, opacity: 0 },
+  { offset: LAND * 0.8, opacity: 1 },
+  { offset: LAND, opacity: 1 },
+  { offset: 1, opacity: 0 },
+];
 
 export function ForgeStage(props: Props) {
-  const { view, shown, engine, preview, progressRequired, qualityCap, apiRef } = props;
+  const { view, apiRef } = props;
   const hostRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
-  const gaugesRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<ForgeScene | null>(null);
   const [size, setSize] = useState({ w: 0, h: 0 });
   const [sceneLayoutState, setSceneLayout] = useState<SceneLayout | null>(null);
-  /** The gauge plate's bottom edge inside the stage (px): the floating numbers stay under it. */
-  const [plateBottom, setPlateBottom] = useState(0);
   const cb = useRef(props);
   cb.current = props;
   const viewRef = useRef(view);
   viewRef.current = view;
+  const floatEls = useRef(new Map<number, HTMLSpanElement>());
+  const flown = useRef(new Set<number>());
 
   useLayoutEffect(() => {
     const el = hostRef.current;
@@ -104,17 +135,12 @@ export function ForgeStage(props: Props) {
     return () => ro.disconnect();
   }, []);
 
-  const L = sceneLayoutState ?? sceneLayout(size.w || 390, size.h || 360);
+  // The scene's own layout (pictures measured) for its box; a stand-in until it is up or after a resize.
+  const fresh =
+    sceneLayoutState !== null && Math.abs(sceneLayoutState.w - size.w) < 0.5 && Math.abs(sceneLayoutState.h - size.h) < 0.5;
+  const L = fresh ? sceneLayoutState : sceneLayout(size.w || 390, size.h || 360);
   const layoutRef = useRef(L);
   layoutRef.current = L;
-
-  useLayoutEffect(() => {
-    const plate = gaugesRef.current;
-    const host = hostRef.current;
-    if (plate === null || host === null) return;
-    const bottom = plate.getBoundingClientRect().bottom - host.getBoundingClientRect().top;
-    setPlateBottom((b) => (Math.abs(b - bottom) < 0.5 ? b : bottom));
-  }, [size.w, size.h, L.gauges.y]);
 
   // The scene: created once the box has a size, destroyed with the screen.
   const hasSize = size.w > 0 && size.h > 0;
@@ -150,13 +176,7 @@ export function ForgeStage(props: Props) {
           cardClient: () => {
             const r = hostRef.current?.getBoundingClientRect();
             const l = layoutRef.current;
-            const left = r?.left ?? 0;
-            const top = r?.top ?? 0;
-            const plate = gaugesRef.current?.getBoundingClientRect();
-            const from = (plate?.bottom ?? top + l.cardHover.y - 60) + 6;
-            const to = top + l.iron.y - l.iron.h * 0.7;
-            if (to - from < 40) return { x: left + l.cardHover.x, y: top + l.cardHover.y, maxH: 120 };
-            return { x: left + l.cardHover.x, y: (from + to) / 2, maxH: to - from };
+            return { x: (r?.left ?? 0) + l.cardHover.x, y: (r?.top ?? 0) + l.cardHover.y, maxH: l.cardHover.maxH };
           },
         };
         cb.current.onReady();
@@ -180,18 +200,50 @@ export function ForgeStage(props: Props) {
     sceneRef.current?.setView(view);
   }, [view]);
 
-  // ---- Gauges ----
-  const progressPct = pct(shown.progress, progressRequired);
-  const qualityPct = pct(shown.quality, qualityCap);
-  const ghostProgress = preview !== null && preview.progress !== 0 ? pct(engine.progress + preview.progress, progressRequired) : null;
-  const ghostQuality = preview !== null && preview.quality !== 0 ? pct(engine.quality + preview.quality, qualityCap) : null;
-  const ghostTier =
-    ghostQuality !== null && preview !== null
-      ? TIER_MARKS.filter((t) => (engine.quality + preview.quality) / qualityCap >= QUALITY[t].threshold - 1e-9).pop()
-      : undefined;
-  const heatAfter = preview !== null ? Math.max(0, Math.min(HEAT.max, engine.heat + preview.heat)) : shown.heat;
+  // A new floating number: rise by the anvil and hold, then be drawn into its bar, aimed where
+  // the bar is when it sets off (the band may have risen or come down meanwhile).
+  useLayoutEffect(() => {
+    const ids = new Set(props.floaters.map((f) => f.id));
+    for (const id of flown.current) if (!ids.has(id)) flown.current.delete(id);
+    for (const f of props.floaters) {
+      if (flown.current.has(f.id)) continue;
+      const el = floatEls.current.get(f.id);
+      if (el === undefined) continue;
+      flown.current.add(f.id);
+      const inner = el.querySelector<HTMLElement>('.fs-float-in');
+      const spark = el.querySelector<HTMLElement>('.fs-float-spark');
+      if (inner === null) continue;
+      const flies = !props.reduced && f.kind !== 'note';
+      const delay = f.order * FLOAT_FLIGHT.stagger;
+      const rise = inner.animate(riseKeyframes(flies), {
+        duration: flies ? FLOAT_FLIGHT.ms * FLOAT_FLIGHT.fly : FLOAT_FLIGHT.reducedMs,
+        delay,
+        fill: 'both',
+      });
+      if (!flies) continue;
+      const order = f.order;
+      rise.onfinish = () => {
+        const host = hostRef.current;
+        if (host === null || !el.isConnected) return;
+        const to = cb.current.floatTarget(f.kind);
+        if (to === null) {
+          inner.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 220, fill: 'forwards' });
+          return;
+        }
+        const box = host.getBoundingClientRect();
+        const from = floatAt(layoutRef.current, order);
+        const dx = to.x - box.left - from.x;
+        const dy = to.y - box.top - (from.y + FLOAT_HALF_H);
+        const timing = { duration: FLOAT_FLIGHT.ms * (1 - FLOAT_FLIGHT.fly), fill: 'forwards' as const };
+        inner.animate(pullKeyframes(dx, dy, 1, 0.4, 0.4), timing);
+        inner.animate(TEXT_FADE, timing);
+        spark?.animate(pullKeyframes(dx, dy, 0.6, 1, 2.2), timing);
+        spark?.animate(SPARK_FADE, timing);
+      };
+    }
+  }, [props.floaters]);
+
   const bg = sceneArtUrl('bg_workshop');
-  const fireUrl = uiArtUrl(`fire_${shown.fire}` as UiArtKey);
 
   return (
     <div
@@ -201,101 +253,6 @@ export function ForgeStage(props: Props) {
       onClick={props.onTap}
     >
       <div ref={canvasRef} className="fs-canvas" aria-hidden="true" />
-
-      <div
-        ref={gaugesRef}
-        className={`fs-gauges${props.done ? ' done' : ''}`}
-        style={{ left: L.gauges.x, top: L.gauges.y, width: L.gauges.w }}
-      >
-        <div className="fs-gbar fs-gbar-progress">
-          <UiIcon className="fs-gicon" url={uiArtUrl('icon_progress')} glyph="hammer" />
-          <div className="fs-track" role="meter" aria-label="공정" aria-valuenow={shown.progress} aria-valuemax={progressRequired}>
-            {ghostProgress !== null && ghostProgress > progressPct && (
-              <span className="fs-ghost" style={{ left: `${progressPct}%`, width: `${ghostProgress - progressPct}%` }} />
-            )}
-            <span className="fs-fill" style={{ width: `${progressPct}%` }} />
-            <span className="fs-num">
-              <span>
-                {ghostProgress !== null && preview !== null ? (
-                  <>
-                    {num(Math.min(engine.progress, progressRequired))} → <em>{num(Math.min(engine.progress + preview.progress, progressRequired))}</em>
-                  </>
-                ) : (
-                  num(Math.min(shown.progress, progressRequired))
-                )}
-                <small> / {num(progressRequired)}</small>
-              </span>
-            </span>
-            {preview?.finishes === true && <span className="fs-tag fs-tag-fin">완성</span>}
-          </div>
-        </div>
-        <div className="fs-gbar fs-gbar-quality">
-          <UiIcon className="fs-gicon" url={uiArtUrl('icon_quality')} glyph="sparkle" />
-          <div className="fs-track" role="meter" aria-label="품질" aria-valuenow={shown.quality} aria-valuemax={qualityCap}>
-            {ghostQuality !== null && ghostQuality > qualityPct && (
-              <span className="fs-ghost" style={{ left: `${qualityPct}%`, width: `${ghostQuality - qualityPct}%` }} />
-            )}
-            <span className="fs-fill" style={{ width: `${qualityPct}%` }} />
-            {TIER_MARKS.filter((t) => t < 5).map((t) => (
-              <span key={t} className="fs-tick" style={{ left: `${QUALITY[t].threshold * 100}%` }} />
-            ))}
-            <span className="fs-num">
-              <span>
-                {ghostQuality !== null && preview !== null ? (
-                  <>
-                    {num(engine.quality)} → <em>{num(Math.min(engine.quality + preview.quality, qualityCap))}</em>
-                  </>
-                ) : (
-                  num(shown.quality)
-                )}
-                <small> / {num(qualityCap)}</small>
-              </span>
-            </span>
-            {props.tierFx !== null && <span key={props.tierFx.key} className="fs-track-flash" />}
-          </div>
-          <div className="fs-marks" aria-hidden="true">
-            {TIER_MARKS.map((t) => {
-              const lit = shown.quality / qualityCap >= QUALITY[t].threshold - 1e-9;
-              const next = ghostTier !== undefined && ghostTier >= t && !lit;
-              const pop = props.tierFx !== null && props.tierFx.tier === t;
-              return (
-                <span
-                  key={`${t}-${pop ? props.tierFx?.key : 0}`}
-                  className={`fs-mark${lit ? ' on' : ''}${next ? ' next' : ''}${pop ? ' pop' : ''}`}
-                  style={{ left: `${QUALITY[t].threshold * 100}%` }}
-                >
-                  ★{t}
-                </span>
-              );
-            })}
-          </div>
-        </div>
-        <div className={`fs-heat${heatAfter !== shown.heat ? ' change' : ''}`} aria-label={`열기 ${shown.heat}`}>
-          <UiIcon className="fs-heat-icon" url={uiArtUrl('icon_heat')} glyph="flame" />
-          <b key={shown.heat}>{heatAfter !== shown.heat ? heatAfter : shown.heat}</b>
-          <small>열기</small>
-        </div>
-        {/* What is on (풀무질 2턴, 혼신 1장 …) sits under the bars, like buffs under an HP bar. */}
-        <div className="fs-chips">{props.chips}</div>
-      </div>
-
-      <button
-        type="button"
-        className={`fs-fire fs-fire-${shown.fire}`}
-        style={{ left: L.fire.x, top: L.fire.y }}
-        onClick={(e) => {
-          e.stopPropagation();
-          props.onFireTap();
-        }}
-        aria-label={`화로 ${FIRE_LABEL[shown.fire]}${FIRE_HINT[shown.fire] !== '' ? `, ${FIRE_HINT[shown.fire]}` : ''}`}
-      >
-        <span key={shown.fire} className={`fs-fire-icon${fireUrl !== null ? ' pic' : ''}`}>
-          <UiIcon url={fireUrl} glyph={FIRE_GLYPH} />
-        </span>
-        <span className="fs-fire-label">{FIRE_LABEL[shown.fire]}</span>
-        {FIRE_HINT[shown.fire] !== '' && <span className="fs-fire-hint">{FIRE_HINT[shown.fire]}</span>}
-        {props.nextFire !== null && <span className="fs-fire-next">다음 {FIRE_LABEL[props.nextFire]}</span>}
-      </button>
 
       {props.say !== null && (
         <div
@@ -310,14 +267,22 @@ export function ForgeStage(props: Props) {
 
       <div className="fs-floats" aria-hidden="true">
         {props.floaters.map((f) => {
-          const at = floatAt(L, f.order, plateBottom);
+          const at = floatAt(L, f.order);
           return (
             <span
               key={f.id}
+              ref={(el) => {
+                if (el === null) floatEls.current.delete(f.id);
+                else floatEls.current.set(f.id, el);
+              }}
               className={`fs-float fs-float-${f.kind}${f.hush === true ? ' hush' : ''}`}
-              style={{ left: at.x, top: at.y, animationDelay: `${f.order * 90}ms` }}
+              style={{ left: at.x, top: at.y }}
             >
-              {f.text}
+              <span className="fs-float-in">{f.text}</span>
+              <span
+                className="fs-float-spark"
+                style={{ top: FLOAT_HALF_H - FLOAT_FLIGHT.spark / 2, width: FLOAT_FLIGHT.spark, height: FLOAT_FLIGHT.spark }}
+              />
             </span>
           );
         })}

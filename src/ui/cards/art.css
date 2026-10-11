@@ -33,7 +33,7 @@ body.ft-lock {
   flex: none;
   align-items: center;
   gap: 6px;
-  height: 50px;
+  height: var(--ft-top-h, 50px);
   padding: 0 6px;
   border-bottom: 2px solid #0e0805;
   background:
@@ -155,14 +155,12 @@ body.ft-lock {
 
 /* ---------- Scene and its overlay ---------- */
 
-/* The scene takes what the hand (sized from the screen width, art.css .ft-hand) leaves, up to a
-   cap; past the cap the hand grows instead. */
+/* The scene takes what the other rows leave (tableLayout.ts: their heights come in as --ft-*-h).
+   Numbers flying into the gauge band leave it, so it does not clip (the canvas clips itself). */
 .fs-stage {
   position: relative;
-  flex: 1000 1 auto;
-  min-height: 220px;
-  max-height: 540px;
-  overflow: hidden;
+  flex: 1 1 0;
+  min-height: 0;
   background:
     radial-gradient(ellipse at 86% 66%, rgba(255, 130, 50, 0.35), transparent 55%),
     var(--fs-bg, none) center / cover no-repeat,
@@ -173,72 +171,131 @@ body.ft-lock {
 .fs-canvas {
   position: absolute;
   inset: 0;
+  overflow: hidden;
 }
 
-.fs-gauges {
+/* The scene's floor darkens into the gauge band under it. */
+.fs-stage::after {
   position: absolute;
-  z-index: 2;
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 5px 6px;
-  padding: 6px 6px 6px 6px;
-  border-radius: 10px;
-  background: linear-gradient(180deg, rgba(34, 23, 16, 0.86), rgba(16, 10, 7, 0.86));
-  box-shadow:
-    0 0 0 1px rgba(0, 0, 0, 0.8),
-    inset 0 1px 0 rgba(255, 210, 160, 0.16),
-    0 4px 12px rgba(0, 0, 0, 0.45);
-  transform: translateX(-50%);
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 1;
+  height: 26px;
+  background: linear-gradient(180deg, rgba(18, 12, 9, 0), rgba(18, 12, 9, 0.7));
+  content: '';
   pointer-events: none;
 }
 
-.fs-gauges.done {
-  opacity: 0;
-  transition: opacity 0.3s;
+/* ---------- Gauge band: right over the cards ---------- */
+
+/* Under the hand's layer (z-index 4), so a card dragged up passes over it; it rises over the
+   scene's floor while a card is lifted (ArtTable: tableLayout.ts bandRise). Two bars on the left
+   (the name, and a lifted card's share, at their left end; the value at their right end), 열기 and
+   the fire's state in a column on the right. Heights: TABLE_ROWS.band / bandShort. */
+.gb-band {
+  position: relative;
+  z-index: 3;
+  display: grid;
+  flex: none;
+  grid-template-rows: 26px 26px;
+  grid-template-columns: minmax(0, 1fr) 100px;
+  align-content: start;
+  gap: 6px 6px;
+  height: var(--ft-band-h, 84px);
+  padding: 7px 6px 0 5px;
+  border-top: 1px solid #0e0805;
+  background:
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.05) 0 3px, transparent 3px 7px),
+    linear-gradient(180deg, #3d2a1a, #281b11 55%, #1e140d);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 210, 160, 0.2),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.6),
+    0 -5px 12px rgba(0, 0, 0, 0.45);
+  transition:
+    transform 0.24s cubic-bezier(0.2, 0.8, 0.25, 1),
+    box-shadow 0.24s;
 }
 
-.fs-gbar {
+.gb-band.risen {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 210, 160, 0.24),
+    0 -5px 12px rgba(0, 0, 0, 0.45);
+}
+
+/* Risen, the band would leave a strip of the scene's floor between it and the hand: a dark floor,
+   in the band's shadow, fills it, growing as the band rises so its foot stays on the hand. */
+.gb-band::after {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  left: 0;
+  height: var(--gb-rise, 0px);
+  background: linear-gradient(180deg, #050302, #120c09 16px);
+  content: '';
+  transition: height 0.24s cubic-bezier(0.2, 0.8, 0.25, 1);
+  pointer-events: none;
+}
+
+/* What is on (풀무질 2턴, 혼신 1장, 실험 …) and the next turn's fire, just over the band like buffs
+   over a bar, to the right (over the furnace's foot, clear of the iron; the forecast ends over the fire). */
+.gb-ledge {
+  position: absolute;
+  right: 8px;
+  bottom: calc(100% + 4px);
+  left: 8px;
+  display: flex;
+  flex-wrap: wrap-reverse;
+  justify-content: flex-end;
+  gap: 3px 4px;
+  pointer-events: none;
+}
+
+.gb-ledge:empty,
+.gb-band.done .gb-ledge {
+  display: none;
+}
+
+.gb-row {
   position: relative;
   display: flex;
   grid-column: 1;
   align-items: center;
   gap: 5px;
+  min-width: 0;
 }
 
-.fs-gbar-quality {
-  margin-bottom: 11px;
-}
-
-.fs-gicon {
+.gb-icon {
   flex: none;
-  width: 20px;
-  height: 20px;
+  width: 24px;
+  height: 24px;
   object-fit: contain;
 }
 
-svg.fs-gicon {
+svg.gb-icon {
   fill: #ff9a4a;
   filter: drop-shadow(0 0 3px rgba(255, 140, 60, 0.6));
 }
 
-.fs-gbar-quality svg.fs-gicon {
+.gb-quality svg.gb-icon {
   fill: #bfe4ff;
   filter: drop-shadow(0 0 3px rgba(150, 210, 255, 0.6));
 }
 
-.fs-track {
+.gb-track {
   position: relative;
   flex: 1;
-  height: 17px;
+  align-self: stretch;
+  min-width: 0;
   overflow: hidden;
-  border-radius: 4px;
+  border-radius: 6px;
   background: #0b0705;
   box-shadow:
     inset 0 1px 3px rgba(0, 0, 0, 0.9),
-    0 0 0 1px #5a4636;
+    0 0 0 1px #6a5240;
 }
 
-.fs-fill {
+.gb-fill {
   position: absolute;
   top: 0;
   bottom: 0;
@@ -246,97 +303,167 @@ svg.fs-gicon {
   transition: width 0.38s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
-.fs-gbar-progress .fs-fill {
-  background: linear-gradient(180deg, #ffbe68, #e8702a 55%, #a8401a);
+.gb-progress .gb-fill {
+  background: linear-gradient(180deg, #ffc474, #e8702a 55%, #a8401a);
 }
 
-.fs-gbar-quality .fs-fill {
+.gb-quality .gb-fill {
   background: linear-gradient(180deg, #f2fbff, #8ec8f0 55%, #3a6e9a);
 }
 
-.fs-ghost {
+.gb-ghost {
   position: absolute;
   top: 0;
   bottom: 0;
-  background: rgba(255, 244, 210, 0.5);
+  background: rgba(255, 244, 210, 0.55);
   animation: fs-ghost 0.8s ease-in-out infinite alternate;
 }
 
-.fs-tick {
+/* The ★ thresholds: notches at the bar's top and bottom edges (light on the empty track, dark
+   edges on the fill), so they never run through the value written across the bar. */
+.gb-tick {
   position: absolute;
   top: 0;
   bottom: 0;
   width: 2px;
   margin-left: -1px;
-  background: rgba(0, 0, 0, 0.55);
+  pointer-events: none;
 }
 
-.fs-num {
+.gb-tick::before,
+.gb-tick::after {
+  position: absolute;
+  left: 0;
+  width: 2px;
+  height: 5px;
+  background: rgba(255, 226, 170, 0.7);
+  box-shadow:
+    -1px 0 0 rgba(0, 0, 0, 0.6),
+    1px 0 0 rgba(0, 0, 0, 0.6);
+  content: '';
+}
+
+.gb-tick::before {
+  top: 0;
+}
+
+.gb-tick::after {
+  bottom: 0;
+}
+
+/* Written across the bar: its name (and a lifted card's share) at the left, the value at the right. */
+.gb-label {
   position: absolute;
   inset: 0;
   display: flex;
   align-items: center;
-  justify-content: center;
-  color: #fff;
-  font-size: 0.74rem;
-  font-weight: 900;
+  gap: 6px;
+  padding: 0 7px;
+  pointer-events: none;
+}
+
+.gb-name {
+  display: flex;
+  flex: none;
+  align-items: baseline;
+  gap: 4px;
+  color: rgba(255, 238, 214, 0.86);
+  font-size: 0.75rem;
+  font-weight: 800;
+  line-height: 1;
   white-space: nowrap;
   -webkit-text-stroke: 3px #120a06;
   paint-order: stroke fill;
 }
 
-.fs-num > span {
-  white-space: nowrap;
-}
-
-.fs-num small {
-  font-size: 0.92em;
-  font-weight: 800;
-  opacity: 0.88;
-}
-
-.fs-num em {
+/* A lifted card's share (공정 +100), bright, by the bar's name. */
+.gb-name em {
   color: #c6ffab;
+  font-size: 0.86rem;
   font-style: normal;
-}
-
-.fs-tag {
-  position: absolute;
-  top: 50%;
-  right: 3px;
-  padding: 0 5px;
-  border-radius: 4px;
-  font-size: 0.6rem;
   font-weight: 900;
-  transform: translateY(-50%);
+  -webkit-text-stroke: 3px #0e1a06;
+  animation: fs-say-in 0.2s ease-out;
 }
 
-.fs-tag-fin {
+/* The value, then "/ max". Where both do not fit (a narrow phone, five-digit numbers, a lifted
+   card's share and 완성), "/ max" wraps onto a second line that is cut off: it goes whole, it is
+   never cut into a wrong number. */
+.gb-num {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  align-items: baseline;
+  justify-content: flex-end;
+  min-width: 0;
+  height: 1.4em;
+  overflow: hidden;
+  padding: 0 2px;
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 900;
+  line-height: 1.4;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  -webkit-text-stroke: 3.5px #120a06;
+  paint-order: stroke fill;
+}
+
+.gb-num small {
+  margin-left: 0.3em;
+  color: #f0dcc0;
+  font-size: 0.8em;
+  font-weight: 800;
+}
+
+/* A lifted card: the value it would reach. */
+.gb-num.after b {
+  color: #c6ffab;
+}
+
+.gb-tag {
+  flex: none;
+  padding: 0 6px;
+  border-radius: 4px;
   background: #ffd66a;
   color: #2a1606;
+  font-size: 0.72rem;
+  font-weight: 900;
+  line-height: 1.5;
   animation: fs-ghost 0.6s ease-in-out infinite alternate;
 }
 
-.fs-track-flash {
+.gb-flash {
   position: absolute;
   inset: 0;
   background: rgba(255, 245, 200, 0.9);
   animation: fs-flash 0.9s ease-out forwards;
 }
 
-.fs-marks {
+/* A floating number's spark arrives: the bar flashes (ForgeStage flies it here; the delay is its arrival). */
+.gb-absorb {
   position: absolute;
-  top: calc(100% + 1px);
-  right: 0;
-  left: 25px;
-  height: 11px;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(255, 252, 235, 0.8), rgba(255, 230, 170, 0.4));
+  opacity: 0;
+  animation: gb-absorb 0.5s ease-out both;
+  pointer-events: none;
 }
 
-.fs-mark {
+.gb-marks {
+  position: absolute;
+  top: calc(100% + 2px);
+  right: 0;
+  left: 29px;
+  height: 13px;
+}
+
+.gb-mark {
   position: absolute;
   top: 0;
-  color: #8a7660;
-  font-size: 0.68rem;
+  color: #9a8670;
+  font-size: 0.72rem;
   font-weight: 900;
   line-height: 1;
   white-space: nowrap;
@@ -345,56 +472,55 @@ svg.fs-gicon {
   transform: translateX(-50%);
 }
 
-.fs-mark:last-child {
+.gb-mark:last-child {
   transform: translateX(-100%);
 }
 
-.fs-mark.on {
+.gb-mark.on {
   color: #ffd66a;
 }
 
-.fs-mark.next {
+.gb-mark.next {
   color: #fff;
   animation: fs-ghost 0.6s ease-in-out infinite alternate;
 }
 
-.fs-mark.pop {
+.gb-mark.pop {
   animation: fs-markpop 1s ease-out;
 }
 
-.fs-mark:last-child.pop {
+.gb-mark:last-child.pop {
   animation-name: fs-markpop-end;
 }
 
-.fs-heat {
+/* 열기: by the 공정 bar. */
+.gb-heat {
   position: relative;
   display: flex;
-  flex-direction: column;
-  grid-row: 1 / span 2;
+  grid-row: 1;
   grid-column: 2;
   align-items: center;
-  justify-content: center;
-  width: 42px;
+  gap: 3px;
+  min-width: 0;
 }
 
-.fs-heat-icon {
-  position: absolute;
-  top: 0;
-  width: 40px;
-  height: 40px;
+.gb-heat-icon {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  margin: -2px 0;
   object-fit: contain;
 }
 
-svg.fs-heat-icon {
+svg.gb-heat-icon {
   fill: #e0521e;
-  filter: drop-shadow(0 0 6px rgba(255, 110, 40, 0.75));
+  filter: drop-shadow(0 0 5px rgba(255, 110, 40, 0.75));
 }
 
-.fs-heat b {
+.gb-heat b {
   position: relative;
-  margin-top: 6px;
   color: #fff;
-  font-size: 1.32rem;
+  font-size: 1.25rem;
   font-weight: 900;
   line-height: 1;
   -webkit-text-stroke: 4px #2a0c04;
@@ -402,165 +528,201 @@ svg.fs-heat-icon {
   animation: fs-pop 0.35s ease-out;
 }
 
-.fs-heat.change b {
+.gb-heat.change b {
   color: #c6ffab;
 }
 
-.fs-heat small {
-  position: relative;
-  margin-top: 4px;
+.gb-heat small {
+  margin-left: 1px;
   color: #ffc89a;
-  font-size: 0.58rem;
+  font-size: 0.75rem;
   font-weight: 800;
-  -webkit-text-stroke: 2px #120a06;
+  -webkit-text-stroke: 2.5px #120a06;
   paint-order: stroke fill;
 }
 
-.fs-chips {
-  display: flex;
-  flex-wrap: wrap;
-  grid-column: 1 / -1;
-  justify-content: center;
-  gap: 3px;
-}
-
-.fs-chips:empty {
-  display: none;
-}
-
-.fs-chip {
-  padding: 0 7px;
-  border: 1px solid rgba(255, 200, 120, 0.32);
+.gb-heat .gb-absorb {
+  inset: -2px -4px;
   border-radius: 999px;
-  background: rgba(255, 190, 110, 0.14);
-  color: #ffe2b8;
-  font-size: 0.64rem;
-  font-weight: 700;
-  line-height: 1.5;
+  background: radial-gradient(closest-side, rgba(255, 220, 150, 0.9), rgba(255, 150, 60, 0));
 }
 
-.fs-chip.lab {
-  border-color: rgba(140, 180, 255, 0.4);
-  background: rgba(120, 160, 255, 0.16);
-  color: #d4e2ff;
-}
-
-/* Fire badge over the furnace: the turn's 화로 상태, like an enemy's intent. */
-.fs-fire {
-  position: absolute;
-  z-index: 2;
+/* 화로 상태: by the 품질 bar (it scales 품질), down over the ★ marks' line; its effect may take two
+   lines. Tap (44px tall, its touch area up into the 열기 row): what each state does. */
+.gb-fire {
+  position: relative;
   display: flex;
-  flex-direction: column;
+  grid-row: 2;
+  grid-column: 2;
   align-items: center;
-  width: 70px;
-  min-height: 64px;
-  padding: 0;
+  align-self: start;
+  gap: 3px;
+  min-width: 0;
+  height: 44px;
+  margin: -3px -2px 0;
+  padding: 0 4px 0 2px;
   border: none;
-  background: none;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.32);
+  box-shadow: inset 0 0 0 1px rgba(255, 200, 140, 0.18);
   color: #fff;
   font: inherit;
-  transform: translate(-50%, -50%);
+  text-align: left;
   cursor: pointer;
 }
 
-.fs-fire-icon {
+.gb-fire::before {
+  position: absolute;
+  inset: -4px 0 0;
+  content: '';
+}
+
+.gb-fire:active {
+  transform: translateY(1px);
+}
+
+.gb-fire-icon {
   display: flex;
+  flex: none;
   align-items: center;
   justify-content: center;
-  width: 46px;
-  height: 46px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   background: radial-gradient(circle at 50% 62%, #ffcf6a 0, #e0602a 52%, #4a1406 100%);
-  box-shadow:
-    0 0 0 2px #24160e,
-    0 0 0 3.5px #a07a4a,
-    0 0 14px 3px rgba(255, 140, 60, 0.55);
   animation: fs-pop 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.4);
 }
 
-.fs-fire-icon svg {
+.gb-fire-icon svg {
   width: 62%;
   height: 62%;
   fill: #fff3d0;
-  filter: drop-shadow(0 0 4px rgba(255, 220, 140, 0.9));
 }
 
-.fs-fire-icon.pic {
+.gb-fire-icon.pic {
   background: none;
-  box-shadow: none;
 }
 
-.fs-fire-icon img {
-  width: 118%;
-  height: 118%;
+.gb-fire-icon img {
+  width: 122%;
+  height: 122%;
   object-fit: contain;
 }
 
-.fs-fire-good .fs-fire-icon:not(.pic) {
-  background: radial-gradient(circle at 50% 60%, #fff0a0 0, #f59a2a 52%, #5a2006 100%);
+.gb-fire-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.12;
 }
 
-.fs-fire-excellent .fs-fire-icon:not(.pic) {
-  background: radial-gradient(circle at 50% 58%, #ffffff 0, #ffd86a 40%, #e07a1a 70%, #5a2406 100%);
-  box-shadow:
-    0 0 0 2px #24160e,
-    0 0 0 3.5px #ffd88a,
-    0 0 22px 7px rgba(255, 210, 110, 0.8);
-}
-
-.fs-fire-poor .fs-fire-icon:not(.pic) {
-  background: radial-gradient(circle at 50% 62%, #b8785a 0, #6a2e1e 55%, #24100a 100%);
-  box-shadow:
-    0 0 0 2px #24160e,
-    0 0 0 3.5px #6a5a4a;
-}
-
-.fs-fire-sturdy .fs-fire-icon:not(.pic) {
-  background: radial-gradient(circle at 50% 62%, #e0b080 0, #8a5a3a 55%, #2a1a10 100%);
-}
-
-.fs-fire-surge .fs-fire-icon:not(.pic) {
-  background: radial-gradient(circle at 50% 62%, #ffb060 0, #e83a1a 55%, #4a0a04 100%);
-}
-
-.fs-fire-malleable .fs-fire-icon:not(.pic) {
-  background: radial-gradient(circle at 50% 62%, #ffd8a0 0, #e08a3a 55%, #4a2008 100%);
-}
-
-.fs-fire-goodOmen .fs-fire-icon:not(.pic) {
-  background: radial-gradient(circle at 50% 62%, #fff4c0 0, #e8b040 50%, #4a2a06 100%);
-}
-
-.fs-fire-label {
-  margin-top: 1px;
-  font-size: 0.8rem;
+.gb-fire-text b {
+  font-size: 0.84rem;
   font-weight: 900;
-  line-height: 1.2;
+  white-space: nowrap;
   -webkit-text-stroke: 3px #120a06;
   paint-order: stroke fill;
 }
 
-.fs-fire-hint,
-.fs-fire-next {
-  padding: 0 5px;
-  border-radius: 6px;
-  background: rgba(0, 0, 0, 0.62);
+.gb-fire-text small {
+  display: -webkit-box;
+  overflow: hidden;
   color: #ffe0b0;
-  font-size: 0.6rem;
+  font-size: 0.7rem;
   font-weight: 700;
-  line-height: 1.5;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+/* The good fires stand out a little; 식음 sinks. */
+.gb-fire-good,
+.gb-fire-excellent,
+.gb-fire-goodOmen {
+  background: rgba(120, 70, 10, 0.45);
+  box-shadow: inset 0 0 0 1px rgba(255, 210, 120, 0.5);
+}
+
+.gb-fire-excellent {
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 230, 160, 0.85),
+    0 0 12px 2px rgba(255, 200, 100, 0.45);
+}
+
+.gb-fire-good .gb-fire-text b,
+.gb-fire-excellent .gb-fire-text b {
+  color: #ffe08a;
+}
+
+.gb-fire-poor .gb-fire-text b {
+  color: #c8b8a8;
+}
+
+.gb-fire-good .gb-fire-icon:not(.pic) {
+  background: radial-gradient(circle at 50% 60%, #fff0a0 0, #f59a2a 52%, #5a2006 100%);
+}
+
+.gb-fire-excellent .gb-fire-icon:not(.pic) {
+  background: radial-gradient(circle at 50% 58%, #ffffff 0, #ffd86a 40%, #e07a1a 70%, #5a2406 100%);
+}
+
+.gb-fire-poor .gb-fire-icon:not(.pic) {
+  background: radial-gradient(circle at 50% 62%, #b8785a 0, #6a2e1e 55%, #24100a 100%);
+}
+
+.gb-fire-sturdy .gb-fire-icon:not(.pic) {
+  background: radial-gradient(circle at 50% 62%, #e0b080 0, #8a5a3a 55%, #2a1a10 100%);
+}
+
+.gb-fire-surge .gb-fire-icon:not(.pic) {
+  background: radial-gradient(circle at 50% 62%, #ffb060 0, #e83a1a 55%, #4a0a04 100%);
+}
+
+.gb-fire-malleable .gb-fire-icon:not(.pic) {
+  background: radial-gradient(circle at 50% 62%, #ffd8a0 0, #e08a3a 55%, #4a2008 100%);
+}
+
+.gb-fire-goodOmen .gb-fire-icon:not(.pic) {
+  background: radial-gradient(circle at 50% 62%, #fff4c0 0, #e8b040 50%, #4a2a06 100%);
+}
+
+/* The craft is over: the bars keep the final numbers; the fire and 열기 step back. */
+.gb-band.done .gb-heat,
+.gb-band.done .gb-fire {
+  opacity: 0.4;
+  transition: opacity 0.4s;
+  pointer-events: none;
+}
+
+.fs-chip {
+  padding: 0 7px;
+  border: 1px solid rgba(255, 200, 120, 0.4);
+  border-radius: 999px;
+  background: rgba(40, 24, 12, 0.88);
+  color: #ffe2b8;
+  font-size: 0.66rem;
+  font-weight: 700;
+  line-height: 1.55;
   white-space: nowrap;
 }
 
-.fs-fire-next {
-  margin-top: 2px;
+.fs-chip.lab {
+  border-color: rgba(140, 180, 255, 0.45);
+  background: rgba(22, 30, 54, 0.88);
   color: #d4e2ff;
 }
 
-/* The dwarf speaks: right of his head, in front of the floating numbers (z 5) still rising from the last blow. */
+.fs-chip.next {
+  border-color: rgba(255, 220, 140, 0.55);
+  background: rgba(60, 36, 10, 0.9);
+  color: #ffe8a8;
+}
+
+/* The dwarf speaks: right of his head, in front of the floating numbers still rising from the last blow. */
 .fs-say {
   position: absolute;
-  z-index: 6;
+  z-index: 8;
   padding: 6px 10px;
   border-radius: 12px;
   background: #f6ead2;
@@ -587,11 +749,12 @@ svg.fs-heat-icon {
   transform: translateY(-50%);
 }
 
-/* Over the hand's layer (z-index 4), so a played card hovering over the scene never hides them. */
+/* Over the gauge band, the hand and the bottom row: a played card hovering over the scene never
+   hides them, and they stay in sight all the way into their bar (or the durability orb). */
 .fs-floats {
   position: absolute;
   inset: 0;
-  z-index: 5;
+  z-index: 7;
   pointer-events: none;
 }
 
@@ -603,12 +766,46 @@ svg.fs-heat-icon {
   white-space: nowrap;
   -webkit-text-stroke: 4px #120a06;
   paint-order: stroke fill;
+  transition: opacity 0.22s ease-out;
+}
+
+/* Moved by ForgeStage (Web Animations): rise, hold, then drawn into its bar. */
+.fs-float-in {
+  display: block;
   opacity: 0;
-  animation: fs-float 1.15s ease-out forwards;
+  transform: translateX(-50%);
+  will-change: transform, opacity;
 }
 
 .fs-float.hush {
-  animation: fs-float-hush 0.22s ease-out forwards;
+  opacity: 0;
+}
+
+/* The spark a number turns into on its way into its bar (ForgeStage sizes and moves it). */
+.fs-float-spark {
+  position: absolute;
+  left: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fffbe8 0 30%, #ffc874 60%, rgba(255, 160, 60, 0) 100%);
+  box-shadow: 0 0 8px 3px rgba(255, 190, 90, 0.75);
+  opacity: 0;
+  will-change: transform, opacity;
+  pointer-events: none;
+}
+
+.fs-float-quality .fs-float-spark {
+  background: radial-gradient(circle, #ffffff 0 30%, #ffe27a 60%, rgba(255, 220, 120, 0) 100%);
+  box-shadow: 0 0 8px 3px rgba(255, 230, 150, 0.8);
+}
+
+.fs-float-heat .fs-float-spark {
+  background: radial-gradient(circle, #fff0d8 0 30%, #ff8a5a 60%, rgba(255, 110, 60, 0) 100%);
+  box-shadow: 0 0 8px 3px rgba(255, 120, 60, 0.75);
+}
+
+.fs-float-restore .fs-float-spark {
+  background: radial-gradient(circle, #ffffff 0 30%, #a8dcff 60%, rgba(140, 200, 255, 0) 100%);
+  box-shadow: 0 0 8px 3px rgba(140, 200, 255, 0.75);
 }
 
 .fs-float-progress {
@@ -718,9 +915,16 @@ svg.fs-heat-icon {
   width: min(100%, 340px);
   min-width: 0;
   padding: 14px 18px 12px;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(255, 200, 110, 0.32), transparent 70%),
+    #170e09;
   transform: none;
   animation: ft-end-in 0.55s cubic-bezier(0.2, 0.9, 0.3, 1.15);
   pointer-events: auto;
+}
+
+.ft-end-wrap .fs-end.fail {
+  background: #120b08;
 }
 
 .ft-hand.ended .ah-box {
@@ -746,26 +950,13 @@ svg.fs-heat-icon {
 /* ---------- Hand ---------- */
 
 /* Tall enough for a full hand's cards (layout.ts HAND_FAN, about 0.28 of the width, 2:3) and the
-   hint line; a small hand's cards are capped by this height. */
+   hint line (tableLayout.ts tableRows); a small hand's cards are capped by this height. */
 .ft-hand {
   position: relative;
   z-index: 4;
-  flex: 1 0 auto;
-  height: clamp(150px, calc(min(100vw, 480px) * 0.42 + 40px), 262px);
+  flex: none;
+  height: var(--ft-hand-h, 200px);
   min-height: 0;
-}
-
-/* The scene's floor fades into the table under the hand. */
-.fs-stage::after {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  z-index: 1;
-  height: 22px;
-  background: linear-gradient(180deg, rgba(18, 12, 9, 0), #120c09);
-  content: '';
-  pointer-events: none;
 }
 
 .ft-hint {
@@ -820,6 +1011,7 @@ svg.fs-heat-icon {
   position: absolute;
   bottom: calc(100% + 6px);
   left: 50%;
+  z-index: 1;
   padding: 2px 8px;
   border-radius: 999px;
   background: rgba(14, 9, 6, 0.88);
@@ -843,6 +1035,12 @@ svg.fs-heat-icon {
   right: 0;
   left: auto;
   transform: none;
+}
+
+/* The lifted card's tip sits over its bottom edge: over its top is the gauge band. */
+.ah-tip.under {
+  top: calc(100% - 12px);
+  bottom: auto;
 }
 
 .ah-tip.ready {
@@ -948,7 +1146,7 @@ svg.fs-heat-icon {
   flex: none;
   align-items: flex-end;
   gap: 6px;
-  height: 80px;
+  height: var(--ft-foot-h, 80px);
   padding: 6px 8px 8px;
   background: linear-gradient(180deg, rgba(18, 12, 9, 0), #1a110b 34%, #140d09);
 }
@@ -1078,6 +1276,17 @@ svg.fs-heat-icon {
 
 .ft-orb-float.up {
   color: #a8dcff;
+}
+
+/* 내구도 +n flies in from the anvil: the orb brightens as it lands. */
+.ft-orb-absorb {
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(220, 240, 255, 0.85), rgba(140, 200, 255, 0));
+  opacity: 0;
+  animation: gb-absorb 0.55s ease-out both;
+  pointer-events: none;
 }
 
 .ft-pile {
@@ -1333,35 +1542,15 @@ svg.fs-heat-icon {
   }
 }
 
-@keyframes fs-float {
+@keyframes gb-absorb {
   0% {
     opacity: 0;
-    transform: translate(-50%, 10px) scale(0.7);
   }
-  14% {
-    opacity: 1;
-    transform: translate(-50%, 0) scale(1.18);
-  }
-  30% {
-    transform: translate(-50%, -4px) scale(1);
-  }
-  80% {
+  25% {
     opacity: 1;
   }
   100% {
     opacity: 0;
-    transform: translate(-50%, -44px) scale(1);
-  }
-}
-
-@keyframes fs-float-hush {
-  from {
-    opacity: 0.85;
-    transform: translate(-50%, -24px);
-  }
-  to {
-    opacity: 0;
-    transform: translate(-50%, -34px);
   }
 }
 
@@ -1419,40 +1608,61 @@ svg.fs-heat-icon {
   }
 }
 
-@media (max-height: 700px) {
-  .ft-top {
-    height: 46px;
+/* A short screen (tableLayout.ts: under TABLE_ROWS.shortH): smaller orb and button, a tighter band. */
+.ft-root.short .ft-orb {
+  width: 60px;
+  height: 60px;
+}
+
+.ft-root.short .ft-orb b {
+  font-size: 1.4rem;
+}
+
+.ft-root.short .ft-orb small {
+  margin-bottom: 14px;
+}
+
+.ft-root.short .ft-reheat {
+  min-width: 92px;
+  height: 54px;
+}
+
+.ft-root.short .gb-band {
+  grid-template-rows: 24px 24px;
+  gap: 5px 6px;
+  padding-top: 5px;
+}
+
+.ft-root.short .gb-num {
+  font-size: 0.94rem;
+}
+
+.ft-root.short .gb-tick::before,
+.ft-root.short .gb-tick::after {
+  height: 4px;
+}
+
+.ft-root.short .gb-marks {
+  height: 12px;
+}
+
+.ft-root.short .gb-fire {
+  height: 40px;
+}
+
+/* A narrow phone: a slimmer right column, so the bars keep room for "품질 +111 … 1,200 / 1,600". */
+@media (max-width: 340px) {
+  .gb-band {
+    grid-template-columns: minmax(0, 1fr) 90px;
   }
 
-  .ft-foot {
-    height: 72px;
+  .gb-label {
+    gap: 4px;
+    padding: 0 5px;
   }
 
-  .ft-orb {
-    width: 60px;
-    height: 60px;
-  }
-
-  .ft-orb b {
-    font-size: 1.4rem;
-  }
-
-  .ft-orb small {
-    margin-bottom: 14px;
-  }
-
-  .ft-reheat {
-    min-width: 92px;
-    height: 54px;
-  }
-
-  .fs-gauges {
-    gap: 4px 5px;
-    padding: 5px;
-  }
-
-  .fs-track {
-    height: 15px;
+  .gb-num {
+    font-size: 0.9rem;
   }
 }
 
@@ -1480,16 +1690,15 @@ svg.fs-heat-icon {
   }
 }
 
-.ft-root.reduced .fs-float,
 .ft-root.reduced .ft-orb-float {
   animation-duration: 0.9s;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .gc-finish,
-  .fs-ghost,
-  .fs-mark.next,
-  .fs-tag-fin,
+  .gb-ghost,
+  .gb-mark.next,
+  .gb-tag,
   .ft-reheat.glow,
   .ft-orb.danger {
     animation: none;
@@ -1497,13 +1706,15 @@ svg.fs-heat-icon {
 
   .ah-slot,
   .ah-card,
-  .fs-fill {
+  .gb-fill,
+  .gb-band,
+  .gb-band::after {
     transition-duration: 0.01s;
   }
 
   .fs-end,
-  .fs-fire-icon,
-  .fs-heat b {
+  .gb-fire-icon,
+  .gb-heat b {
     animation: none;
   }
 }
