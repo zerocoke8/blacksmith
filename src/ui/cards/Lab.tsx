@@ -23,6 +23,7 @@ import {
   REHEAT_COST_RANGE,
 } from '../../sim/data/cards.ts';
 import { systemClock } from '../../platform/clock.ts';
+import { setArtScreen, useArtScreen } from './artPref.ts';
 import { rulesOf } from './flow.ts';
 import { Seg, Sheet, Stepper, Toggle } from './parts.tsx';
 import { recordsJson, type RecordSummary, summarize, summarizeBySettings } from './record.ts';
@@ -131,12 +132,23 @@ export function Lab({ profile, records, craftActive, onLab, onProfile, onClearRe
 
   const all = summarize(records);
   const groups = summarizeBySettings(records);
+  const artScreen = useArtScreen();
 
   return (
     <div className="kc-lab">
       <p className="kc-note">
         {craftActive ? '만들던 무기는 처음 설정 그대로 친다. 바꾼 것은 다음 제작부터.' : '바꾼 것은 다음 제작부터 적용된다.'}
       </p>
+
+      <section className="kc-panel">
+        <h3>화면</h3>
+        <Toggle
+          on={artScreen}
+          onChange={setArtScreen}
+          label="아트 화면"
+          sub="대장간 장면과 카드 연출. 끄면 예전 화면으로 비교한다. 바로 바뀐다"
+        />
+      </section>
 
       <section className="kc-panel">
         <h3>규칙 [검증]</h3>
@@ -293,7 +305,7 @@ export function Lab({ profile, records, craftActive, onLab, onProfile, onClearRe
           on={lab.tapToPreview}
           onChange={(on) => onLab((l) => ({ ...l, tapToPreview: on }))}
           label="두 번 눌러 내기"
-          sub="첫 번째는 미리 보기 (기획서 4.2.9). 끄면 한 번에 낸다"
+          sub="첫 번째는 미리 보기 (기획서 4.2.9). 끄면 한 번에 낸다. 아트 화면은 늘 카드를 들어 올린 뒤 낸다"
         />
         <Toggle
           on={lab.temperFree}

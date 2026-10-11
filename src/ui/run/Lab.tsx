@@ -19,6 +19,7 @@ import {
   WALL_PRESETS,
 } from '../../sim/data/run.ts';
 import { resolveRunRules, type RunState, wallDeadlines } from '../../sim/run/index.ts';
+import { setArtScreen, useArtScreen } from '../cards/artPref.ts';
 import { copyText, download } from '../cards/Lab.tsx';
 import { Seg, Sheet, Stepper, Toggle } from '../cards/parts.tsx';
 import { duration } from '../cards/text.ts';
@@ -76,6 +77,8 @@ export function RunLabPanel({ lab, records, run, hallCount, onLab, onDropRun, on
     setManual(ok ? null : text);
   };
 
+  const artScreen = useArtScreen();
+
   return (
     <div className="kc-lab">
       <p className="kc-note">
@@ -83,6 +86,16 @@ export function RunLabPanel({ lab, records, run, hallCount, onLab, onDropRun, on
           ? `지금 판은 처음 설정 그대로 간다 (${starText(run.setup.hero.star)} · ${rulesLine(run.rules)}). 바꾼 것은 다음 판부터.`
           : '바꾼 것은 다음 판부터 적용된다.'}
       </p>
+
+      <section className="kc-panel">
+        <h3>화면</h3>
+        <Toggle
+          on={artScreen}
+          onChange={setArtScreen}
+          label="아트 화면"
+          sub="단조를 대장간 장면과 카드 연출로 친다. 끄면 예전 화면"
+        />
+      </section>
 
       <section className="kc-panel">
         <h3>성급 [검증]</h3>

@@ -1,40 +1,73 @@
-// 제작 화면 (4.2.9). Gauges on top, the anvil in the middle, the hand at the bottom where
-// the thumb is. It shows what the engine computed and forwards taps (CLAUDE.md 규칙 2):
-// costs, reasons, 막타 and previews all come from sim/cards.
+// 제작 화면 (4.2.9). Two faces of one table: the art screen (ArtTable: the workshop scene, a fan
+// of real cards, effects) and the plain one below (gauges on top, the anvil in the middle, the
+// hand at the bottom), which is also the fallback where WebGL is missing. Both show what the
+// engine computed and forward taps (CLAUDE.md 규칙 2): costs, reasons, 막타 and previews all
+// come from sim/cards.
 
-import { type CSSProperties, useEffect, useRef, useState } from 'react';
+import { Component, type CSSProperties, type ErrorInfo, lazy, type ReactNode, Suspense, useEffect, useRef, useState } from 'react';
 import type { QualityTier } from '../../sim/core/types.ts';
 import {
   activeEffects,
-  type CardCraftState,
-  cardCostSteps,
-  cardKeywordHelp,
   cardName,
   cardQualityRatio,
   cardRuleNotes,
-  checkPlay,
   currentTier,
-  drawPileSummary,
   type HandCardView,
   handView,
   nextFirePreview,
   pileCounts,
   type PlayOptions,
-  type PlayPreview,
-  playNeeds,
-  previewPlay,
-  reheatInfo,
-  temperNeed,
 } from '../../sim/cards/index.ts';
 import { QUALITY } from '../../sim/data/common.ts';
-import { type CardId, DWARF_LINES, FIRE_HINT, FIRE_LABEL, HEAT } from '../../sim/data/cards.ts';
-import { UNIQUES } from '../../sim/data/uniques.ts';
-import { grouped } from './Prep.tsx';
-import { CardFace, reducedMotion, Sheet, usePress } from './parts.tsx';
+import { DWARF_LINES, FIRE_HINT, FIRE_LABEL, HEAT } from '../../sim/data/cards.ts';
+import { artScreenUsable, markArtBroken, useArtScreen } from './artPref.ts';
+import { reducedMotion, usePress } from './parts.tsx';
 import type { CardProfile, CardSession } from './store.ts';
-import { logLine, RULE_LINES, signed, stars, tierName } from './text.ts';
+import { safePreview, TableSheets, useTableFlow } from './tableFlow.tsx';
+import { logLine, signed, stars, tierName } from './text.ts';
 
-interface Props {
+/**
+ * The art table's chunk. If it cannot be fetched (offline, or a tab left open across a
+ * redeploy, whose old hashed chunk is gone) the plain table stands in, instead of a blank page.
+ */
+const ArtTable = lazy(() =>
+  import('./ArtTable.tsx').catch(() => {
+    markArtBroken();
+    return { default: ArtStandIn };
+  }),
+);
+
+/** In place of an art table that could not load: tells the host (it switches to the plain table) and shows it meanwhile. */
+function ArtStandIn(props: TableProps & { onUnavailable(): void }) {
+  const unavailable = useRef(props.onUnavailable);
+  unavailable.current = props.onUnavailable;
+  useEffect(() => unavailable.current(), []);
+  return <ClassicTable {...props} />;
+}
+
+/** Anything the art table throws while drawing: note it, and show the plain table instead. */
+class ArtBoundary extends Component<{ fallback: ReactNode; onError(): void; children: ReactNode }, { failed: boolean }> {
+  override state = { failed: false };
+
+  static getDerivedStateFromError(): { failed: boolean } {
+    return { failed: true };
+  }
+
+  override componentDidCatch(_error: unknown, _info: ErrorInfo): void {
+    this.props.onError();
+  }
+
+  override render(): ReactNode {
+    return this.state.failed ? this.props.fallback : this.props.children;
+  }
+}
+
+export interface TableMenuItem {
+  label: string;
+  onClick(): void;
+}
+
+export interface TableProps {
   session: CardSession;
   profile: CardProfile;
   onPlay(uid: string, opts: PlayOptions): void;
@@ -53,50 +86,70 @@ interface Props {
   inRun?: boolean;
   /** A 육성 한 판's 시즌 보스 재료 (13.2.1) goes by the season's name, not the 4.6 material's. */
   bossMaterialName?: string;
+  /**
+   * The art screen covers the whole screen, the host's top bar too: its own back button,
+   * title and menu stand in for them.
+   */
+  onExit?(): void;
+  exitLabel?: string;
+  /** Title in the art screen's top band (default: the recipe's weapon name). */
+  title?: ReactNode;
+  /** '턴' in the card prototype, '손' in a run. */
+  turnWord?: string;
+  /** Extra menu entries (작업대, 실험 …). */
+  menu?: TableMenuItem[];
+  /**
+   * A warning from the host (saving failed, an action was refused). The art screen covers the
+   * whole page, so both tables show it themselves, under their top band.
+   */
+  notice?: ReactNode;
+  /** Which table is on screen now (true = the art screen), for the play records. */
+  onScreen?(art: boolean): void;
 }
 
-type SheetState =
-  | { kind: 'info'; uid: string }
-  | { kind: 'break'; uid: string; opts: PlayOptions }
-  | { kind: 'recall'; uid: string }
-  /** uid null: the 턴 끝 button; else a card that ends the turn (깊은 담금질). */
-  | { kind: 'keep'; uid: string | null }
-  | { kind: 'reheatBreak' }
-  | { kind: 'piles' }
-  | { kind: 'log' }
-  | { kind: 'rules' }
-  | { kind: 'quit' };
+/** The art screen when it is on and the device can draw it; the plain table otherwise. */
+export function Table(props: TableProps) {
+  const art = useArtScreen();
+  const [broken, setBroken] = useState(false);
+  const showArt = art && !broken && artScreenUsable();
+  const onScreen = useRef(props.onScreen);
+  onScreen.current = props.onScreen;
+  useEffect(() => {
+    onScreen.current?.(showArt);
+  }, [showArt]);
+  if (showArt) {
+    const fallback = (
+      <div className="ft-loading" role="status">
+        화로에 불을 넣는 중…
+      </div>
+    );
+    const unavailable = () => {
+      markArtBroken();
+      setBroken(true);
+    };
+    return (
+      <ArtBoundary fallback={<ClassicTable {...props} />} onError={unavailable}>
+        <Suspense fallback={fallback}>
+          <ArtTable {...props} onUnavailable={unavailable} />
+        </Suspense>
+      </ArtBoundary>
+    );
+  }
+  return <ClassicTable {...props} />;
+}
 
 /** How long the played card takes to fly off before the engine plays it. */
 const LEAVE_MS = 170;
-/** How long the finished (or broken) iron stays on the table before the result screen. */
-const END_HOLD_MS = 1800;
+/** How long the finished (or broken) iron stays on the plain table before the result screen. */
+const CLASSIC_END_HOLD_MS = 1800;
 /** More cards than this in hand (3 rows): the cards get shorter so the gauges and 턴 끝 still fit. */
 const ROOMY_HAND = 6;
 
-function safePreview(state: CardCraftState, uid: string, opts: PlayOptions = {}): PlayPreview | null {
-  try {
-    return previewPlay(state, uid, opts);
-  } catch {
-    return null;
-  }
-}
-
-function previewParts(p: PlayPreview): string[] {
-  const parts: string[] = [];
-  if (p.progress !== 0) parts.push(`공정 ${signed(p.progress)}`);
-  if (p.quality !== 0) parts.push(`품질 ${signed(p.quality)}`);
-  if (p.heat !== 0) parts.push(`열기 ${signed(p.heat)}`);
-  parts.push(`내구도 ${signed(p.durability)}`);
-  return parts;
-}
-
-export function Table(props: Props) {
+export function ClassicTable(props: TableProps) {
   const { session, profile, onPlay, onEndTurn, onAbandon, onPileOpen, onInfoOpen, onSeen, onFinished, inRun } = props;
   const craft = session.craft;
   const r = craft.recipe;
   const views = handView(craft);
-  const info = reheatInfo(craft);
   const piles = pileCounts(craft);
   const effects = activeEffects(craft);
   const next = nextFirePreview(craft);
@@ -104,11 +157,28 @@ export function Table(props: Props) {
   const ruleNotes = inRun === true ? [] : cardRuleNotes(craft.rules).filter((n) => n !== '식는 쇠');
   const active = craft.status === 'active';
 
-  const [sheet, setSheet] = useState<SheetState | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [pressed, setPressed] = useState<string | null>(null);
   const [leaving, setLeaving] = useState<string | null>(null);
   const busy = useRef(false);
+
+  const commitPlay = (uid: string, opts: PlayOptions) => {
+    if (busy.current) return;
+    setSelected(null);
+    if (reducedMotion()) {
+      onPlay(uid, opts);
+      return;
+    }
+    busy.current = true;
+    setLeaving(uid);
+    window.setTimeout(() => {
+      busy.current = false;
+      setLeaving(null);
+      onPlay(uid, opts);
+    }, LEAVE_MS);
+  };
+  const flow = useTableFlow({ craft, commit: commitPlay, onEndTurn, onInfoOpen });
+  const { setSheet, tryPlay, info } = flow;
 
   // ---- Event effects: play flash, tier crossing, dwarf lines ----
   const [flash, setFlash] = useState<{ key: number; name: string; parts: string[]; done: boolean } | null>(null);
@@ -161,47 +231,13 @@ export function Table(props: Props) {
   finishedRef.current = onFinished;
   useEffect(() => {
     if (active) return;
-    const t = window.setTimeout(() => finishedRef.current(), reducedMotion() ? 600 : END_HOLD_MS);
+    const t = window.setTimeout(() => finishedRef.current(), reducedMotion() ? 600 : CLASSIC_END_HOLD_MS);
     return () => window.clearTimeout(t);
   }, [active]);
 
   // ---- Playing ----
   const previewUid = leaving ?? pressed ?? selected;
   const preview = previewUid !== null && craft.hand.includes(previewUid) ? safePreview(craft, previewUid) : null;
-
-  const commitPlay = (uid: string, opts: PlayOptions) => {
-    if (busy.current) return;
-    setSheet(null);
-    setSelected(null);
-    if (reducedMotion()) {
-      onPlay(uid, opts);
-      return;
-    }
-    busy.current = true;
-    setLeaving(uid);
-    window.setTimeout(() => {
-      busy.current = false;
-      setLeaving(null);
-      onPlay(uid, opts);
-    }, LEAVE_MS);
-  };
-
-  const tryPlay = (v: HandCardView) => {
-    const needs = playNeeds(craft, v.uid);
-    if (needs.targets > 0) {
-      setSheet({ kind: 'recall', uid: v.uid });
-      return;
-    }
-    if (needs.endsTurn && info.keep > 0 && craft.hand.some((u) => u !== v.uid && !info.retained.includes(u))) {
-      setSheet({ kind: 'keep', uid: v.uid });
-      return;
-    }
-    if (v.breaks) {
-      setSheet({ kind: 'break', uid: v.uid, opts: {} });
-      return;
-    }
-    commitPlay(v.uid, {});
-  };
 
   const tap = (v: HandCardView) => {
     if (busy.current || !active) return;
@@ -218,22 +254,13 @@ export function Table(props: Props) {
 
   const openInfo = (uid: string) => {
     setSelected(null);
-    setSheet({ kind: 'info', uid });
-    onInfoOpen();
+    flow.openInfo(uid);
   };
 
   const endTurnTap = () => {
     if (busy.current || !active) return;
     setSelected(null);
-    if (info.keep > 0 && craft.hand.some((u) => !info.retained.includes(u))) {
-      setSheet({ kind: 'keep', uid: null });
-      return;
-    }
-    if (info.breaks) {
-      setSheet({ kind: 'reheatBreak' });
-      return;
-    }
-    onEndTurn([]);
+    flow.endTurnTap();
   };
 
   // ---- Recent log lines: this turn's plays, newest first ----
@@ -253,6 +280,7 @@ export function Table(props: Props) {
 
   return (
     <div className="kc-table">
+      {props.notice !== undefined && props.notice !== null && <div className="kc-table-notice">{props.notice}</div>}
       <Bar
         label="공정"
         kind="progress"
@@ -273,7 +301,8 @@ export function Table(props: Props) {
         <Bar
           label="내구도"
           kind="durability"
-          value={craft.durability}
+          // A spent 막타 stops at 0 on screen, as on the art table (기획서 4.2.9).
+          value={Math.max(0, craft.durability)}
           max={craft.maxDurability}
           delta={preview ? preview.durability : null}
           danger={craft.durability <= 6}
@@ -399,105 +428,18 @@ export function Table(props: Props) {
         </button>
       </div>
 
-      {sheet?.kind === 'info' && (
-        <InfoSheet
-          craft={craft}
-          profile={profile}
-          uid={sheet.uid}
-          showTemper={inRun !== true}
-          onClose={() => setSheet(null)}
-          onPlay={(v) => {
-            setSheet(null);
-            tryPlay(v);
-          }}
-        />
-      )}
-      {sheet?.kind === 'break' && (
-        <Sheet title={cardName(craft.cards[sheet.uid] as CardId, r.materialTier)} tone="danger" onClose={() => setSheet(null)}>
-          <p>이 카드로 내구도가 바닥난다. 공정을 채우기 전에 쇠가 갈라진다.</p>
-          <p className="kc-hint">
-            {r.bossMaterial !== null ? `재료도, ${props.bossMaterialName ?? UNIQUES[r.bossMaterial].material}도 돌아오지 않는다.` : '재료는 돌아오지 않는다.'}
-          </p>
-          <div className="kc-row">
-            <button type="button" className="kc-btn danger" onClick={() => commitPlay(sheet.uid, sheet.opts)}>
-              그래도 친다
-            </button>
-            <button type="button" className="kc-btn" onClick={() => setSheet(null)}>
-              손을 멈춘다
-            </button>
-          </div>
-        </Sheet>
-      )}
-      {sheet?.kind === 'recall' && (
-        <RecallSheet craft={craft} uid={sheet.uid} onClose={() => setSheet(null)} onPlay={(targets) => commitPlay(sheet.uid, { targets })} />
-      )}
-      {sheet?.kind === 'keep' && (
-        <KeepSheet
-          craft={craft}
-          uid={sheet.uid}
-          onClose={() => setSheet(null)}
-          onDone={(keep) => {
-            setSheet(null);
-            if (sheet.uid === null) onEndTurn(keep);
-            else commitPlay(sheet.uid, { keep });
-          }}
-        />
-      )}
-      {sheet?.kind === 'reheatBreak' && (
-        <Sheet title="다시 달구기" tone="danger" onClose={() => setSheet(null)}>
-          <p>이 쇠는 더 못 버틴다. 다시 달구면 갈라진다.</p>
-          <StillPlayable craft={craft} />
-          <div className="kc-row">
-            <button
-              type="button"
-              className="kc-btn danger"
-              onClick={() => {
-                setSheet(null);
-                onEndTurn([]);
-              }}
-            >
-              그래도 달군다
-            </button>
-            <button type="button" className="kc-btn" onClick={() => setSheet(null)}>
-              손패를 다시 본다
-            </button>
-          </div>
-        </Sheet>
-      )}
-      {sheet?.kind === 'piles' && <PileSheet craft={craft} onClose={() => setSheet(null)} />}
-      {sheet?.kind === 'log' && <LogSheet craft={craft} onClose={() => setSheet(null)} />}
-      {sheet?.kind === 'rules' && (
-        <Sheet title="카드 제작" onClose={() => setSheet(null)}>
-          <ul className="kc-rules">
-            {RULE_LINES.map((l) => (
-              <li key={l}>{l}</li>
-            ))}
-          </ul>
-          <button type="button" className="kc-btn" onClick={() => setSheet(null)}>
-            알겠다
-          </button>
-        </Sheet>
-      )}
-      {sheet?.kind === 'quit' && (
-        <Sheet title="망치를 내려놓는다" tone="danger" onClose={() => setSheet(null)}>
-          <p>여기서 그만두면 실패다. 재료는 돌아오지 않는다.</p>
-          <div className="kc-row">
-            <button
-              type="button"
-              className="kc-btn danger"
-              onClick={() => {
-                setSheet(null);
-                onAbandon();
-              }}
-            >
-              그만둔다
-            </button>
-            <button type="button" className="kc-btn" onClick={() => setSheet(null)}>
-              계속한다
-            </button>
-          </div>
-        </Sheet>
-      )}
+      <TableSheets
+        sheet={flow.sheet}
+        setSheet={setSheet}
+        craft={craft}
+        profile={profile}
+        inRun={inRun}
+        bossMaterialName={props.bossMaterialName}
+        commit={commitPlay}
+        tryPlay={tryPlay}
+        onEndTurn={onEndTurn}
+        onAbandon={onAbandon}
+      />
     </div>
   );
 }
@@ -698,234 +640,3 @@ function HandCard(props: {
   );
 }
 
-// ---------- Sheets ----------
-
-function InfoSheet(props: {
-  craft: CardCraftState;
-  profile: CardProfile;
-  uid: string;
-  showTemper: boolean;
-  onClose(): void;
-  onPlay(v: HandCardView): void;
-}) {
-  const { craft, profile, uid, showTemper, onClose, onPlay } = props;
-  const v = handView(craft).find((x) => x.uid === uid);
-  if (v === undefined) return null;
-  const p = v.block === null ? safePreview(craft, uid) : null;
-  const costSteps = cardCostSteps(craft, uid).steps;
-  const need = temperNeed(v.card);
-  const temper = (profile.temper[v.card] ?? 0) + (craft.uses[v.card] ?? 0);
-  return (
-    <Sheet title={v.name} onClose={onClose}>
-      <div className="kc-info-head">
-        <span className="kc-cost big">{v.cost}</span>
-        <span>
-          {v.kindLabel} 카드
-          {costSteps.length > 0 && (
-            <small>
-              {' '}
-              · 원래 코스트 {v.baseCost}, {costSteps.map((c) => `${c.label} ${signed(c.delta)}`).join(', ')}
-            </small>
-          )}
-        </span>
-      </div>
-      <p className="kc-info-text">{v.text}</p>
-      {cardKeywordHelp(v.card).map((k) => (
-        <p key={k.label} className="kc-hint">
-          <b>{k.label}</b> — {k.text}
-        </p>
-      ))}
-      {v.block !== null && <p className="kc-why">지금은 못 낸다: {v.block}</p>}
-      {p !== null && (
-        <div className="kc-preview">
-          <span>지금 내면</span>
-          <b>{previewParts(p).join(' · ')}</b>
-          {p.finishes && <em className="fin">{p.cost > craft.durability ? '막타 — 내구도가 모자라도 이 한 방으로 완성' : '이 한 방으로 완성'}</em>}
-          {p.breaks && <em className="brk">내구도가 바닥나 쇠가 갈라진다</em>}
-        </div>
-      )}
-      {showTemper && need !== null && (
-        <p className="kc-hint">
-          단련 {Math.min(temper, need)} / {need}
-          {temper >= need && ' — 작업대에서 진화할 수 있다'}
-        </p>
-      )}
-      <div className="kc-row">
-        {v.block === null && craft.status === 'active' && (
-          <button type="button" className="kc-btn primary" onClick={() => onPlay(v)}>
-            낸다
-          </button>
-        )}
-        <button type="button" className="kc-btn" onClick={onClose}>
-          닫기
-        </button>
-      </div>
-    </Sheet>
-  );
-}
-
-function RecallSheet(props: { craft: CardCraftState; uid: string; onClose(): void; onPlay(targets: string[]): void }) {
-  const { craft, uid, onClose, onPlay } = props;
-  const [picked, setPicked] = useState<string[]>([]);
-  const id = craft.cards[uid] as CardId;
-  const max = playNeeds(craft, uid).targets;
-  const check = (() => {
-    try {
-      return checkPlay(craft, uid, { targets: picked });
-    } catch {
-      return null;
-    }
-  })();
-  const toggle = (u: string) =>
-    setPicked((p) => (p.includes(u) ? p.filter((x) => x !== u) : p.length < max ? [...p, u] : p));
-  return (
-    <Sheet title={cardName(id, craft.recipe.materialTier)} onClose={onClose}>
-      <p className="kc-hint">버린 더미에서 {max}장까지 골라 손으로 가져온다.</p>
-      <div className="kc-faces">
-        {craft.discard.map((u) => {
-          const cid = craft.cards[u] as CardId;
-          const on = picked.includes(u);
-          return (
-            <button key={u} type="button" className={on ? 'kc-face-btn on' : 'kc-face-btn'} aria-pressed={on} onClick={() => toggle(u)}>
-              <CardFace id={cid} tier={craft.recipe.materialTier} />
-            </button>
-          );
-        })}
-      </div>
-      {check !== null && check.ok && check.breaks && <p className="kc-why">이 카드로 내구도가 바닥나 쇠가 갈라진다.</p>}
-      <div className="kc-row">
-        <button
-          type="button"
-          className={check !== null && check.ok && check.breaks ? 'kc-btn danger' : 'kc-btn primary'}
-          disabled={check === null || !check.ok}
-          onClick={() => onPlay(picked)}
-        >
-          {picked.length}장 가져온다
-        </button>
-        <button type="button" className="kc-btn" onClick={onClose}>
-          그만둔다
-        </button>
-      </div>
-    </Sheet>
-  );
-}
-
-function KeepSheet(props: { craft: CardCraftState; uid: string | null; onClose(): void; onDone(keep: string[]): void }) {
-  const { craft, uid, onClose, onDone } = props;
-  const info = reheatInfo(craft);
-  const [keep, setKeep] = useState<string[]>([]);
-  const choices = craft.hand.filter((u) => u !== uid && !info.retained.includes(u));
-  const breaks =
-    uid === null
-      ? info.breaks
-      : (() => {
-          try {
-            const c = checkPlay(craft, uid, { keep });
-            return c.ok && c.breaks;
-          } catch {
-            return false;
-          }
-        })();
-  const toggle = (u: string) =>
-    setKeep((k) => (k.includes(u) ? k.filter((x) => x !== u) : k.length < info.keep ? [...k, u] : k));
-  return (
-    <Sheet title="다시 달구기" tone={breaks ? 'danger' : undefined} onClose={onClose}>
-      <p className="kc-hint">
-        화로가 {info.keep}장까지 손에 남겨 준다. 나머지는 버린 더미로 간다. 내구도 {signed(info.durability)}.
-      </p>
-      {info.retained.length > 0 && (
-        <p className="kc-hint">
-          간직: {info.retained.map((u) => cardName(craft.cards[u] as CardId, craft.recipe.materialTier)).join(', ')} — 저절로 남는다.
-        </p>
-      )}
-      <div className="kc-faces">
-        {choices.map((u) => {
-          const on = keep.includes(u);
-          return (
-            <button key={u} type="button" className={on ? 'kc-face-btn on' : 'kc-face-btn'} aria-pressed={on} onClick={() => toggle(u)}>
-              <CardFace id={craft.cards[u] as CardId} tier={craft.recipe.materialTier} />
-            </button>
-          );
-        })}
-      </div>
-      {breaks && <p className="kc-why">이 쇠는 더 못 버틴다. 다시 달구면 갈라진다.</p>}
-      {breaks && uid === null && <StillPlayable craft={craft} />}
-      <div className="kc-row">
-        <button type="button" className={breaks ? 'kc-btn danger' : 'kc-btn primary'} onClick={() => onDone(keep)}>
-          {breaks ? '그래도 달군다' : keep.length > 0 ? `${keep.length}장 남기고 달군다` : '모두 버리고 달군다'}
-        </button>
-        <button type="button" className="kc-btn" onClick={onClose}>
-          손패를 다시 본다
-        </button>
-      </div>
-    </Sheet>
-  );
-}
-
-/** Before a 다시 달구기 that breaks the iron: the cards that can still go (a 담금질, a finishing blow). */
-function StillPlayable({ craft }: { craft: CardCraftState }) {
-  const names = handView(craft)
-    .filter((v) => v.block === null && !v.breaks)
-    .map((v) => v.name);
-  if (names.length === 0) return null;
-  return <p className="kc-hint">아직 낼 수 있는 카드: {names.join(', ')}</p>;
-}
-
-function PileSheet({ craft, onClose }: { craft: CardCraftState; onClose(): void }) {
-  const tier = craft.recipe.materialTier;
-  const ids = (uids: readonly string[]) => uids.map((u) => craft.cards[u] as CardId);
-  const sections: { title: string; note?: string; list: { id: CardId; count: number }[]; size: number }[] = [
-    {
-      title: '뽑을 더미',
-      note: '순서는 모른다',
-      list: drawPileSummary(craft).map((x) => ({ id: x.card, count: x.count })),
-      size: craft.drawPile.length,
-    },
-    { title: '버린 더미', note: '뽑을 더미가 비면 섞여 돌아온다', list: grouped(ids(craft.discard)), size: craft.discard.length },
-    { title: '소멸', note: '이번 제작에서 빠졌다', list: grouped(ids(craft.exhausted)), size: craft.exhausted.length },
-  ];
-  return (
-    <Sheet title="남은 카드" onClose={onClose}>
-      {sections.map((s) => (
-        <section key={s.title} className="kc-pile-sec">
-          <h4>
-            {s.title} <b>{s.size}장</b> {s.note !== undefined && <small>{s.note}</small>}
-          </h4>
-          {s.list.length === 0 ? (
-            <p className="kc-hint">비었다.</p>
-          ) : (
-            <div className="kc-faces">
-              {s.list.map(({ id, count }) => (
-                <CardFace key={id} id={id} tier={tier} count={count} />
-              ))}
-            </div>
-          )}
-        </section>
-      ))}
-      <button type="button" className="kc-btn" onClick={onClose}>
-        닫기
-      </button>
-    </Sheet>
-  );
-}
-
-function LogSheet({ craft, onClose }: { craft: CardCraftState; onClose(): void }) {
-  const lines = craft.log
-    .map((e, i) => ({ i, turn: e.kind === 'turn', text: logLine(craft, e) }))
-    .filter((l): l is { i: number; turn: boolean; text: string } => l.text !== null)
-    .reverse();
-  return (
-    <Sheet title="턴 기록" onClose={onClose}>
-      <ol className="kc-fulllog">
-        {lines.map((l) => (
-          <li key={l.i} className={l.turn ? 'turn' : undefined}>
-            {l.text}
-          </li>
-        ))}
-      </ol>
-      <button type="button" className="kc-btn" onClick={onClose}>
-        닫기
-      </button>
-    </Sheet>
-  );
-}

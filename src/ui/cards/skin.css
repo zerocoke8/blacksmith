@@ -1,0 +1,382 @@
+/* The card craft's screens around the anvil (준비, 작업대, 완성, 실험) dressed like the anvil:
+   the workshop wall behind, a wooden top band, leather and riveted iron panels, forged
+   buttons, serif headings. Scoped to .kc-skin (CardCraft.tsx); the run's screens keep theirs. */
+
+.kc-skin {
+  --kc-panel-top: rgba(60, 42, 28, 0.93);
+  --kc-panel-bottom: rgba(34, 24, 17, 0.95);
+  --kc-brass: #a07a4a;
+  padding-top: 0;
+  background:
+    linear-gradient(180deg, rgba(16, 10, 7, 0.72), rgba(16, 10, 7, 0.9) 34%, rgba(12, 8, 6, 0.97) 70%),
+    var(--kc-bg, none) center top / cover no-repeat fixed,
+    #140d09;
+}
+
+/* Top band: wood and soot, like the anvil's. */
+.kc-skin .kc-bar {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  min-height: 52px;
+  margin: 0 -12px;
+  padding: calc(4px + env(safe-area-inset-top)) 8px 4px;
+  border-bottom: 2px solid #0e0805;
+  background:
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.05) 0 3px, transparent 3px 7px),
+    linear-gradient(180deg, #43301f, #2a1c12 60%, #22170f);
+  box-shadow:
+    inset 0 -1px 0 rgba(255, 200, 140, 0.16),
+    0 3px 8px rgba(0, 0, 0, 0.55);
+}
+
+.kc-skin .kc-bar-title {
+  color: #ffe3b0;
+  font-family: var(--ft-serif);
+  font-size: 1.04rem;
+  text-shadow: 0 1px 0 #000;
+}
+
+/* Buttons: worn leather; the main one a plate pulled from the forge. */
+.kc-skin .kc-btn {
+  border: 1px solid #120a06;
+  background: linear-gradient(180deg, #5a4230, #352418);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 220, 180, 0.22),
+    0 1px 2px rgba(0, 0, 0, 0.6);
+  color: #f6e2c2;
+}
+
+.kc-skin .kc-btn.ghost {
+  background: linear-gradient(180deg, rgba(70, 50, 34, 0.75), rgba(40, 28, 19, 0.75));
+}
+
+.kc-skin .kc-btn.primary {
+  border: 1px solid #2a1208;
+  background: linear-gradient(180deg, #e0913f, #b05a1e 55%, #7e3812);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 232, 190, 0.6),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.28),
+    0 0 0 2px #1a0e08,
+    0 0 0 3.5px var(--kc-brass),
+    0 6px 14px rgba(0, 0, 0, 0.5);
+  color: #fff6e4;
+  font-family: var(--ft-serif);
+  letter-spacing: 0.06em;
+  text-shadow: 0 1px 0 #3a1806;
+}
+
+.kc-skin .kc-btn.primary.big {
+  min-height: 58px;
+  margin: 4px 0;
+  font-size: 1.15rem;
+}
+
+.kc-skin .kc-btn.primary:disabled {
+  filter: grayscale(0.7) brightness(0.7);
+  opacity: 1;
+}
+
+/* Panels: leather in a thin brass rim, a rivet in each corner. */
+.kc-skin .kc-panel {
+  border: 1px solid #120a06;
+  border-radius: 12px;
+  background:
+    radial-gradient(circle at 9px 9px, #c8a070 0 1.6px, #3a2614 2.4px, transparent 3px),
+    radial-gradient(circle at calc(100% - 9px) 9px, #c8a070 0 1.6px, #3a2614 2.4px, transparent 3px),
+    radial-gradient(circle at 9px calc(100% - 9px), #c8a070 0 1.6px, #3a2614 2.4px, transparent 3px),
+    radial-gradient(circle at calc(100% - 9px) calc(100% - 9px), #c8a070 0 1.6px, #3a2614 2.4px, transparent 3px),
+    linear-gradient(180deg, var(--kc-panel-top), var(--kc-panel-bottom));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 220, 170, 0.14),
+    inset 0 0 0 1px rgba(160, 122, 74, 0.38),
+    0 4px 12px rgba(0, 0, 0, 0.45);
+}
+
+.kc-skin .kc-panel h3,
+.kc-skin .kc-block h3 {
+  color: #e8c890;
+  font-family: var(--ft-serif);
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-shadow: 0 1px 0 #000;
+}
+
+.kc-skin .kc-panel h4 {
+  color: #e8d2b0;
+  font-family: var(--ft-serif);
+}
+
+.kc-skin .kc-lead {
+  margin-top: 8px;
+  color: #ffe3b0;
+  font-family: var(--ft-serif);
+  font-size: 1.3rem;
+  text-shadow:
+    0 1px 0 #000,
+    0 0 14px rgba(255, 160, 70, 0.35);
+}
+
+.kc-skin .kc-seg-btn {
+  border: 1px solid #120a06;
+  background: linear-gradient(180deg, rgba(74, 54, 38, 0.92), rgba(42, 30, 21, 0.92));
+  box-shadow: inset 0 1px 0 rgba(255, 220, 180, 0.16);
+}
+
+.kc-skin .kc-seg-btn.on {
+  border-color: #2a1208;
+  background: linear-gradient(180deg, #7a4a22, #4a2a12);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 220, 170, 0.35),
+    0 0 0 2px #ffcf8a,
+    0 0 12px 2px rgba(255, 170, 80, 0.45);
+  color: #fff3dc;
+}
+
+.kc-skin .kc-face {
+  border-color: rgba(160, 122, 74, 0.35);
+  background: linear-gradient(180deg, rgba(56, 40, 27, 0.92), rgba(34, 24, 17, 0.92));
+}
+
+.kc-skin .kc-start {
+  background: linear-gradient(180deg, rgba(16, 10, 7, 0), rgba(16, 10, 7, 0.94) 30%);
+}
+
+/* ---------- 준비: the weapon to forge, as pictures ---------- */
+
+.kc-weapons {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.kc-weapon {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  min-height: 84px;
+  padding: 4px 4px 6px;
+  overflow: hidden;
+  border: 1px solid #120a06;
+  border-radius: 10px;
+  background:
+    radial-gradient(ellipse at 50% 45%, rgba(255, 160, 80, 0.18), transparent 70%),
+    linear-gradient(180deg, rgba(58, 42, 28, 0.92), rgba(30, 21, 15, 0.94));
+  box-shadow: inset 0 1px 0 rgba(255, 220, 180, 0.14);
+  color: #e8d2b0;
+  font: inherit;
+  cursor: pointer;
+}
+
+/* Centred without a transform: the crossbow's mirror (an inline scale) must not move it. */
+.kc-weapon img {
+  position: absolute;
+  top: 6%;
+  right: 0;
+  left: 0;
+  width: 62px;
+  height: 52px;
+  margin: 0 auto;
+  object-fit: contain;
+  filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.6)) brightness(0.85);
+}
+
+.kc-weapon span {
+  position: relative;
+  font-family: var(--ft-serif);
+  font-size: 0.92rem;
+  text-shadow: 0 1px 2px #000;
+}
+
+.kc-weapon.on {
+  border-color: #2a1208;
+  background:
+    radial-gradient(ellipse at 50% 45%, rgba(255, 190, 100, 0.42), transparent 70%),
+    linear-gradient(180deg, #6a4222, #3a2210);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 220, 170, 0.35),
+    0 0 0 2px #ffcf8a,
+    0 0 14px 3px rgba(255, 170, 80, 0.45);
+  color: #fff3dc;
+}
+
+.kc-weapon.on img {
+  filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.6)) drop-shadow(0 0 6px rgba(255, 200, 120, 0.6));
+}
+
+.kc-weapon:active {
+  transform: translateY(1px);
+}
+
+/* ---------- 완성 ---------- */
+
+.kc-skin .kc-line-main {
+  margin: 2px 0 0;
+  color: #ffe8c8;
+  font-family: var(--ft-serif);
+  font-size: 1.08rem;
+  text-align: center;
+  word-break: keep-all;
+}
+
+.kc-learned {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.kc-learned h3 {
+  margin: 0;
+  color: #ffd98a;
+  font-family: var(--ft-serif);
+  font-size: 1rem;
+  letter-spacing: 0.08em;
+  text-shadow: 0 0 12px rgba(255, 190, 90, 0.5);
+}
+
+.kc-learned .kc-hint {
+  margin: 0;
+}
+
+.kc-learned-cards {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+
+/* A new card turns over out of the light, one after another. */
+.kc-reveal {
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.6));
+  animation: kc-reveal 0.6s cubic-bezier(0.2, 0.9, 0.3, 1.15) backwards;
+}
+
+.kc-reveal .gc {
+  box-shadow: 0 0 16px 3px rgba(255, 200, 110, 0.35);
+}
+
+@keyframes kc-reveal {
+  0% {
+    opacity: 0;
+    filter: brightness(2.4) drop-shadow(0 0 16px rgba(255, 220, 140, 0.9));
+    transform: translateY(16px) rotateY(80deg) scale(0.85);
+  }
+  60% {
+    opacity: 1;
+    filter: brightness(1.4) drop-shadow(0 0 12px rgba(255, 210, 130, 0.7));
+  }
+  100% {
+    filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.6));
+    transform: none;
+  }
+}
+
+.kc-result-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.kc-result-actions .kc-row > .kc-btn {
+  flex: 1;
+}
+
+.kc-more > summary,
+.kc-slotpick > summary {
+  min-height: 44px;
+  padding: 10px 0;
+  color: #e8c890;
+  font-family: var(--ft-serif);
+  font-size: 0.95rem;
+  cursor: pointer;
+  list-style-position: inside;
+}
+
+.kc-more > summary small,
+.kc-slotpick > summary small {
+  margin-left: 6px;
+  color: var(--muted);
+  font-family: system-ui, sans-serif;
+  font-size: 0.75rem;
+}
+
+.kc-weapon-sum h4 {
+  margin-top: 14px;
+}
+
+.kc-turns-cards {
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+/* ---------- 작업대: the cards as cards ---------- */
+
+.kc-benchgrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+  gap: 12px 8px;
+  justify-items: center;
+}
+
+.kc-benchcard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 104px;
+}
+
+.kc-benchcard-face {
+  position: relative;
+  padding: 0;
+  border: none;
+  border-radius: 7px;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.55));
+}
+
+.kc-benchcard.in .kc-benchcard-face .gc {
+  box-shadow:
+    0 0 0 2px #ffcf8a,
+    0 0 12px 3px rgba(255, 170, 80, 0.45);
+}
+
+.kc-benchcard-n {
+  position: absolute;
+  top: -8px;
+  right: -6px;
+  z-index: 5;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: #1a100a;
+  box-shadow: 0 0 0 1.5px #ffcf8a;
+  color: #ffe3b0;
+  font-size: 0.72rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.kc-benchcard .kc-deckrow-ctl {
+  justify-content: center;
+}
+
+.kc-benchcard .kc-deckrow-why {
+  margin: 0;
+  text-align: center;
+  word-break: keep-all;
+}
+
+.kc-benchcard.dim .kc-benchcard-face {
+  filter: grayscale(0.85) brightness(0.55) drop-shadow(0 4px 6px rgba(0, 0, 0, 0.55));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kc-reveal {
+    animation: none;
+  }
+}

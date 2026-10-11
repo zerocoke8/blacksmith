@@ -25,6 +25,7 @@ import {
   startRun,
   turnView,
 } from '../../sim/run/index.ts';
+import { artScreenActive } from '../cards/artPref.ts';
 import { cardStore } from '../cards/store.ts';
 import '../cards/cards.css';
 import { ChoiceView } from './Choice.tsx';
@@ -84,6 +85,8 @@ export function RunMode({ onExit }: Props) {
   const overlayRef = useRef<Overlay>(null);
   const lastTick = useRef<number | null>(null);
   const pendingMs = useRef(0);
+  /** The table the 단조 was last played on (true = the art screen); null before any 단조. */
+  const forgeArt = useRef<boolean | null>(null);
 
   const saved = (p: Promise<boolean>) => {
     p.then((ok) => {
@@ -192,7 +195,9 @@ export function RunMode({ onExit }: Props) {
     const s = runRef.current;
     const m = metaRef.current;
     if (s === null || m === null || m.recorded || s.phase !== 'over') return;
-    const record = buildRunRecord(s, m, systemClock.nowMs(), prefsRef.current.lab.tapToPreview);
+    // The art screen always plays with two taps; the plain table only with its switch.
+    const art = forgeArt.current ?? artScreenActive();
+    const record = buildRunRecord(s, m, systemClock.nowMs(), art || prefsRef.current.lab.tapToPreview, art);
     const list = recordsRef.current.filter((r) => r.id !== record.id);
     putRecords([...list, record].slice(-RUN_RECORD_LIMIT));
     putMeta({ ...m, recorded: true });
@@ -362,6 +367,23 @@ export function RunMode({ onExit }: Props) {
                     ? '판 끝'
                     : '시즌 악마의 탑';
 
+  const onTable = overlay === null && screen === 'forge' && craft !== null;
+  const warnings =
+    saveFailed || (notice !== null && overlay === null) ? (
+      <>
+        {saveFailed && (
+          <p className="kc-why" role="alert">
+            저장이 되지 않는다. 새로고침하면 지금 판이 사라질 수 있다.
+          </p>
+        )}
+        {notice !== null && overlay === null && (
+          <p className="kc-why" role="status" onClick={() => setNotice(null)}>
+            {notice}
+          </p>
+        )}
+      </>
+    ) : null;
+
   return (
     <div className="kc-root rn-root">
       <div className="kc-bar">
@@ -398,16 +420,8 @@ export function RunMode({ onExit }: Props) {
           </>
         )}
       </div>
-      {saveFailed && (
-        <p className="kc-why" role="alert">
-          저장이 되지 않는다. 새로고침하면 지금 판이 사라질 수 있다.
-        </p>
-      )}
-      {notice !== null && overlay === null && (
-        <p className="kc-why" role="status" onClick={() => setNotice(null)}>
-          {notice}
-        </p>
-      )}
+      {/* On the 단조 table these go into the table (the art screen covers the page). */}
+      {!onTable && warnings}
 
       {overlay === 'hall' && (
         <Hall
@@ -474,6 +488,17 @@ export function RunMode({ onExit }: Props) {
             setFailedCraft(null);
           }}
           bossMaterialName={SEASONS[run?.setup.season ?? 'ash'].bossMaterial.name}
+          onExit={onExit}
+          title={
+            run !== null && f !== null
+              ? `단조 ${f.no} · ${materialName(f.materialTier)} ${WEAPON_LABEL[FAMILIES[run.setup.hero.family].weapon]}`
+              : undefined
+          }
+          menu={[{ label: '실험', onClick: () => openOverlay('lab') }]}
+          notice={warnings}
+          onScreen={(art) => {
+            forgeArt.current = art;
+          }}
         />
       )}
       {overlay === null && screen === 'forge' && craft === null && (

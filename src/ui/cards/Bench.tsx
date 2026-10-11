@@ -33,7 +33,8 @@ import {
 } from '../../sim/data/cards.ts';
 import { collectionOf } from './flow.ts';
 import { grouped } from './Prep.tsx';
-import { CardFace, Seg } from './parts.tsx';
+import { GameCard } from './GameCard.tsx';
+import { Seg, Sheet } from './parts.tsx';
 import { type CardProfile, GRADES } from './store.ts';
 
 interface Props {
@@ -43,6 +44,11 @@ interface Props {
   onGrade(grade: CardRecipeGrade): void;
   onChange(update: (p: CardProfile) => CardProfile): void;
 }
+
+/** A card in the 작업대 grid (px): three across a 360 phone. */
+const BENCH_CARD_W = 104;
+/** The card opened from the grid. */
+const BENCH_INFO_W = 168;
 
 /** Why adding this card would break a deck rule that is not broken yet, or null. */
 function addBlock(deck: readonly CardId[], id: CardId, collection: CardCollection, stage: number): string | null {
@@ -66,6 +72,7 @@ function temperFor(profile: CardProfile, id: CardId): TemperRecord {
 
 export function Bench({ profile, grade, craftActive, onGrade, onChange }: Props) {
   const [evolved, setEvolved] = useState<string | null>(null);
+  const [info, setInfo] = useState<CardId | null>(null);
   const stage = profile.lab.fameStage;
   const collection = collectionOf(profile);
   const deck = profile.decks[grade];
@@ -101,8 +108,11 @@ export function Bench({ profile, grade, craftActive, onGrade, onChange }: Props)
     const n = counts.get(id) ?? 0;
     const block = addBlock(deck, id, collection, stage);
     return (
-      <div key={id} className={n > 0 ? 'kc-deckrow in' : 'kc-deckrow'}>
-        <CardFace id={id} />
+      <div key={id} className={n > 0 ? 'kc-benchcard in' : 'kc-benchcard'}>
+        <button type="button" className="kc-benchcard-face" onClick={() => setInfo(id)} aria-label={`${CARDS[id].name} 자세히`}>
+          <GameCard id={id} width={BENCH_CARD_W} floor />
+          {n > 0 && <span className="kc-benchcard-n">덱에 {n}</span>}
+        </button>
         <div className="kc-deckrow-ctl">
           <button type="button" className="kc-btn kc-step" disabled={n === 0} onClick={() => remove(id)} aria-label={`${CARDS[id].name} 빼기`}>
             −
@@ -173,7 +183,7 @@ export function Bench({ profile, grade, craftActive, onGrade, onChange }: Props)
         <h3>
           기본 카드 <small>장수 제한 없이 갖는다 · 같은 계열 {DECK_RULES.familyLimit.basic}장까지</small>
         </h3>
-        {BASIC_CARD_IDS.map((id) => row(id))}
+        <div className="kc-benchgrid">{BASIC_CARD_IDS.map((id) => row(id))}</div>
       </section>
 
       <section className="kc-block">
@@ -185,19 +195,24 @@ export function Bench({ profile, grade, craftActive, onGrade, onChange }: Props)
             {profile.firstCraftDone ? '아직 배운 카드가 없다.' : '첫 제작을 마치면 1단계 카드를 배운다.'}
           </p>
         )}
-        {UNLOCK_CARD_IDS.filter((id) => learned.has(id)).map((id) => row(id))}
+        <div className="kc-benchgrid">{UNLOCK_CARD_IDS.filter((id) => learned.has(id)).map((id) => row(id))}</div>
         {notLearned.length > 0 && (
           <details className="kc-later">
             <summary>아직 배우지 않은 카드 {notLearned.length}종</summary>
-            {notLearned.map((id) => {
-              const node = CARDS[id].unlock;
-              const when = node === null ? '' : node.stage === 1 ? '첫 제작 뒤' : `명성 ${node.stage}단계`;
-              return (
-                <CardFace key={id} id={id} dim>
-                  <span className="kc-face-note">{when}</span>
-                </CardFace>
-              );
-            })}
+            <div className="kc-benchgrid">
+              {notLearned.map((id) => {
+                const node = CARDS[id].unlock;
+                const when = node === null ? '' : node.stage === 1 ? '첫 제작 뒤' : `명성 ${node.stage}단계`;
+                return (
+                  <div key={id} className="kc-benchcard dim">
+                    <button type="button" className="kc-benchcard-face" onClick={() => setInfo(id)} aria-label={`${CARDS[id].name} 자세히`}>
+                      <GameCard id={id} width={BENCH_CARD_W} floor />
+                    </button>
+                    <p className="kc-deckrow-why">{when}</p>
+                  </div>
+                );
+              })}
+            </div>
           </details>
         )}
       </section>
@@ -207,7 +222,7 @@ export function Bench({ profile, grade, craftActive, onGrade, onChange }: Props)
           <h3>
             진화 카드 <small>만든 장수만큼 · 원래 카드와 같은 계열로 센다</small>
           </h3>
-          {ownedEvolved.map((id) => row(id, profile.evolved[id] ?? 0))}
+          <div className="kc-benchgrid">{ownedEvolved.map((id) => row(id, profile.evolved[id] ?? 0))}</div>
         </section>
       )}
 
@@ -261,6 +276,21 @@ export function Bench({ profile, grade, craftActive, onGrade, onChange }: Props)
           );
         })}
       </section>
+
+      {info !== null && (
+        <Sheet title={CARDS[info].name} onClose={() => setInfo(null)}>
+          <div className="kc-info-card">
+            <GameCard id={info} width={BENCH_INFO_W} />
+            <div className="kc-info-side">
+              <p>{cardText(info)}</p>
+              {(counts.get(info) ?? 0) > 0 && <p className="kc-hint">이 덱에 {counts.get(info)}장.</p>}
+            </div>
+          </div>
+          <button type="button" className="kc-btn" onClick={() => setInfo(null)}>
+            닫기
+          </button>
+        </Sheet>
+      )}
     </div>
   );
 }

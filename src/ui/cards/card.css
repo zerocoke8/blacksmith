@@ -1,0 +1,496 @@
+/* The real card (gc-): frame, cost gem, name band, picture, ribbon and text, the small picture
+   chips and card grids. Used everywhere cards show (the hand, sheets, 작업대, 준비, 완성), so it
+   is in the first load; the art table's own styles (art.css) come with its chunk. */
+
+:root {
+  --ft-serif: 'Gowun Batang', 'Noto Serif KR', 'Nanum Myeongjo', 'AppleMyungjo', serif;
+}
+
+/* ---------- The card ---------- */
+
+.gc {
+  --k: #e0823a;
+  --k2: #7a3612;
+  position: relative;
+  flex: none;
+  border-radius: 6px;
+  color: #2b1d12;
+  font-family: var(--ft-serif);
+  line-height: 1.2;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.gc-progress {
+  --k: #e8843a;
+  --k2: #7a3010;
+}
+/* The hues follow the frame pictures: 공정 iron and ember, 품질 silver and blue, 보조 bronze and
+   amber, 재료 gold with emerald, 각인 blackened steel and violet. */
+.gc-quality {
+  --k: #9ccff2;
+  --k2: #2a5578;
+}
+.gc-support {
+  --k: #e0a64c;
+  --k2: #6e4410;
+}
+.gc-material {
+  --k: #5cc690;
+  --k2: #1c5a3a;
+}
+.gc-imprint {
+  --k: #ad8ae6;
+  --k2: #462a72;
+}
+
+.gc > * {
+  position: absolute;
+}
+
+.gc-frame {
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  pointer-events: none;
+}
+
+.gc-frame-css {
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+  background:
+    linear-gradient(155deg, rgba(255, 235, 210, 0.16), transparent 38%),
+    radial-gradient(ellipse at 50% 120%, color-mix(in srgb, var(--k) 30%, transparent), transparent 60%),
+    linear-gradient(180deg, #4b4440, #2b2522 55%, #1d1816);
+  box-shadow:
+    inset 0 0 0 1.5px rgba(0, 0, 0, 0.75),
+    inset 0 0 0 3px var(--k2),
+    inset 0 0 0 4px rgba(255, 220, 180, 0.22);
+}
+
+.gc-art {
+  z-index: 1;
+  overflow: hidden;
+  border-radius: 4px;
+  background: #120d0a;
+}
+
+.gc-cssframe .gc-art {
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.85),
+    0 0 0 2.5px color-mix(in srgb, var(--k2) 70%, #c8a070);
+}
+
+.gc-pic {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.gc-pic-none {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(circle at 50% 62%, color-mix(in srgb, var(--k) 55%, #2a1408) 0%, transparent 62%),
+    radial-gradient(ellipse at 80% 10%, rgba(255, 160, 80, 0.18), transparent 50%),
+    linear-gradient(180deg, #2a1d14, #120c08);
+}
+
+.gc-glyph {
+  width: 46%;
+  height: 46%;
+  fill: color-mix(in srgb, var(--k) 60%, #fff6e0);
+  filter: drop-shadow(0 0 6px var(--k));
+}
+
+/* The name starts at the band's left end, so a card half under the next one still shows it. */
+.gc-name {
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 0 3% 0 2%;
+  text-align: left;
+}
+
+.gc-cssframe .gc-name {
+  border-radius: 3px;
+  background: linear-gradient(180deg, #f1e3c2, #d4bc8e);
+  box-shadow:
+    0 1px 0 rgba(0, 0, 0, 0.55),
+    inset 0 0 0 1px rgba(90, 60, 30, 0.45);
+}
+
+.gc-name b {
+  overflow: hidden;
+  color: #2a1a0e;
+  font-size: 1em;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.gc-ribbon {
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff6e6;
+  font-family: system-ui, sans-serif;
+  font-size: 0.66em;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.7);
+}
+
+.gc-cssframe .gc-ribbon {
+  background: linear-gradient(180deg, var(--k), var(--k2));
+  clip-path: polygon(0 0, 100% 0, 94% 50%, 100% 100%, 0 100%, 6% 50%);
+}
+
+.gc-framed .gc-ribbon {
+  color: #3a2412;
+  text-shadow: none;
+}
+
+.gc-text {
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 3% 5%;
+  color: #2b1d12;
+  font-size: 0.84em;
+  line-height: 1.22;
+  text-align: center;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.gc-cssframe .gc-text {
+  border-radius: 4px;
+  background: linear-gradient(180deg, #eddcb6, #d6bd8c);
+  box-shadow: inset 0 0 0 1px rgba(90, 60, 30, 0.38);
+}
+
+.gc-text-body {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-line-clamp: var(--gc-lines, 4);
+  -webkit-box-orient: vertical;
+}
+
+.gc-keys {
+  position: static;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 2px;
+  margin-top: 3%;
+}
+
+.gc-keys i {
+  padding: 0 0.32em;
+  border-radius: 3px;
+  background: rgba(58, 34, 14, 0.85);
+  color: #f7e3b8;
+  font-family: system-ui, sans-serif;
+  font-size: 1em;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.gc-cost {
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 34% 28%, rgba(255, 255, 255, 0.75) 0, transparent 26%),
+    radial-gradient(circle at 50% 58%, var(--k) 0, var(--k2) 78%);
+  box-shadow:
+    0 0 0 1.5px #1e1814,
+    0 0 0 3px #8c785f,
+    0 2px 4px rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-family: system-ui, sans-serif;
+  font-size: 1.5em;
+  font-weight: 900;
+  line-height: 1;
+  -webkit-text-stroke: 0.14em #1a0f08;
+  paint-order: stroke fill;
+}
+
+.gc-framed .gc-cost {
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.6);
+}
+
+.gc-cost.down {
+  color: #c6ffab;
+}
+
+.gc-cost.up {
+  color: #ffb0a2;
+}
+
+.gc-note {
+  left: 7%;
+  right: 7%;
+  z-index: 4;
+  padding: 0.14em 0.3em;
+  border-radius: 4px;
+  background: rgba(16, 10, 6, 0.9);
+  color: #ffd9a0;
+  font-family: system-ui, sans-serif;
+  font-size: 0.7em;
+  font-weight: 800;
+  line-height: 1.25;
+  text-align: center;
+}
+
+.gc-finish .gc-note {
+  background: linear-gradient(180deg, #ffe58e, #dca33a);
+  color: #2a1606;
+}
+
+.gc-breaks .gc-note {
+  background: rgba(130, 22, 12, 0.94);
+  color: #ffe2da;
+}
+
+.gc-blocked .gc-note {
+  background: rgba(8, 6, 4, 0.92);
+  color: #d8c4a8;
+}
+
+.gc-blocked > .gc-frame,
+.gc-blocked > .gc-frame-css,
+.gc-blocked > .gc-art,
+.gc-blocked > .gc-name,
+.gc-blocked > .gc-ribbon,
+.gc-blocked > .gc-text,
+.gc-blocked > .gc-cost {
+  filter: grayscale(0.75) brightness(0.48);
+}
+
+.gc-finish {
+  animation: gc-glow 1.3s ease-in-out infinite alternate;
+  box-shadow:
+    0 0 0 2px #ffd56a,
+    0 0 16px 4px rgba(255, 200, 90, 0.75);
+}
+
+.gc-breaks {
+  box-shadow:
+    0 0 0 2px #ff5a3a,
+    0 0 12px 3px rgba(255, 70, 40, 0.6);
+}
+
+.gc-selected {
+  box-shadow:
+    0 0 0 2px #ffe3a0,
+    0 0 18px 5px rgba(255, 190, 90, 0.55);
+}
+
+.gc-count {
+  top: -7px;
+  right: -7px;
+  z-index: 4;
+  min-width: 24px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: #1a100a;
+  box-shadow: 0 0 0 1.5px #c89a5a;
+  color: #ffe3b0;
+  font-family: system-ui, sans-serif;
+  font-size: 0.8rem;
+  font-weight: 900;
+  text-align: center;
+}
+
+/* Small picture chip in list rows. */
+/* The kind class (gc-progress …) on the same element gives --k and --k2. */
+.gc-thumb {
+  position: relative;
+  flex: none;
+  width: 50px;
+  height: 38px;
+  margin: 2px 0 0 4px;
+}
+
+.gc-thumb-art {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: 6px;
+  background: #120d0a;
+  box-shadow:
+    0 0 0 1.5px var(--k2),
+    0 0 0 2.5px rgba(255, 220, 180, 0.22);
+}
+
+.gc-thumb-art .gc-pic-none .gc-glyph {
+  width: 58%;
+  height: 58%;
+}
+
+.gc-thumb-cost {
+  position: absolute;
+  top: -6px;
+  left: -7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 34% 28%, rgba(255, 255, 255, 0.7) 0, transparent 28%),
+    radial-gradient(circle at 50% 58%, var(--k) 0, var(--k2) 80%);
+  box-shadow:
+    0 0 0 1.5px #1e1814,
+    0 1px 3px rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 900;
+  line-height: 1;
+  -webkit-text-stroke: 2.5px #1a0f08;
+  paint-order: stroke fill;
+}
+
+/* Grids of cards in sheets. */
+.kc-cardgrid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px 10px;
+  padding: 8px 0 6px;
+}
+
+.kc-cardpick {
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+.kc-cardpick .gc {
+  transition: transform 0.15s;
+}
+
+.kc-cardpick.on .gc {
+  transform: translateY(-5px);
+}
+
+.kc-info-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
+.kc-info-side {
+  flex: 1;
+  min-width: 0;
+}
+
+@keyframes gc-glow {
+  from {
+    box-shadow:
+      0 0 0 2px #ffd56a,
+      0 0 10px 2px rgba(255, 200, 90, 0.55);
+  }
+  to {
+    box-shadow:
+      0 0 0 2px #ffe9a8,
+      0 0 22px 6px rgba(255, 210, 110, 0.85);
+  }
+}
+
+/* The art table's loading screen (Table.tsx shows it while the table's chunk arrives). */
+.ft-loading {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #120c09;
+  color: var(--muted);
+}
+
+/* List rows (작업대, 준비, 원정의 덱): the card's picture and cost gem at the left. */
+.kc-face-thumb {
+  display: flex;
+  flex: none;
+  align-self: center;
+}
+
+/* A row of small cards (CardStrip): a deck at a glance, scrolling sideways. */
+.gc-strip {
+  display: flex;
+  gap: 6px;
+  margin: 4px -4px;
+  padding: 8px 4px 6px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+
+.gc-strip::-webkit-scrollbar {
+  display: none;
+}
+
+.gc-strip-item {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.gc-strip-item .gc {
+  filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.55));
+}
+
+.gc-strip-name {
+  display: -webkit-box;
+  overflow: hidden;
+  max-width: calc(100% + 6px);
+  color: #ead6b6;
+  font-family: var(--ft-serif);
+  font-size: 0.7rem;
+  line-height: 1.2;
+  text-align: center;
+  word-break: keep-all;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+/* Mini cards: cut under the picture (GameCard MINI_CUT), the count inside the cut. */
+.gc-mini {
+  overflow: hidden;
+  border-radius: 6px 6px 5px 5px;
+  box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.55);
+}
+
+.gc-mini .gc-count {
+  top: auto;
+  right: 3px;
+  bottom: 4px;
+  min-width: 0;
+  padding: 0 5px;
+  font-size: 0.7rem;
+}

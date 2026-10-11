@@ -3,6 +3,7 @@
 
 import { cardName, cardText } from '../../sim/cards/index.ts';
 import { CARD_KIND_LABEL, CARDS, type CardId } from '../../sim/data/cards.ts';
+import { CardThumb } from './GameCard.tsx';
 import { type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode, useEffect, useRef } from 'react';
 
 export function Sheet(props: { title?: string; onClose(): void; children: ReactNode; tone?: 'danger' }) {
@@ -189,8 +190,8 @@ export function CardFace(props: {
   const spec = CARDS[id];
   return (
     <div className={`kc-face kc-kind-${spec.kind}${dim === true ? ' dim' : ''}`}>
-      <span className="kc-face-cost" aria-label={spec.cost === null ? '각인' : `코스트 ${cost ?? spec.cost}`}>
-        {spec.cost === null ? '각' : (cost ?? spec.cost)}
+      <span className="kc-face-thumb" aria-label={spec.cost === null ? '각인' : `코스트 ${cost ?? spec.cost}`}>
+        <CardThumb id={id} cost={cost} />
       </span>
       <span className="kc-face-main">
         <span className="kc-face-name">

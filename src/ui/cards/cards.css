@@ -26,17 +26,18 @@
 .kc-kind-progress {
   --k: #e08a3c;
 }
+/* Same hues as the card frames (art.css .gc-*). */
 .kc-kind-quality {
-  --k: #e7c35a;
+  --k: #8fc6ee;
 }
 .kc-kind-support {
-  --k: #7fa6c9;
+  --k: #d9a24a;
 }
 .kc-kind-material {
-  --k: #a58bd6;
+  --k: #5cc690;
 }
 .kc-kind-imprint {
-  --k: #8fc27a;
+  --k: #a98be0;
 }
 
 /* ---------- Bar, buttons, small controls ---------- */
@@ -578,7 +579,7 @@
 
 .kc-face {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 8px;
   padding: 7px 9px;
   border: 1px solid var(--line);

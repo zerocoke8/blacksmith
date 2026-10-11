@@ -52,7 +52,8 @@ export function buildRecord(session: CardSession): PlayRecord {
       anvil: craft.setup.tools.anvil,
       whetstone: craft.setup.tools.whetstone,
       furnace: craft.setup.tools.furnace,
-      twoTap: session.tapToPreview,
+      twoTap: session.tapToPreview || session.artScreen === true,
+      ...(session.artScreen !== undefined ? { artScreen: session.artScreen } : {}),
     },
     deck: countNames(craft.setup.deck.map(name)),
     result: {
@@ -186,6 +187,8 @@ export function settingsLabel(r: PlayRecord): string {
   if (delta !== 0) parts.push(`내구도 ${delta > 0 ? '+' : '−'}${Math.abs(delta)}`);
   if (s.anvil > 0 || s.whetstone > 0) parts.push(`모루 ${s.anvil}·숫돌 ${s.whetstone}`);
   if (s.fameStage > 1) parts.push(`명성 ${s.fameStage}`);
+  // The art screen is the default; the plain table (one tap, unless its switch says two) is not one sample with it.
+  if (s.artScreen === false) parts.push(s.twoTap ? '예전 화면·두 번 눌러' : '예전 화면');
   return parts.join(' · ');
 }
 

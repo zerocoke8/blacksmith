@@ -21,7 +21,12 @@ import { ENCHANTS } from '../../sim/data/enchants.ts';
 import { UNIQUES } from '../../sim/data/uniques.ts';
 import { grouped } from './Prep.tsx';
 import type { CardSession } from './store.ts';
-import { duration, outcomeLines, percent, stars, tierName, weaponTitle } from './text.ts';
+import { duration, outcomeLines, percent, weaponTitle } from './text.ts';
+import { CardStrip, GameCard } from './GameCard.tsx';
+import { WeaponHero } from './WeaponHero.tsx';
+
+/** Width of a newly learned card on the result screen (px): three fit across a 360 phone. */
+const LEARNED_CARD_W = 100;
 
 interface Props {
   session: CardSession;
@@ -43,24 +48,26 @@ export function Result({ session, onPick, onAgain, onAgainSame, onBench }: Props
   const thrown = craft.log.flatMap((e) => (e.kind === 'reheat' ? e.discarded.map((u) => craft.cards[u] as CardId) : []));
   const reheats = craft.log.filter((e) => e.kind === 'reheat').length;
   const msOf = new Map(session.turns.map((t) => [t.turn, t.ms]));
+  const lines = outcomeLines(outcome);
+  // A 막타 may spend more than was left; the iron's last blow is shown as 0 left and the overshoot.
+  const over = craft.durability < 0 ? -craft.durability : 0;
 
   return (
     <div className="kc-result">
-      <div className={outcome.success ? 'kc-result-head ok' : 'kc-result-head fail'}>
-        {outcome.success && outcome.tier !== null ? (
-          <>
-            <div className={`kc-result-stars kc-tier-${outcome.tier}`}>{stars(outcome.tier)}</div>
-            <div className="kc-result-tier">{tierName(outcome.tier)}</div>
-          </>
-        ) : (
-          <div className="kc-result-tier">{outcome.abandoned ? '그만둠' : '실패'}</div>
-        )}
-        <div className="kc-result-title">{weaponTitle(r.weaponType, r.materialTier)}</div>
-      </div>
+      <WeaponHero
+        weaponType={r.weaponType}
+        tier={outcome.success ? outcome.tier : null}
+        success={outcome.success}
+        abandoned={outcome.abandoned}
+        legendary={r.grade === 'legendary'}
+        title={weaponTitle(r.weaponType, r.materialTier)}
+      />
 
       <div className="kc-lines">
-        {outcomeLines(outcome).map((line) => (
-          <p key={line}>{line}</p>
+        {lines.slice(0, 1).map((line) => (
+          <p key={line} className="kc-line-main">
+            {line}
+          </p>
         ))}
         {session.opened.length > 0 && (
           <p>
@@ -68,13 +75,49 @@ export function Result({ session, onPick, onAgain, onAgainSame, onBench }: Props
             <small> 단련: {session.opened.map((id) => CARDS[id].name).join(', ')}</small>
           </p>
         )}
-        {session.learned.length > 0 && (
-          <p className="kc-hint">새로 배운 카드: {session.learned.map((id) => CARDS[id].name).join(', ')}. 작업대에서 덱에 넣을 수 있다.</p>
-        )}
       </div>
 
-      <section className="kc-panel">
-        <h3>이번 제작</h3>
+      {session.learned.length > 0 && (
+        <section className="kc-learned" aria-label="새로 배운 카드">
+          <h3>새로 배운 카드</h3>
+          <div className="kc-learned-cards">
+            {session.learned.map((id, i) => (
+              <div key={id} className="kc-reveal" style={{ animationDelay: `${0.25 + i * 0.18}s` }}>
+                <GameCard id={id} tier={tier} width={LEARNED_CARD_W} floor />
+              </div>
+            ))}
+          </div>
+          <p className="kc-hint">작업대에서 덱에 넣을 수 있다.</p>
+        </section>
+      )}
+
+      <div className="kc-result-actions">
+        {onAgainSame !== null && (
+          <button type="button" className="kc-btn primary big" onClick={onAgainSame}>
+            같은 레시피로 다시 친다
+          </button>
+        )}
+        <div className="kc-row">
+          <button type="button" className={onAgainSame === null ? 'kc-btn primary big' : 'kc-btn'} onClick={onAgain}>
+            레시피를 다시 고른다
+          </button>
+          <button type="button" className="kc-btn ghost" onClick={onBench}>
+            작업대로
+          </button>
+        </div>
+      </div>
+
+      {session.weapon !== null && <SlotFiller weapon={session.weapon} inventory={session.inventory} onPick={onPick} />}
+
+      <details className="kc-panel kc-more">
+        <summary>
+          자세히 <small>이번 제작 · 낸 카드 · 턴마다{session.weapon !== null ? ' · 만든 무기' : ''}</small>
+        </summary>
+        {lines.slice(1).map((line) => (
+          <p key={line} className="kc-hint">
+            {line}
+          </p>
+        ))}
         <div className="kc-kv">
           <span>품질</span>
           <b>
@@ -96,8 +139,8 @@ export function Result({ session, onPick, onAgain, onAgainSame, onBench }: Props
         <div className="kc-kv">
           <span>남은 내구도</span>
           <b>
-            {craft.durability} / {craft.maxDurability}
-            {craft.durability < 0 && <small> (막타)</small>}
+            {Math.max(0, craft.durability)} / {craft.maxDurability}
+            {over > 0 && <small> (막타로 {over} 넘김)</small>}
           </b>
         </div>
         <div className="kc-kv">
@@ -110,26 +153,11 @@ export function Result({ session, onPick, onAgain, onAgainSame, onBench }: Props
         <h4>
           낸 카드 <b>{plays.length}장</b>
         </h4>
-        <div className="kc-chips">
-          {grouped(plays.map((p) => p.card)).map(({ id, count }) => (
-            <span key={id} className={`kc-chip kc-kind-${CARDS[id].kind}`}>
-              {name(id)}
-              {count > 1 && ` ×${count}`}
-            </span>
-          ))}
-        </div>
+        <CardStrip cards={grouped(plays.map((p) => p.card))} tier={tier} label="낸 카드" />
         <h4>
           버린 카드 <b>{thrown.length}장</b>
         </h4>
-        <div className="kc-chips">
-          {thrown.length === 0 && <span className="kc-muted">없다</span>}
-          {grouped(thrown).map(({ id, count }) => (
-            <span key={id} className={`kc-chip kc-kind-${CARDS[id].kind}`}>
-              {name(id)}
-              {count > 1 && ` ×${count}`}
-            </span>
-          ))}
-        </div>
+        {thrown.length === 0 ? <p className="kc-muted">없다</p> : <CardStrip cards={grouped(thrown)} tier={tier} label="버린 카드" />}
         <h4>턴마다</h4>
         <ol className="kc-turns">
           {cardTurnSummary(craft).map((t) => (
@@ -141,24 +169,8 @@ export function Result({ session, onPick, onAgain, onAgainSame, onBench }: Props
             </li>
           ))}
         </ol>
-      </section>
-
-      {session.weapon !== null && <SlotFiller weapon={session.weapon} inventory={session.inventory} onPick={onPick} />}
-      {session.weapon !== null && <WeaponSummary weapon={session.weapon} />}
-
-      {onAgainSame !== null && (
-        <button type="button" className="kc-btn primary big" onClick={onAgainSame}>
-          같은 레시피로 다시 친다
-        </button>
-      )}
-      <div className="kc-row">
-        <button type="button" className={onAgainSame === null ? 'kc-btn primary big' : 'kc-btn'} onClick={onAgain}>
-          레시피를 다시 고른다
-        </button>
-        <button type="button" className="kc-btn ghost" onClick={onBench}>
-          작업대로
-        </button>
-      </div>
+        {session.weapon !== null && <WeaponSummary weapon={session.weapon} />}
+      </details>
     </div>
   );
 }
@@ -220,7 +232,10 @@ function SlotFiller({ weapon, inventory, onPick }: { weapon: Weapon; inventory: 
       </div>
       {total === 0 && <p className="kc-hint">범작에는 인챈트 슬롯이 없다.</p>}
       {(open > 0 || staffOpen) && (
-        <>
+        <details className="kc-slotpick">
+          <summary>
+            인챈트를 넣는다 <small>빈 칸 {open + (staffOpen ? 1 : 0)}</small>
+          </summary>
           <p className="kc-hint">재료 하나에 인챈트 하나. 넣으면 바꿀 수 없다. 비워 두면 특별 수리 때 채운다.</p>
           <div className="kc-pick-grid three">
             {staffOpen && (
@@ -275,7 +290,7 @@ function SlotFiller({ weapon, inventory, onPick }: { weapon: Weapon; inventory: 
               </button>
             </div>
           )}
-        </>
+        </details>
       )}
     </section>
   );
@@ -286,8 +301,8 @@ function WeaponSummary({ weapon }: { weapon: Weapon }) {
   const mat = materialAttack(weapon.materialTier);
   const q = QUALITY[weapon.quality].attack;
   return (
-    <section className="kc-panel">
-      <h3>만든 무기</h3>
+    <section className="kc-weapon-sum">
+      <h4>만든 무기</h4>
       <div className="kc-kv">
         <span>공격력 배율</span>
         <b>×{(spec.attack * mat * q).toFixed(2)}</b>

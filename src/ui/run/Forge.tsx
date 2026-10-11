@@ -2,7 +2,7 @@
 // Table.tsx), fed by the run's 단조 state. Then the 완성 화면: slots and the element filled from the
 // run's materials, the new weapon set against the one in hand at the next wall, and 무기 들기.
 
-import { useMemo, useState } from 'react';
+import { type ReactNode, useMemo, useState } from 'react';
 import {
   type CardCraftOutcome,
   type CardCraftState,
@@ -42,8 +42,9 @@ import {
 } from '../../sim/run/index.ts';
 import type { CardProfile, CardSession } from '../cards/store.ts';
 import { defaultProfile } from '../cards/store.ts';
-import { Table } from '../cards/Table.tsx';
-import { outcomeLines, stars, tierName } from '../cards/text.ts';
+import { Table, type TableMenuItem } from '../cards/Table.tsx';
+import { outcomeLines } from '../cards/text.ts';
+import { WeaponHero } from '../cards/WeaponHero.tsx';
 import { beatingElement, floorFit } from './look.ts';
 import { weaponBody, WeaponCard } from './parts.tsx';
 import { goldText, pct } from './text.ts';
@@ -88,6 +89,14 @@ export function ForgeTable(props: {
   onFinished(): void;
   /** The season's boss material (13.2.1), named in the table's warnings instead of the card prototype's. */
   bossMaterialName: string;
+  /** The art screen's own top band (it covers the run's): back, title, menu. */
+  onExit?(): void;
+  title?: string;
+  menu?: TableMenuItem[];
+  /** The run's warnings (saving failed, an action refused): the art screen covers the run's own. */
+  notice?: ReactNode;
+  /** Which table is on screen (true = the art screen), for the run's record. */
+  onScreen?(art: boolean): void;
 }) {
   const { craft, tapToPreview, firstSeen, seen } = props;
   const session = useMemo(() => sessionFor(craft, tapToPreview), [craft, tapToPreview]);
@@ -106,6 +115,13 @@ export function ForgeTable(props: {
       onFinished={props.onFinished}
       inRun
       bossMaterialName={props.bossMaterialName}
+      onExit={props.onExit}
+      exitLabel="마을로"
+      title={props.title}
+      turnWord="손"
+      menu={props.menu}
+      notice={props.notice}
+      onScreen={props.onScreen}
     />
   );
 }
@@ -355,14 +371,14 @@ export function ForgeDone(props: { run: RunState; onBuy(item: ShopItem): void; o
 
   return (
     <div className="rn-done">
-      <div className="kc-result-head ok">
-        <div className={`kc-result-stars kc-tier-${tier}`}>{stars(tier)}</div>
-        <div className={tier === 5 ? 'kc-result-tier rn-master' : 'kc-result-tier'}>{tierName(tier)}</div>
-        <div className="kc-result-title">
-          {weaponBody({ ...weapon, element: null })} · {CARD_RECIPE_GRADE_LABEL[f.grade]}
-          {f.craft === null && ' · 간이'}
-        </div>
-      </div>
+      <WeaponHero
+        weaponType={weapon.type}
+        tier={tier}
+        success
+        abandoned={false}
+        legendary={f.legendary}
+        title={`${weaponBody({ ...weapon, element: null })} · ${CARD_RECIPE_GRADE_LABEL[f.grade]}${f.craft === null ? ' · 간이' : ''}`}
+      />
       <div className="kc-lines">
         {outcome !== null && doneLines(run, outcome).map((l) => <p key={l}>{l}</p>)}
       </div>

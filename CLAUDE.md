@@ -52,12 +52,14 @@ src/sim/data/     [튜닝] 수치표 (기획서와 같은 값)
 src/sim/cards/    카드 제작 엔진 (공통부, 기획서 4.2). 옛 FF14식 src/sim/craft/는 비교용으로 남김
 src/sim/world/    본편: 탑·용사·원정·명성·경제 시뮬레이션
 src/sim/run/      시즌 악마의 탑: 육성 한 판 규칙 (프로토타입, 기획서 13.22)
-src/render/       PixiJS
+src/render/       PixiJS (forge/: 카드 제작 공방 장면·연출, 배치 숫자는 forge/layout.ts)
+src/assets/art/   Codex로 만든 그림(webp)과 meta.json. 원본 프롬프트는 tools/art/assets.ts
 src/ui/           React 화면
 src/platform/     저장, 시계 (나중에 Capacitor로 교체)
 tools/balance/    sim을 Node로 돌려 [튜닝] 수치를 검증하는 시뮬레이터
 tools/cards/      카드 제작 측정 봇 (node tools/cards/measure.ts)
 tools/run/        육성 한 판 측정 봇 (node tools/run/measure.ts)
+tools/art/        그림 다시 뽑기(gen.ts, Codex)와 webp 처리(process.ts, 헤드리스 크롬)
 docs/기획서.md    설계 원본
 ```
 

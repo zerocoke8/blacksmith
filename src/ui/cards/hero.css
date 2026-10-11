@@ -1,0 +1,186 @@
+/* Result head: the finished weapon in the forge light (or the cracked bar). */
+
+.wh {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 12px 14px;
+  overflow: hidden;
+  border-radius: 16px;
+  background:
+    radial-gradient(ellipse at 50% 38%, rgba(255, 150, 60, 0.28), transparent 62%),
+    linear-gradient(180deg, #2a1d14, #17100b);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 200, 140, 0.16),
+    0 6px 18px rgba(0, 0, 0, 0.45);
+  text-align: center;
+}
+
+.wh-stage {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 150px;
+}
+
+.wh-glow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 78%;
+  height: 92%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(255, 196, 110, 0.55), transparent 68%);
+  transform: translate(-50%, -50%);
+  animation: wh-breathe 3.2s ease-in-out infinite alternate;
+}
+
+.wh-weapon-img {
+  position: relative;
+  max-width: 88%;
+  max-height: 146px;
+  object-fit: contain;
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.6));
+  animation: wh-rise-img 0.7s cubic-bezier(0.2, 0.9, 0.3, 1.1);
+}
+
+.wh-weapon-svg,
+.wh-iron-svg {
+  position: relative;
+  width: 86%;
+  max-width: 340px;
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.6));
+}
+
+.wh-weapon-svg {
+  transform: rotate(-6deg);
+  animation: wh-rise 0.7s cubic-bezier(0.2, 0.9, 0.3, 1.1);
+}
+
+.wh-stars {
+  position: relative;
+  margin-top: 2px;
+  color: #ffd66a;
+  font-size: 1.9rem;
+  letter-spacing: 2px;
+  line-height: 1.1;
+  text-shadow: 0 0 14px rgba(255, 196, 90, 0.55);
+}
+
+.wh-tier {
+  position: relative;
+  color: #ffe8bf;
+  font-family: var(--ft-serif);
+  font-size: 1.45rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.wh-title {
+  position: relative;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.wh-tier-5 .wh-glow,
+.wh-legend .wh-glow {
+  background: radial-gradient(ellipse, rgba(255, 220, 140, 0.8), rgba(255, 170, 70, 0.25) 45%, transparent 70%);
+}
+
+.wh-tier-5 .wh-tier {
+  color: #fff0c8;
+  text-shadow: 0 0 14px rgba(255, 210, 120, 0.7);
+}
+
+.wh-iron-art {
+  position: relative;
+  display: block;
+  width: 72%;
+  max-width: 300px;
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.6));
+}
+
+.wh-iron-art img {
+  display: block;
+  width: 100%;
+  /* Cold iron: the forge glow gone out of it. */
+  filter: grayscale(0.9) brightness(0.5) contrast(1.15);
+}
+
+/* The painted split bar is already cold: no greying. */
+.wh-iron-split {
+  width: 80%;
+  max-width: 320px;
+}
+
+.wh-iron-split img {
+  filter: none;
+}
+
+/* The bar lies across 6–94% of the picture's width and 34–97% of its height. */
+.wh-iron-art svg {
+  position: absolute;
+  top: 34%;
+  left: 6%;
+  width: 88%;
+  height: 63%;
+}
+
+.wh-fail {
+  background:
+    radial-gradient(ellipse at 50% 40%, rgba(120, 100, 90, 0.18), transparent 62%),
+    linear-gradient(180deg, #1e1915, #121010);
+}
+
+.wh-fail .wh-glow {
+  background: radial-gradient(ellipse, rgba(140, 120, 110, 0.22), transparent 68%);
+  animation: none;
+}
+
+.wh-fail .wh-tier {
+  color: #d8c8b8;
+  font-size: 1.2rem;
+  letter-spacing: 0.04em;
+}
+
+@keyframes wh-breathe {
+  from {
+    opacity: 0.7;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes wh-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.92) rotate(-6deg);
+  }
+  to {
+    opacity: 1;
+    transform: rotate(-6deg);
+  }
+}
+
+@keyframes wh-rise-img {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wh-glow,
+  .wh-weapon-img,
+  .wh-weapon-svg {
+    animation: none;
+  }
+}

@@ -83,7 +83,10 @@ export interface RunRecord {
     deathMode: string;
     eventRate: number;
     quickForge: boolean;
+    /** The 단조 played with two taps: the art screen, or the plain table with 두 번 눌러 내기 on. */
     twoTap: boolean;
+    /** The 단조 was on the art screen (false = the plain table); missing in records from before it was noted. */
+    artScreen?: boolean;
     deckSize: number;
     /** 판 손패 and 31층부터 층 수입 배율 ([검증]); missing in records from before they existed. */
     handSize?: number;
@@ -162,8 +165,11 @@ function avg(xs: readonly number[]): number {
 
 const pctInt = (r: number): number => Math.round(r * 100);
 
-/** The record of a finished run (state.phase 'over'). twoTap: the forges' 두 번 눌러 내기 switch. */
-export function buildRunRecord(state: RunState, meta: RunMeta, nowMs: number, twoTap = false): RunRecord {
+/**
+ * The record of a finished run (state.phase 'over'). twoTap: the 단조 played with two taps;
+ * artScreen: on the art screen (left out when unknown).
+ */
+export function buildRunRecord(state: RunState, meta: RunMeta, nowMs: number, twoTap = false, artScreen?: boolean): RunRecord {
   const end = state.end;
   const result = state.result;
   if (end === null || result === null) throw new Error('run is not over');
@@ -232,6 +238,7 @@ export function buildRunRecord(state: RunState, meta: RunMeta, nowMs: number, tw
       eventRate: state.rules.eventRate,
       quickForge: state.rules.quickForge,
       twoTap,
+      ...(artScreen !== undefined ? { artScreen } : {}),
       deckSize: setup.deck.length,
       handSize: state.rules.handSize,
       lateGoldRate: state.rules.lateGoldRate,
@@ -314,6 +321,8 @@ export function settingsLabel(r: Pick<RunRecord, 'hero' | 'settings'>): string {
   if (st.eventRate !== 1) parts.push(`사건 ×${st.eventRate}`);
   if (st.handSize !== undefined && st.handSize !== RUN_HAND_SIZE) parts.push(`손패 ${st.handSize}`);
   if (st.lateGoldRate !== undefined && st.lateGoldRate !== 1) parts.push(`후반 수입 ×${st.lateGoldRate}`);
+  // The art screen is the default 단조 table; the plain one is not one sample with it.
+  if (!st.quickForge && st.artScreen === false) parts.push('예전 화면');
   return parts.join(' · ');
 }
 

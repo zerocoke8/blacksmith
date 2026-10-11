@@ -2,10 +2,11 @@
 // Every change is saved through platform/storage.ts, so a reload resumes the same turn with
 // the same hand. Time on the anvil is measured with platform/clock.ts for the play log.
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { type CSSProperties, useCallback, useEffect, useRef, useState } from 'react';
 import { systemClock } from '../../platform/clock.ts';
 import { type CardRecipeInput, checkPlay, type PlayOptions, type SlotPick } from '../../sim/cards/index.ts';
 import { CARD_RECIPE_GRADE_LABEL, type CardRecipeGrade } from '../../sim/data/cards.ts';
+import { artScreenActive } from './artPref.ts';
 import { Bench } from './Bench.tsx';
 import {
   addTime,
@@ -32,7 +33,12 @@ import {
 } from './store.ts';
 import { Table } from './Table.tsx';
 import { weaponTitle } from './text.ts';
+import { sceneArtUrl } from '../../render/forge/assets.ts';
 import './cards.css';
+import './skin.css';
+
+/** The workshop wall behind the 준비, 작업대 and 완성 screens. */
+const BACKDROP = sceneArtUrl('bg_workshop');
 
 interface Props {
   onExit(): void;
@@ -161,7 +167,7 @@ export function CardCraft({ onExit }: Props) {
     if (p === null || crafting()) return;
     if (deckProblems(p, gradeOf(recipe)).length > 0) return;
     const now = systemClock.nowMs();
-    const begun = beginSession(p, recipe, now);
+    const begun = beginSession(p, recipe, now, artScreenActive());
     // The bumped craft number is written before the session: a crash skips a number, never reuses one.
     putProfile(begun.profile);
     putSession(begun.session);
@@ -218,6 +224,12 @@ export function CardCraft({ onExit }: Props) {
     window.scrollTo(0, 0);
   };
 
+  /** The table on screen changed (the art screen switched off, or it could not start): the record says which one was used. */
+  const noteScreen = (art: boolean) => {
+    const s = sessionRef.current;
+    if (s !== null && s.craft.status === 'active' && s.artScreen !== art) putSession({ ...s, artScreen: art });
+  };
+
   const countOpen = (k: 'pileOpens' | 'infoOpens') => {
     const s = sessionRef.current;
     if (s !== null && s.craft.status === 'active') putSession({ ...s, [k]: s[k] + 1 });
@@ -251,8 +263,14 @@ export function CardCraft({ onExit }: Props) {
             ? '제작'
             : '완성';
 
+  const saveWarning = (
+    <p className="kc-why" role="alert">
+      저장이 되지 않는다. 새로고침하면 지금 것이 사라질 수 있다.
+    </p>
+  );
+
   return (
-    <div className="kc-root">
+    <div className="kc-root kc-skin" style={BACKDROP !== null ? ({ '--kc-bg': `url("${BACKDROP}")` } as CSSProperties) : undefined}>
       <div className="kc-bar">
         {overlay !== null ? (
           <button type="button" className="kc-btn ghost small" onClick={closeOverlay}>
@@ -293,11 +311,7 @@ export function CardCraft({ onExit }: Props) {
           </>
         )}
       </div>
-      {saveFailed && (
-        <p className="kc-why" role="alert">
-          저장이 되지 않는다. 새로고침하면 지금 것이 사라질 수 있다.
-        </p>
-      )}
+      {saveFailed && !(overlay === null && phase === 'craft') && saveWarning}
 
       {overlay === 'bench' && (
         <Bench
@@ -347,6 +361,20 @@ export function CardCraft({ onExit }: Props) {
           onInfoOpen={() => countOpen('infoOpens')}
           onSeen={markSeen}
           onFinished={() => setHolding(false)}
+          onExit={onExit}
+          exitLabel="가게로"
+          notice={saveFailed ? saveWarning : undefined}
+          onScreen={noteScreen}
+          menu={[
+            {
+              label: '작업대',
+              onClick: () => {
+                setBenchGrade(session.craft.recipe.grade);
+                openOverlay('bench');
+              },
+            },
+            { label: '실험', onClick: () => openOverlay('lab') },
+          ]}
         />
       )}
       {overlay === null && phase === 'result' && session !== null && (

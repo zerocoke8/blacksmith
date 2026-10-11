@@ -105,6 +105,11 @@ export interface CardSession {
   inventory: MaterialInventory;
   fameStage: number;
   tapToPreview: boolean;
+  /**
+   * The art screen was the table on screen (it always plays with two taps). Missing in sessions
+   * saved before it was noted.
+   */
+  artScreen?: boolean;
   startedAtMs: number;
   endedAtMs: number | null;
   /** Time spent with the craft on screen, each pause capped at IDLE_CAP_MS. */
@@ -140,7 +145,10 @@ export interface PlayRecord {
     anvil: number;
     whetstone: number;
     furnace: number;
+    /** Played with two taps: the art screen, or the plain one with 두 번 눌러 내기 on. */
     twoTap: boolean;
+    /** Played on the art screen (false = the plain table); missing in records from before it was noted. */
+    artScreen?: boolean;
   };
   deck: Record<string, number>;
   result: {
@@ -341,6 +349,7 @@ export function readSession(data: unknown): CardSession | null {
     inventory: readInventory(data.inventory),
     fameStage: whole(data.fameStage, 1, LAB_MAX_FAME_STAGE, 1),
     tapToPreview: data.tapToPreview === true,
+    ...(typeof data.artScreen === 'boolean' ? { artScreen: data.artScreen } : {}),
     startedAtMs,
     endedAtMs: data.endedAtMs === null || data.endedAtMs === undefined ? null : n(data.endedAtMs),
     activeMs: n(data.activeMs),

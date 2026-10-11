@@ -68,6 +68,8 @@ export function beginSession(
   profile: CardProfile,
   recipe: CardRecipeInput,
   nowMs: number,
+  /** The art screen is the table (artPref.artScreenActive); the table reports changes later. Unknown when left out. */
+  artScreen?: boolean,
 ): { profile: CardProfile; session: CardSession } {
   const lab = profile.lab;
   const craftNo = profile.nextCraftNo;
@@ -87,6 +89,7 @@ export function beginSession(
     inventory: defaultInventory(),
     fameStage: lab.fameStage,
     tapToPreview: lab.tapToPreview,
+    ...(artScreen !== undefined ? { artScreen } : {}),
     startedAtMs: nowMs,
     endedAtMs: null,
     activeMs: 0,

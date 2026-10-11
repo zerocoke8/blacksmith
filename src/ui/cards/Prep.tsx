@@ -29,7 +29,10 @@ import {
   type FireState,
 } from '../../sim/data/cards.ts';
 import { UNIQUES } from '../../sim/data/uniques.ts';
+import { sceneArtUrl } from '../../render/forge/assets.ts';
+import { type SceneArtKey, WEAPON_ART } from '../../render/forge/layout.ts';
 import { deckProblems, gradeOf, rulesOf } from './flow.ts';
+import { CardStrip } from './GameCard.tsx';
 import { CardFace, Seg, Stepper } from './parts.tsx';
 import { type CardProfile, MAX_MATERIAL_TIER } from './store.ts';
 import { chance, labNote, signed } from './text.ts';
@@ -95,13 +98,27 @@ export function Prep({ profile, onStart, onBench }: Props) {
 
       <section className="kc-block">
         <h3>무기</h3>
-        <Seg
-          label="무기 종류"
-          cols={3}
-          value={pick.weaponType}
-          options={WEAPON_TYPES.map((t) => ({ value: t, label: WEAPON_LABEL[t] }))}
-          onChange={(t) => set({ weaponType: t })}
-        />
+        <div className="kc-weapons" role="radiogroup" aria-label="무기 종류">
+          {WEAPON_TYPES.map((t) => {
+            const url = sceneArtUrl(`weapon_${t}` as SceneArtKey);
+            const on = pick.weaponType === t;
+            return (
+              <button key={t} type="button" role="radio" aria-checked={on} className={on ? 'kc-weapon on' : 'kc-weapon'} onClick={() => set({ weaponType: t })}>
+                {url !== null && (
+                  <img
+                    src={url}
+                    alt=""
+                    draggable={false}
+                    decoding="async"
+                    // Painted tip-down-left (the crossbow): mirrored like on the anvil.
+                    style={WEAPON_ART[t].flip === true ? { scale: '-1 1' } : undefined}
+                  />
+                )}
+                <span>{WEAPON_LABEL[t]}</span>
+              </button>
+            );
+          })}
+        </div>
       </section>
 
       <section className="kc-block">
@@ -220,14 +237,7 @@ export function Prep({ profile, onStart, onBench }: Props) {
             {imprints.length > 0 && ` · 각인 ${imprints.length}`}
           </b>
         </div>
-        <div className="kc-chips">
-          {grouped(deck).map(({ id, count }) => (
-            <span key={id} className={`kc-chip kc-kind-${CARDS[id].kind}`}>
-              {CARDS[id].name}
-              {count > 1 && ` ×${count}`}
-            </span>
-          ))}
-        </div>
+        <CardStrip cards={grouped(deck)} label={`${CARD_RECIPE_GRADE_LABEL[grade]} 덱`} />
         {problems.length > 0 && (
           <ul className="kc-problems" role="status">
             {problems.map((p) => (
