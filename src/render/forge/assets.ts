@@ -10,7 +10,9 @@ import { CARD_FRAME_ART, type SceneArtKey, type UiArtKey } from './layout.ts';
 
 export type ArtGroup = 'scene' | 'ui' | 'cards';
 
-const FILES = import.meta.glob('/src/assets/art/**/*.{webp,png}', {
+// Only these groups: other screens' pictures (art/refine/, render/refine/assets.ts) keep their
+// URLs in their own chunks.
+const FILES = import.meta.glob('/src/assets/art/{scene,ui,cards}/*.{webp,png}', {
   query: '?no-inline',
   import: 'default',
   eager: true,
@@ -38,13 +40,11 @@ export function uiArtUrl(key: UiArtKey): string | null {
 }
 
 /**
- * The picture a card uses: its own id, an evolved card its original card's (CARDS[id].family),
- * a family card (repayStrike1~5) its name without the level.
+ * The picture a card uses: its own id, an evolved card its original card's (CARDS[id].family).
  */
 export function cardArtKey(id: CardId): string {
   const spec = CARDS[id];
   if (spec.group === 'evolved') return spec.family;
-  if (spec.group === 'family') return id.replace(/\d+$/, '');
   return id;
 }
 

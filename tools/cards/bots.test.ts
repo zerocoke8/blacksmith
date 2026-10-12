@@ -39,10 +39,10 @@ describe('measuring bots', () => {
     let futuresDiffer = 0;
     for (const craftNo of [1, 2, 3, 4, 5]) {
       const s = endTurn(startCardCraft(setup(craftNo)));
-      const other = { ...s, setup: { ...s.setup, stream: 'forge' } };
+      const other = { ...s, setup: { ...s.setup, stream: 'other' } };
       const fires = (stream: string) =>
         [3, 4, 5, 6, 7, 8].map((t) => rollTurnFire({ seed: 3, stream, craftNo }, 'basic', 'default', t, 'normal'));
-      if (fires('craft').join() !== fires('forge').join()) futuresDiffer += 1;
+      if (fires('craft').join() !== fires('other').join()) futuresDiffer += 1;
       expect(makeSmartBot().decide(other)).toEqual(makeSmartBot().decide(s));
     }
     expect(futuresDiffer).toBeGreaterThan(0);

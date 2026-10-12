@@ -708,15 +708,13 @@ export const ORB_FACE = { cx: 0.502, cy: 0.505, r: 0.33, img: 1.26 } as const;
 /**
  * Where a card picture is cut (object-position y, 0 = keep the top, 0.5 = centre). The pictures
  * are 1.35:1 (tools/art: widened from squares) and the window about 1.6:1, so a little of the top
- * and the bottom goes; a subject that reaches up (a raised hammer, a light bulb, a scarf hanging
- * from the top) keeps its top with a value under 0.5. Keys are art keys (render/forge/assets.ts
- * cardArtKey).
+ * and the bottom goes; a subject that reaches up (a raised hammer, a light bulb) keeps its top
+ * with a value under 0.5. Keys are art keys (render/forge/assets.ts cardArtKey).
  */
 export const CARD_ART_FOCUS: Readonly<Record<string, number>> = {
   bigStrike: 0.3,
   smithSense: 0.35,
   finisher: 0.4,
-  emberWatch: 0.2,
   heatUp: 0.4,
 };
 

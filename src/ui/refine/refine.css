@@ -1,0 +1,921 @@
+/* 광석 정제 화면 (rf-), in the doodle look of the card craft (art.css): the workshop floor's warm
+   brown under everything, cream paper bands and stickers with a fat dark-brown line and a hard
+   shadow, flat colours, Jua for names and numbers, Gowun Dodum for reading. No glows, gradients or
+   blurred shadows. Touch first: nothing needs hover, every target is at least 44 px. Loaded with
+   the refine screen's chunk (RefineScreen.tsx); colour names are app.css (--dd-*). */
+
+.rf-root {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  max-width: 480px;
+  margin: 0 auto;
+  padding-top: env(safe-area-inset-top);
+  overflow: hidden;
+  background: var(--dd-wood);
+  color: var(--dd-ink);
+  box-shadow: 0 0 0 100vmax var(--dd-wood-3);
+  font-family: var(--dd-font-body);
+}
+
+/* ---------- Top band: back, the pile, the gold, the bag ---------- */
+
+.rf-top {
+  position: relative;
+  z-index: 6;
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  height: 52px;
+  padding: 0 6px;
+  border-bottom: var(--dd-stroke-fat) solid var(--dd-ink);
+  background: var(--dd-paper);
+}
+
+.rf-iconbtn {
+  position: relative;
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 40px;
+  padding: 0;
+  border: var(--dd-stroke) solid var(--dd-ink);
+  border-radius: var(--dd-round-s);
+  background: var(--dd-paper-3);
+  box-shadow: var(--dd-pop-s);
+  color: var(--dd-ink);
+  font-family: var(--dd-font-round);
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.rf-iconbtn::before {
+  position: absolute;
+  inset: -4px -2px;
+  content: '';
+}
+
+.rf-iconbtn:active {
+  transform: translateY(2px);
+  box-shadow: none;
+}
+
+.rf-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--dd-ink);
+  font-family: var(--dd-font-round);
+  font-size: 1.12rem;
+  font-weight: 400;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* A number on a little paper pill with its picture. */
+.rf-chip {
+  position: relative;
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 3px;
+  height: 34px;
+  padding: 0 9px 0 4px;
+  border: 2px solid var(--dd-ink);
+  border-radius: 999px;
+  background: var(--dd-paper-3);
+  font-family: var(--dd-font-round);
+  line-height: 1;
+}
+
+.rf-chip img {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
+}
+
+.rf-chip b {
+  color: var(--dd-ink);
+  font-size: 1.05rem;
+  font-weight: 400;
+  animation: rf-pop 0.32s ease-out;
+}
+
+.rf-chip small {
+  margin-left: 2px;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: var(--dd-red);
+  color: var(--dd-paper-3);
+  font-size: 0.7rem;
+}
+
+.rf-lumps.full {
+  background: var(--dd-butter-paper);
+}
+
+/* The bag: its picture and how many things are in it (gold apart). */
+.rf-bag {
+  position: relative;
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 2px;
+  min-width: 64px;
+  height: 44px;
+  padding: 0 9px 0 4px;
+  border: var(--dd-stroke) solid var(--dd-ink);
+  border-radius: var(--dd-round-s);
+  background: var(--dd-cream);
+  box-shadow: var(--dd-pop-s);
+  color: var(--dd-ink);
+  font-family: var(--dd-font-round);
+  cursor: pointer;
+}
+
+.rf-bag:active {
+  transform: translateY(2px);
+  box-shadow: none;
+}
+
+.rf-bag img {
+  width: 32px;
+  height: 34px;
+  object-fit: contain;
+}
+
+.rf-bag b {
+  font-size: 1.05rem;
+  font-weight: 400;
+}
+
+/* What a batch brought: '+43G', '+12' pops out under the gold and the bag as its last find gets there. */
+.rf-plus {
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 50%;
+  z-index: 8;
+  padding: 2px 8px;
+  border: 2px solid var(--dd-ink);
+  border-radius: 999px;
+  background: var(--dd-butter);
+  box-shadow: var(--dd-pop-s);
+  color: var(--dd-ink);
+  font-family: var(--dd-font-round);
+  font-size: 0.95rem;
+  font-weight: 400;
+  line-height: 1.1;
+  white-space: nowrap;
+  pointer-events: none;
+  transform: translate(-50%, 0);
+  animation: rf-plus 1.3s ease-out forwards;
+}
+
+.rf-bag .rf-plus {
+  background: var(--dd-cream);
+}
+
+.rf-bag-standin {
+  width: 26px;
+  height: 26px;
+  border: 2px solid var(--dd-ink);
+  border-radius: 40% 40% 50% 50%;
+  background: var(--dd-wood);
+}
+
+/* Narrow phones: the title gives way to the numbers. */
+@media (max-width: 380px) {
+  .rf-title {
+    font-size: 0;
+  }
+}
+
+/* '자리를 비운 사이 …': a paper ribbon under the band. Tap to put it away. */
+.rf-notice {
+  position: absolute;
+  top: calc(52px + env(safe-area-inset-top) + 8px);
+  left: 50%;
+  z-index: 7;
+  width: max-content;
+  max-width: calc(100% - 24px);
+  margin: 0;
+  padding: 7px 14px;
+  border: var(--dd-stroke) solid var(--dd-ink);
+  border-radius: 14px;
+  background: var(--dd-butter-paper);
+  box-shadow: var(--dd-pop-s);
+  color: var(--dd-ink);
+  font-family: var(--dd-font-body);
+  font-size: 0.92rem;
+  font-weight: 700;
+  line-height: 1.35;
+  text-align: center;
+  word-break: keep-all;
+  transform: translateX(-50%) rotate(-1deg);
+  animation: rf-notice 4.8s ease-out forwards;
+  cursor: pointer;
+}
+
+.rf-savewarn {
+  position: relative;
+  z-index: 6;
+  flex: none;
+  margin: 0;
+  padding: 6px 12px;
+  border-bottom: var(--dd-stroke) solid var(--dd-ink);
+  background: var(--dd-red);
+  color: var(--dd-paper-3);
+  font-size: 0.82rem;
+  font-weight: 700;
+  word-break: keep-all;
+}
+
+/* ---------- The workshop and its overlay ---------- */
+
+.rf-stage {
+  position: relative;
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--rf-bg, none) center / cover no-repeat, var(--dd-wood);
+}
+
+.rf-shake,
+.rf-canvas,
+.rf-finds,
+.rf-still {
+  position: absolute;
+  inset: 0;
+}
+
+.rf-canvas {
+  overflow: hidden;
+}
+
+.rf-finds,
+.rf-still {
+  pointer-events: none;
+}
+
+.rf-still img {
+  position: absolute;
+  object-fit: contain;
+}
+
+/* A find on the floor: its picture over a flat spot of its rarity's colour, its amount over it.
+   No stacking context of its own while it rests (no will-change), so every find's amount and ✦
+   (z-index 3) stay over all the pictures, even a later find's that lands next to it. */
+.rf-find {
+  position: absolute;
+}
+
+.rf-find-pic {
+  position: absolute;
+  inset: 0;
+  display: block;
+  will-change: transform;
+}
+
+.rf-find-pic img {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* A big multiplier heaps the find two or three high (render/refine/layout.ts REFINE_STACK): the
+   copies sit behind and above it, the find itself in front. */
+.rf-find-pic img.rf-stack-a,
+.rf-find-pic img.rf-stack-b {
+  position: absolute;
+  width: 84%;
+  height: 84%;
+}
+
+.rf-find-pic img.rf-stack-a {
+  top: -14%;
+  left: -16%;
+}
+
+.rf-find-pic img.rf-stack-b {
+  top: -18%;
+  right: -16%;
+}
+
+.rf-stack-2 img.rf-stack-main,
+.rf-stack-3 img.rf-stack-main {
+  top: 6%;
+}
+
+.rf-find-standin {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  border: 2px solid var(--dd-ink);
+  border-radius: 50%;
+  background: var(--dd-paper-3);
+  font-family: var(--dd-font-round);
+  font-style: normal;
+}
+
+/* The spot under it: a flat oval (the floor's shade; a rare find's own colour). */
+.rf-find-spot {
+  position: absolute;
+  right: 6%;
+  bottom: -4%;
+  left: 6%;
+  height: 26%;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--dd-ink) 26%, transparent);
+}
+
+.rf-r-uncommon .rf-find-spot {
+  background: color-mix(in srgb, var(--dd-mint) 80%, var(--dd-ink));
+}
+
+.rf-r-rare .rf-find-spot {
+  background: color-mix(in srgb, var(--dd-sky) 85%, var(--dd-ink));
+}
+
+.rf-r-veryRare .rf-find-spot {
+  background: color-mix(in srgb, var(--dd-lilac) 85%, var(--dd-ink));
+}
+
+/* A rare find wears a little ✦. */
+.rf-find-star {
+  position: absolute;
+  z-index: 3;
+  top: -10%;
+  right: -12%;
+  color: var(--dd-paper-3);
+  font-size: 0.95rem;
+  line-height: 1;
+  -webkit-text-stroke: 4px var(--dd-ink);
+  paint-order: stroke fill;
+}
+
+.rf-r-veryRare .rf-find-star {
+  color: var(--dd-lilac);
+  font-size: 1.2rem;
+}
+
+/* The amount: the round font, flat paper colour inside a fat ink line, over the find (its size is
+   set by the item box and the label's length, render/refine/layout.ts amountFontPx). */
+.rf-find-amt {
+  position: absolute;
+  z-index: 3;
+  bottom: 88%;
+  left: 50%;
+  color: var(--dd-paper-3);
+  font-family: var(--dd-font-round);
+  font-size: 0.98rem;
+  font-weight: 400;
+  line-height: 1;
+  white-space: nowrap;
+  -webkit-text-stroke: 4px var(--dd-ink);
+  paint-order: stroke fill;
+  transform: translate(-50%, 0);
+}
+
+.rf-r-rare .rf-find-amt {
+  color: var(--dd-sky);
+}
+
+.rf-r-veryRare .rf-find-amt {
+  color: var(--dd-lilac);
+}
+
+.rf-find.flying .rf-find-amt,
+.rf-find.flying .rf-find-star {
+  visibility: hidden;
+}
+
+.rf-stack-2 + .rf-find-star,
+.rf-stack-3 + .rf-find-star {
+  top: -26%;
+}
+
+/* A rare find's name on a little paper tag over the lump; a very rare one's hangs under it, over the
+   anvil (its top is the tag's top), clear of his speech bubble. */
+.rf-tag {
+  position: absolute;
+  z-index: 7;
+  padding: 3px 10px 4px;
+  border: var(--dd-stroke) solid var(--dd-ink);
+  border-radius: 10px;
+  background: var(--dd-sky-paper);
+  box-shadow: var(--dd-pop-s);
+  color: var(--dd-ink);
+  font-family: var(--dd-font-round);
+  font-size: 0.92rem;
+  font-weight: 400;
+  line-height: 1.15;
+  white-space: nowrap;
+  pointer-events: none;
+  transform: translate(-50%, -100%) rotate(-2deg);
+  animation: rf-tag 0.24s ease-out;
+}
+
+.rf-tag.rf-r-veryRare {
+  background: color-mix(in srgb, var(--dd-lilac) 50%, var(--dd-paper-3));
+  font-size: 1.08rem;
+  transform: translate(-50%, 0) rotate(2deg);
+}
+
+/* The dwarf speaks: the card craft's doodle bubble, its tail pointing at him. */
+.rf-say {
+  position: absolute;
+  z-index: 8;
+  padding: 6px 11px;
+  border: var(--dd-stroke) solid var(--dd-ink);
+  border-radius: 16px;
+  background: var(--dd-paper-3);
+  box-shadow: var(--dd-pop-s);
+  color: var(--dd-ink);
+  font-family: var(--dd-font-body);
+  font-size: 0.86rem;
+  font-weight: 700;
+  line-height: 1.4;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+  transform: translateY(-50%);
+  animation: rf-say 2.8s ease-out forwards;
+  pointer-events: none;
+}
+
+.rf-say::before,
+.rf-say::after {
+  position: absolute;
+  top: 50%;
+  border-style: solid;
+  content: '';
+}
+
+.rf-say::before {
+  left: -12px;
+  margin-top: -9px;
+  border-width: 9px 12px 9px 0;
+  border-color: transparent var(--dd-ink) transparent transparent;
+}
+
+.rf-say::after {
+  left: -7.5px;
+  margin-top: -6px;
+  border-width: 6px 8px 6px 0;
+  border-color: transparent var(--dd-paper-3) transparent transparent;
+}
+
+/* ---------- Bottom: the hammer, the multiplier ---------- */
+
+.rf-foot {
+  position: relative;
+  z-index: 5;
+  flex: none;
+  padding: 4px 10px calc(10px + env(safe-area-inset-bottom));
+  border-top: var(--dd-stroke-fat) solid var(--dd-ink);
+  background: var(--dd-wood-2);
+}
+
+.rf-hint {
+  min-height: 1.35em;
+  margin: 0 0 2px;
+  color: var(--dd-paper);
+  font-size: 0.84rem;
+  font-weight: 700;
+  line-height: 1.35;
+  text-align: center;
+  word-break: keep-all;
+}
+
+.rf-hint.kick {
+  animation: rf-kick 0.32s ease-out;
+}
+
+.rf-controls {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 8px;
+}
+
+/* The 실험 panel: a small paper sticker at the left, out of the thumb's way. */
+.rf-labbtn {
+  justify-self: start;
+  min-width: 52px;
+  min-height: 44px;
+  padding: 4px 10px;
+  border: var(--dd-stroke) solid var(--dd-ink);
+  border-radius: var(--dd-round-s);
+  background: var(--dd-paper-3);
+  box-shadow: var(--dd-pop-s);
+  color: var(--dd-ink);
+  font-family: var(--dd-font-round);
+  font-size: 0.92rem;
+  cursor: pointer;
+}
+
+.rf-labbtn:active {
+  transform: translateY(2px);
+  box-shadow: none;
+}
+
+/* The hammer: a big picture button where the thumb rests. Held, it stays pressed in. */
+.rf-hammer {
+  position: relative;
+  display: block;
+  width: clamp(104px, 30vw, 124px);
+  height: clamp(104px, 30vw, 124px);
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  touch-action: none;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Its round paper seat. */
+.rf-hammer::before {
+  position: absolute;
+  inset: 8% 6% 2%;
+  border: var(--dd-stroke-fat) solid var(--dd-ink);
+  border-radius: 50%;
+  background: var(--dd-orange);
+  box-shadow: 0 4px 0 var(--dd-ink);
+  content: '';
+}
+
+.rf-hammer.down::before {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 var(--dd-ink);
+}
+
+.rf-hammer-pic {
+  position: absolute;
+  inset: 4% 8% 14%;
+  display: block;
+  transform-origin: 50% 85%;
+}
+
+.rf-hammer.down .rf-hammer-pic {
+  translate: 0 3px;
+}
+
+.rf-hammer-pic img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.rf-hammer-standin {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  font-family: var(--dd-font-round);
+  font-size: 1.3rem;
+  font-style: normal;
+}
+
+/* No lumps: the hammer rests grey (it can still be pressed: the play log counts it). */
+.rf-hammer.empty::before {
+  background: var(--dd-ash);
+}
+
+.rf-hammer.empty .rf-hammer-pic {
+  filter: grayscale(0.7);
+  opacity: 0.7;
+}
+
+.rf-hammer:focus-visible {
+  outline: 3px solid var(--dd-butter);
+  outline-offset: 2px;
+}
+
+/* The multiplier: a cream sticker plate (two lumps on its end, ×n on it), the blows it pays for
+   under it. Drawn in CSS like the other stickers: the drawn plate came out a long bar with a flame
+   (tools/art/assets.ts, 뺀 키 badge_mult). */
+.rf-mult {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-self: end;
+  gap: 2px;
+  min-width: 100px;
+  min-height: 64px;
+  padding: 2px 0;
+  border: 0;
+  background: transparent;
+  color: var(--dd-paper);
+  font-family: var(--dd-font-round);
+  cursor: pointer;
+}
+
+.rf-mult-plate {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100px;
+  height: 44px;
+  padding-left: 26px;
+  border: var(--dd-stroke-fat) solid var(--dd-ink);
+  border-radius: 14px;
+  background: var(--dd-paper-3);
+  box-shadow: var(--dd-pop);
+}
+
+.rf-mult:active .rf-mult-plate {
+  transform: translateY(3px);
+  box-shadow: none;
+}
+
+/* Two lumps heaped on the plate's left end. */
+.rf-mult-lumps {
+  position: absolute;
+  top: 50%;
+  left: 5px;
+  width: 28px;
+  height: 30px;
+  transform: translateY(-50%);
+}
+
+.rf-mult-lumps img {
+  position: absolute;
+  width: 19px;
+  height: 17px;
+  object-fit: contain;
+}
+
+.rf-mult-lumps img:first-child {
+  bottom: 0;
+  left: 0;
+}
+
+.rf-mult-lumps img:last-child {
+  top: 1px;
+  left: 8px;
+  transform: rotate(18deg);
+}
+
+.rf-mult-plate b {
+  color: var(--dd-ink);
+  font-size: 1.45rem;
+  font-weight: 400;
+  line-height: 1;
+}
+
+.rf-mult small {
+  font-size: 0.82rem;
+  line-height: 1;
+}
+
+.rf-mult.lowered .rf-mult-plate b {
+  color: var(--dd-orange-ink);
+}
+
+/* ---------- Sheets: the bag, the 실험 panel ---------- */
+
+.rf-baglist,
+.rf-odds {
+  display: grid;
+  gap: 6px;
+  margin: 4px 0 10px;
+  padding: 0;
+  list-style: none;
+}
+
+.rf-baglist li,
+.rf-odds li {
+  display: grid;
+  grid-template-columns: 40px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 4px 10px 4px 6px;
+  border: 2px solid var(--dd-ink);
+  border-radius: 12px;
+  background: var(--dd-paper-3);
+}
+
+.rf-baglist li.rf-r-rare,
+.rf-odds li.rf-r-rare {
+  background: var(--dd-sky-paper);
+}
+
+.rf-baglist li.rf-r-veryRare,
+.rf-odds li.rf-r-veryRare {
+  background: color-mix(in srgb, var(--dd-lilac) 35%, var(--dd-paper-3));
+}
+
+.rf-baglist-pic img,
+.rf-odds-pic img {
+  display: block;
+  width: 38px;
+  height: 38px;
+  object-fit: contain;
+}
+
+.rf-baglist-name,
+.rf-odds-name {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.rf-baglist-name b,
+.rf-odds-name b {
+  font-family: var(--dd-font-round);
+  font-size: 1rem;
+  font-weight: 400;
+}
+
+.rf-baglist-name small,
+.rf-odds-name small {
+  color: var(--dd-ink-soft);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.rf-baglist-count,
+.rf-odds-pct {
+  font-family: var(--dd-font-round);
+  font-size: 1.15rem;
+}
+
+.rf-odds li {
+  min-height: 42px;
+}
+
+.rf-lab section {
+  margin-bottom: 12px;
+}
+
+.rf-lab h4 {
+  margin: 4px 0 6px;
+  color: var(--dd-ink);
+  font-family: var(--dd-font-round);
+  font-size: 1rem;
+  font-weight: 400;
+}
+
+.rf-lab h4 small {
+  color: var(--dd-ink-soft);
+  font-family: var(--dd-font-body);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.rf-lab-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.rf-lab-row .kc-btn {
+  min-height: 44px;
+}
+
+.rf-lab .kc-hint {
+  color: var(--dd-ink-soft);
+  font-weight: 700;
+}
+
+/* ---------- Motion ---------- */
+
+@keyframes rf-pop {
+  0% {
+    transform: scale(0.7);
+  }
+  60% {
+    transform: scale(1.18);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes rf-notice {
+  0% {
+    opacity: 0;
+    translate: 0 -10px;
+  }
+  6% {
+    opacity: 1;
+    translate: 0 0;
+  }
+  88% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes rf-say {
+  0% {
+    opacity: 0;
+    scale: 0.85;
+  }
+  8% {
+    opacity: 1;
+    scale: 1;
+  }
+  86% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes rf-plus {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -8px) scale(0.6);
+  }
+  14% {
+    opacity: 1;
+    transform: translate(-50%, 3px) scale(1.12);
+  }
+  26% {
+    transform: translate(-50%, 0) scale(1);
+  }
+  78% {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, 6px) scale(1);
+  }
+}
+
+@keyframes rf-tag {
+  0% {
+    opacity: 0;
+    scale: 0.6;
+  }
+  70% {
+    opacity: 1;
+    scale: 1.08;
+  }
+  100% {
+    scale: 1;
+  }
+}
+
+@keyframes rf-kick {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  25% {
+    translate: -6px 0;
+  }
+  50% {
+    translate: 5px 0;
+  }
+  75% {
+    translate: -3px 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rf-chip b,
+  .rf-hint.kick {
+    animation: none;
+  }
+
+  .rf-notice,
+  .rf-say,
+  .rf-tag {
+    animation: none;
+  }
+
+  .rf-plus {
+    animation: rf-plus-still 1.3s linear forwards;
+  }
+}
+
+@keyframes rf-plus-still {
+  0%,
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}

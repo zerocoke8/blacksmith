@@ -119,14 +119,12 @@ export function TableSheets(props: {
   setSheet(s: SheetState | null): void;
   craft: CardCraftState;
   profile: CardProfile;
-  inRun?: boolean;
-  bossMaterialName?: string;
   commit(uid: string, opts: PlayOptions): void;
   tryPlay(v: HandCardView): void;
   onEndTurn(keep: string[]): void;
   onAbandon(): void;
 }) {
-  const { sheet, setSheet, craft, profile, inRun, commit, tryPlay, onEndTurn, onAbandon } = props;
+  const { sheet, setSheet, craft, profile, commit, tryPlay, onEndTurn, onAbandon } = props;
   const r = craft.recipe;
   const close = () => setSheet(null);
   if (sheet === null) return null;
@@ -137,7 +135,6 @@ export function TableSheets(props: {
           craft={craft}
           profile={profile}
           uid={sheet.uid}
-          showTemper={inRun !== true}
           onClose={close}
           onPlay={(v) => {
             setSheet(null);
@@ -151,7 +148,7 @@ export function TableSheets(props: {
           <p>이 카드로 내구도가 바닥난다. 공정을 채우기 전에 쇠가 갈라진다.</p>
           <p className="kc-hint">
             {r.bossMaterial !== null
-              ? `재료도, ${props.bossMaterialName ?? UNIQUES[r.bossMaterial].material}도 돌아오지 않는다.`
+              ? `재료도, ${UNIQUES[r.bossMaterial].material}도 돌아오지 않는다.`
               : '재료는 돌아오지 않는다.'}
           </p>
           <div className="kc-row">
@@ -270,11 +267,10 @@ function InfoSheet(props: {
   craft: CardCraftState;
   profile: CardProfile;
   uid: string;
-  showTemper: boolean;
   onClose(): void;
   onPlay(v: HandCardView): void;
 }) {
-  const { craft, profile, uid, showTemper, onClose, onPlay } = props;
+  const { craft, profile, uid, onClose, onPlay } = props;
   const v = handView(craft).find((x) => x.uid === uid);
   if (v === undefined) return null;
   const p = v.block === null ? safePreview(craft, uid) : null;
@@ -323,7 +319,7 @@ function InfoSheet(props: {
           {p.breaks && <em className="brk">내구도가 바닥나 쇠가 갈라진다</em>}
         </div>
       )}
-      {showTemper && need !== null && (
+      {need !== null && (
         <p className="kc-hint">
           단련 {Math.min(temper, need)} / {need}
           {temper >= need && ' — 작업대에서 진화할 수 있다'}

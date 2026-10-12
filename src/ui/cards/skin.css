@@ -3,7 +3,7 @@
    paper stickers on it — panels, buttons, rows — with a fat dark-brown line and a hard shadow they
    sink into when pressed, the round font (Jua) for headings, names, numbers and buttons, Gowun Dodum
    for reading. Text on the wood is paper-coloured, text on paper is ink. Scoped to .kc-skin
-   (CardCraft.tsx) and .ft-root (the art table's sheets); the season tower's own screens keep theirs.
+   (CardCraft.tsx) and .ft-root (the art table's sheets).
    Colour names: app.css --dd-*. */
 
 /* .kc-root too: app.css (loaded later) points .kc-skin's tokens at ink; on this screen's wood they are paper. */
@@ -790,7 +790,7 @@
 
 /* ---------- The plain table (아트 화면 off in 실험, or no WebGL / the art failed: Table.tsx) ----------
    The same paper and ink as the art table: paper cards with their kind's band on top, paper-2
-   tracks under an ink line, flat fills, no glows. cards.css keeps the season tower's dark one. */
+   tracks under an ink line, flat fills, no glows, over cards.css's old dark one. */
 
 .kc-skin .kc-table {
   --kc-progress: var(--dd-orange);

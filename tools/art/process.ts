@@ -1,6 +1,6 @@
 // 원본 PNG를 게임에 넣을 WebP로 다듬는다.
 //   node tools/art/process.ts --raw <원본 폴더> [--only key1,scene/key2] [--out <폴더>]
-// 읽는 곳: <raw>/<그룹>/<key>.png  (그룹: scene, ui, cards, 키는 tools/art/assets.ts)
+// 읽는 곳: <raw>/<그룹>/<key>.png  (그룹: tools/art/assets.ts ART_GROUPS — scene, ui, cards, refine. 키도 거기에)
 // 쓰는 곳: <out>/<그룹>/<key>.webp 와 <out>/meta.json  (기본 out: src/assets/art)
 //   - 투명 에셋: 알파 가장자리를 다듬고(알파 레벨, 아래), 투명 여백을 잘라 내고(PAD px 여유),
 //     긴 변을 max에 맞춰 줄인다.
@@ -655,7 +655,7 @@ function usage(): string {
 }
 
 function emptyMeta(): ArtMeta {
-  return { scene: {}, ui: {}, cards: {} };
+  return Object.fromEntries(ART_GROUPS.map((g) => [g, {}])) as ArtMeta;
 }
 
 function readMeta(file: string): ArtMeta {

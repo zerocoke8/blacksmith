@@ -36,7 +36,7 @@ import { outcomeLines, signed, stars, tierName, weaponTitle } from './text.ts';
 import './art.css';
 
 export default function ArtTable(props: TableProps & { onUnavailable(): void }) {
-  const { session, profile, onPlay, onEndTurn, onAbandon, onPileOpen, onInfoOpen, onSeen, onFinished, inRun } = props;
+  const { session, profile, onPlay, onEndTurn, onAbandon, onPileOpen, onInfoOpen, onSeen, onFinished } = props;
   const craft = session.craft;
   const r = craft.recipe;
   const views = handView(craft);
@@ -260,7 +260,7 @@ export default function ArtTable(props: TableProps & { onUnavailable(): void }) 
   const preview = previewUid !== null && craft.hand.includes(previewUid) ? safePreview(craft, previewUid) : null;
   const piles = pileCounts(craft);
   const effects = activeEffects(craft);
-  const ruleNotes = inRun === true ? [] : cardRuleNotes(craft.rules).filter((n) => n !== '식는 쇠');
+  const ruleNotes = cardRuleNotes(craft.rules).filter((n) => n !== '식는 쇠');
   const nextFire = nextFirePreview(craft);
   const tier = currentTier(craft);
   const stoked = FIRE_BUFFS.some((b) => (craft.buffs[b] ?? 0) > 0);
@@ -281,7 +281,6 @@ export default function ArtTable(props: TableProps & { onUnavailable(): void }) 
   // The craft is over: the hand sinks away at the last blow, the banner comes a moment later.
   const showEnd = !active && (endBeat || fxIdle);
   const showBanner = !active && (bannerUp || fxIdle);
-  const turnWord = props.turnWord ?? '턴';
   const shownTier = g.tier;
 
   const pileEl = (k: PileKind): HTMLElement | null =>
@@ -397,12 +396,12 @@ export default function ArtTable(props: TableProps & { onUnavailable(): void }) 
           </button>
         )}
         <div className="ft-title">
-          <b>{props.title ?? weaponTitle(r.weaponType, r.materialTier)}</b>
+          <b>{weaponTitle(r.weaponType, r.materialTier)}</b>
           <span className={`kc-tag kc-grade-${r.grade}`}>{CARD_RECIPE_GRADE_LABEL[r.grade]}</span>
         </div>
-        <div className="ft-turn" aria-label={`${craft.turn}${turnWord}`}>
+        <div className="ft-turn" aria-label={`${craft.turn}턴`}>
           <b>{craft.turn}</b>
-          <small>{turnWord}</small>
+          <small>턴</small>
         </div>
         <div className={`ft-stars ft-tier-${shownTier}`} aria-label={`지금 ${tierName(shownTier)}`}>
           <span className="ft-stars-full">{stars(shownTier)}</span>
@@ -557,8 +556,6 @@ export default function ArtTable(props: TableProps & { onUnavailable(): void }) 
         setSheet={setSheet}
         craft={craft}
         profile={profile}
-        inRun={inRun}
-        bossMaterialName={props.bossMaterialName}
         commit={commit}
         tryPlay={flow.tryPlay}
         onEndTurn={onEndTurn}

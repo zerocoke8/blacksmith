@@ -311,7 +311,7 @@ function determinize(state: CardCraftState, world: number): CardCraftState {
   return { ...state, drawPile: pile, setup: { ...state.setup, seed: rng.nextUint32(), stream: BOT_STREAM } };
 }
 
-/** Random stream of the redrawn worlds (never 'craft' or 'forge'). */
+/** Random stream of the redrawn worlds (never the real 'craft'). */
 const BOT_STREAM = 'botWorld';
 
 function playout(state: CardCraftState, maxTurns: number): number {

@@ -80,13 +80,22 @@
     "stormBellows": {"w":540,"h":400,"scale":0.319,"alpha":false,"trim":{"x":-219,"y":0,"w":1693,"h":1254,"ow":1254,"oh":1254}},
     "tailwind": {"w":540,"h":400,"scale":0.319,"alpha":false,"trim":{"x":-219,"y":0,"w":1693,"h":1254,"ow":1254,"oh":1254}},
     "deepWater": {"w":540,"h":400,"scale":0.3907,"alpha":false,"trim":{"x":-179,"y":0,"w":1382,"h":1024,"ow":1024,"oh":1024}},
-    "frostFinish": {"w":540,"h":400,"scale":0.319,"alpha":false,"trim":{"x":-219,"y":0,"w":1693,"h":1254,"ow":1254,"oh":1254}},
-    "repayStrike": {"w":540,"h":400,"scale":0.319,"alpha":false,"trim":{"x":-219,"y":0,"w":1693,"h":1254,"ow":1254,"oh":1254}},
-    "windRead": {"w":540,"h":400,"scale":0.319,"alpha":false,"trim":{"x":-219,"y":0,"w":1693,"h":1254,"ow":1254,"oh":1254}},
-    "downStrike": {"w":540,"h":400,"scale":0.319,"alpha":false,"trim":{"x":-219,"y":0,"w":1693,"h":1254,"ow":1254,"oh":1254}},
-    "edgeHone": {"w":540,"h":400,"scale":0.319,"alpha":false,"trim":{"x":-219,"y":0,"w":1693,"h":1254,"ow":1254,"oh":1254}},
-    "emberWatch": {"w":540,"h":400,"scale":0.319,"alpha":false,"trim":{"x":-219,"y":0,"w":1693,"h":1254,"ow":1254,"oh":1254}},
-    "ashHammer": {"w":540,"h":400,"scale":0.3907,"alpha":false,"trim":{"x":-179,"y":0,"w":1382,"h":1024,"ow":1024,"oh":1024}},
-    "ashQuench": {"w":540,"h":400,"scale":0.319,"alpha":false,"trim":{"x":-219,"y":0,"w":1693,"h":1254,"ow":1254,"oh":1254}}
+    "frostFinish": {"w":540,"h":400,"scale":0.319,"alpha":false,"trim":{"x":-219,"y":0,"w":1693,"h":1254,"ow":1254,"oh":1254}}
+  },
+  "refine": {
+    "ore_chunk": {"w":160,"h":139,"scale":0.2075,"alpha":true,"trim":{"x":242,"y":294,"w":771,"h":671,"ow":1254,"oh":1254}},
+    "chunk_pile": {"w":420,"h":232,"scale":0.3454,"alpha":true,"trim":{"x":160,"y":178,"w":1216,"h":671,"ow":1536,"oh":1024}},
+    "ore_iron": {"w":160,"h":142,"scale":0.2086,"alpha":true,"trim":{"x":256,"y":288,"w":767,"h":682,"ow":1254,"oh":1254}},
+    "ore_steel": {"w":160,"h":108,"scale":0.176,"alpha":true,"trim":{"x":188,"y":345,"w":909,"h":615,"ow":1254,"oh":1254}},
+    "ore_mithril": {"w":142,"h":160,"scale":0.2085,"alpha":true,"trim":{"x":311,"y":255,"w":681,"h":769,"ow":1254,"oh":1254}},
+    "ore_orichalcum": {"w":160,"h":126,"scale":0.1546,"alpha":true,"trim":{"x":110,"y":195,"w":1035,"h":812,"ow":1254,"oh":1254}},
+    "ore_adamant": {"w":137,"h":160,"scale":0.2147,"alpha":true,"trim":{"x":333,"y":269,"w":638,"h":746,"ow":1254,"oh":1254}},
+    "gold_coins": {"w":160,"h":126,"scale":0.2003,"alpha":true,"trim":{"x":228,"y":327,"w":799,"h":630,"ow":1254,"oh":1254}},
+    "gift_flowers": {"w":129,"h":160,"scale":0.2183,"alpha":true,"trim":{"x":332,"y":268,"w":591,"h":734,"ow":1254,"oh":1254}},
+    "gift_honey": {"w":160,"h":131,"scale":0.1942,"alpha":true,"trim":{"x":251,"y":326,"w":824,"h":674,"ow":1254,"oh":1254}},
+    "gift_pebble": {"w":160,"h":121,"scale":0.2377,"alpha":true,"trim":{"x":316,"y":391,"w":673,"h":510,"ow":1254,"oh":1254}},
+    "gift_gloves": {"w":160,"h":120,"scale":0.178,"alpha":true,"trim":{"x":194,"y":327,"w":899,"h":672,"ow":1254,"oh":1254}},
+    "btn_hammer": {"w":360,"h":355,"scale":0.3618,"alpha":true,"trim":{"x":133,"y":154,"w":995,"h":981,"ow":1254,"oh":1254}},
+    "bag": {"w":137,"h":160,"scale":0.2175,"alpha":true,"trim":{"x":313,"y":282,"w":630,"h":734,"ow":1254,"oh":1254}}
   }
 }

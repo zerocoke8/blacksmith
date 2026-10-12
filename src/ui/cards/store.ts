@@ -241,10 +241,10 @@ function isCardId(v: unknown): v is CardId {
   return typeof v === 'string' && (CARD_IDS as readonly string[]).includes(v);
 }
 
-/** Deck cards only: known ids, no material cards, no 육성 한 판 cards (가문 고유, 시즌: 13.5, 13.8.1). */
+/** Deck cards only: known ids, no material cards. */
 function readDeck(v: unknown): CardId[] | null {
   if (!Array.isArray(v)) return null;
-  return v.filter((id): id is CardId => isCardId(id) && CARDS[id].kind !== 'material' && CARDS[id].group !== 'family' && CARDS[id].group !== 'season');
+  return v.filter((id): id is CardId => isCardId(id) && CARDS[id].kind !== 'material');
 }
 
 function readCounts(v: unknown, accept: (id: CardId) => boolean): Partial<Record<CardId, number>> {

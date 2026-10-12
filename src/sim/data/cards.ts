@@ -3,18 +3,15 @@
 // these effects (cards/text.ts), so a number lives only here.
 
 import type { UniqueId } from '../core/types.ts';
-import { FAMILY_CARD_IDS, FAMILY_CARD_SPECS } from './families.ts';
-import { SEASON_CARD_IDS, SEASON_CARD_SPECS } from './seasonCards.ts';
 
 /** Craft state version for saves (4.2.8: 카드식 제작 상태는 버전 2). */
 export const CARD_CRAFT_STATE_VERSION = 2;
 
 /**
  * Random keys (4.2.8, 3.6): (seed, stream, craftNo, 'fire', turn[, reroll]) and
- * (seed, stream, craftNo, 'deck', shuffleNo). The idle world uses 'craft'; a 육성 한 판
- * uses 'forge' with its own seed and 단조 번호 (13.16).
+ * (seed, stream, craftNo, 'deck', shuffleNo). The idle world's crafts use 'craft'.
  */
-export const CARD_STREAM = { craft: 'craft', forge: 'forge' } as const;
+export const CARD_STREAM = { craft: 'craft' } as const;
 export const FIRE_KEY = 'fire';
 export const DECK_KEY = 'deck';
 
@@ -290,10 +287,6 @@ export const CARD_IDS = [
   ...EVOLVED_CARD_IDS,
   ...MATERIAL_CARD_IDS,
   ...BOSS_CARD_IDS,
-  // 육성 한 판에서만 덱에 들어오는 카드 (13.5 가문 고유 카드, 13.8.1 시즌 카드). Their numbers live
-  // in data/families.ts and data/seasonCards.ts.
-  ...FAMILY_CARD_IDS,
-  ...SEASON_CARD_IDS,
 ] as const;
 export type CardId = (typeof CARD_IDS)[number];
 
@@ -308,8 +301,7 @@ export const CARD_KIND_LABEL: Record<CardKind, string> = {
   material: '재료',
 };
 
-/** 'family' = 가문 고유 카드 (13.5), 'season' = 시즌 카드 (13.8.1): 육성 한 판 전용. */
-export type CardGroup = 'basic' | 'unlock' | 'evolved' | 'material' | 'boss' | 'family' | 'season';
+export type CardGroup = 'basic' | 'unlock' | 'evolved' | 'material' | 'boss';
 
 /** Timed buffs. 'turns' on the card: 1 = 이번 턴, 2 = 이번 턴과 다음 턴, 3 = 이번 턴부터 3턴. */
 export const BUFF_IDS = [
@@ -450,8 +442,6 @@ export interface CardSpec {
 
 type SpecInput = Omit<CardSpec, 'id' | 'keywords' | 'requires' | 'imprint' | 'family' | 'temper' | 'evolutions' | 'unlock'> &
   Partial<Pick<CardSpec, 'keywords' | 'requires' | 'imprint' | 'family' | 'temper' | 'evolutions' | 'unlock'>>;
-/** A card as the data files write it (data/families.ts, data/seasonCards.ts add 육성 한 판 cards this way). */
-export type CardSpecInput = SpecInput;
 
 /** 해금 카드 단련 횟수 (4.2.5); 각인은 넣고 마친 제작 수. */
 export const UNLOCK_TEMPER = 15;
@@ -928,9 +918,6 @@ const SPECS: Record<CardId, SpecInput> = {
     keywords: { exhaust: true },
     effects: [{ type: 'finish', ratio: 1.0, perHeat: 0.2, spend: 'none' }],
   },
-  // ----- 육성 한 판 전용 (13.5 가문 고유 카드, 13.8.1 시즌 카드) -----
-  ...FAMILY_CARD_SPECS,
-  ...SEASON_CARD_SPECS,
 };
 
 function buildSpecs(): Record<CardId, CardSpec> {

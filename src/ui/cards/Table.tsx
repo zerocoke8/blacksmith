@@ -80,22 +80,11 @@ export interface TableProps {
   /** The craft is over and its last moment has been shown: go to the result screen. */
   onFinished(): void;
   /**
-   * A 육성 한 판 단조 (13.8): its hand size is the run's own rule, not a [검증] switch, and its
-   * cards have no 작업대 to evolve at, so the 실험 chip and the 단련 line are left out.
-   */
-  inRun?: boolean;
-  /** A 육성 한 판's 시즌 보스 재료 (13.2.1) goes by the season's name, not the 4.6 material's. */
-  bossMaterialName?: string;
-  /**
    * The art screen covers the whole screen, the host's top bar too: its own back button,
    * title and menu stand in for them.
    */
   onExit?(): void;
   exitLabel?: string;
-  /** Title in the art screen's top band (default: the recipe's weapon name). */
-  title?: ReactNode;
-  /** '턴' in the card prototype, '손' in a run. */
-  turnWord?: string;
   /** Extra menu entries (작업대, 실험 …). */
   menu?: TableMenuItem[];
   /**
@@ -146,7 +135,7 @@ const CLASSIC_END_HOLD_MS = 1800;
 const ROOMY_HAND = 6;
 
 export function ClassicTable(props: TableProps) {
-  const { session, profile, onPlay, onEndTurn, onAbandon, onPileOpen, onInfoOpen, onSeen, onFinished, inRun } = props;
+  const { session, profile, onPlay, onEndTurn, onAbandon, onPileOpen, onInfoOpen, onSeen, onFinished } = props;
   const craft = session.craft;
   const r = craft.recipe;
   const views = handView(craft);
@@ -154,7 +143,7 @@ export function ClassicTable(props: TableProps) {
   const effects = activeEffects(craft);
   const next = nextFirePreview(craft);
   // 식는 쇠 has its own line in `effects`; the other [검증] switches get one reminder chip.
-  const ruleNotes = inRun === true ? [] : cardRuleNotes(craft.rules).filter((n) => n !== '식는 쇠');
+  const ruleNotes = cardRuleNotes(craft.rules).filter((n) => n !== '식는 쇠');
   const active = craft.status === 'active';
 
   const [selected, setSelected] = useState<string | null>(null);
@@ -433,8 +422,6 @@ export function ClassicTable(props: TableProps) {
         setSheet={setSheet}
         craft={craft}
         profile={profile}
-        inRun={inRun}
-        bossMaterialName={props.bossMaterialName}
         commit={commitPlay}
         tryPlay={tryPlay}
         onEndTurn={onEndTurn}

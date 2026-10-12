@@ -13,7 +13,7 @@
 //   '@key'  이 매니페스트의 다른 에셋(먼저 뽑아 둔 원본). '@그룹/key'로 그룹을 정할 수 있다.
 //           예: 카드 틀 네 장은 @frame_progress를, 화로 상태 일곱 장은 @fire_normal을 따라 그린다.
 //
-// 최종 프롬프트 = 화풍 머리말(STYLE) + [UI면 참조 안내(STYLE_REF_ONLY)] + [카드면 카드 구도(CARD_FRAMING)]
+// 최종 프롬프트 = 화풍 머리말(STYLE) + [UI·정제면 참조 안내(STYLE_REF_ONLY)] + [카드면 카드 구도(CARD_FRAMING)]
 // + 에셋 프롬프트. buildPrompt가 붙인다. 드워프 자세(ownStyle)는 화풍을 프롬프트에 직접 적었다.
 // 기록과 다른 점: UI 그림을 처음 뽑을 때는 참조 안내가 Codex 지시문 쪽에 "첨부 1은 화풍 참조일 뿐 …, 첨부 2는
 // 그대로 따라 그릴 카드 틀 …"처럼 들어 있었다. 지금은 STYLE_REF_ONLY가 그림 프롬프트 안에 들어가고 gen.ts의
@@ -23,7 +23,7 @@
 // 처리(process.ts)에서 키마다 더 하는 일은 process에 적는다: 카드 일러스트의 가장자리 메움(edge)과
 // 양옆으로 넓히기(widen), 단색 배경 색 바꾸기(recolor), 다른 그림과 같은 자리에 맞추기(alignTo).
 
-export const ART_GROUPS = ['scene', 'ui', 'cards'] as const;
+export const ART_GROUPS = ['scene', 'ui', 'cards', 'refine'] as const;
 export type ArtGroup = (typeof ART_GROUPS)[number];
 
 /** 'WxH' (px). */
@@ -118,7 +118,7 @@ export const CARD_WIDEN = 1.35;
 export function buildPrompt(a: ArtAsset): string {
   if (a.ownStyle === true) return a.prompt;
   if (a.group === 'cards') return `${STYLE}\n\n${CARD_FRAMING}\n\n${a.prompt}`;
-  if (a.group === 'ui') return `${STYLE}\n\n${STYLE_REF_ONLY}\n\n${a.prompt}`;
+  if (a.group === 'ui' || a.group === 'refine') return `${STYLE}\n\n${STYLE_REF_ONLY}\n\n${a.prompt}`;
   return `${STYLE}\n\n${a.prompt}`;
 }
 
@@ -550,17 +550,13 @@ const UI: readonly Entry[] = [
 // ── cards: 카드 일러스트 ─────────────────────────────────────────────────
 // 키는 sim의 카드 id와 같다. 프롬프트 = STYLE + CARD_FRAMING + 장면. 배경은 종류마다 평면 한 색:
 // 공정 주황(#F2B279), 품질 하늘(#BFDDEB), 보조 민트(#CBE6C1), 각인 라벤더(#D8CBEA), 재료 노랑(처리에서
-// 버터색 #F3DC8F로), 전설 재료 금색에 보라 원(처리에서 #E9C46A로), 가문·시즌 카드는 제 색. 처리에서 바꾸는
+// 버터색 #F3DC8F로), 전설 재료 금색에 보라 원(처리에서 #E9C46A로). 처리에서 바꾸는
 // 색(recolor)은 Codex가 덱의 파스텔보다 쨍하게 칠한 배경을 맞춘 것이다.
 
 /** 전설 재료 카드의 진한 금색 배경(약 253,197,4)을 덱의 파스텔에 맞춘다. */
 const LEGEND: ArtProcess['recolor'] = { to: '#E9C46A' };
 /** 재료 카드의 레몬색(약 253,224,90)을 한 톤 눌러, 전설 금색보다 옅은 버터색으로. */
 const MATERIAL: ArtProcess['recolor'] = { to: '#F3DC8F' };
-/** 잔날 세우기의 빨강(198,61,57)을 다른 카드의 채도에 맞춘다. */
-const HONE: ArtProcess['recolor'] = { to: '#C7766A' };
-/** 갚는 일격의 진한 주황(253,147,70)을 공정 카드의 주황과 같은 채도로. */
-const REPAY: ArtProcess['recolor'] = { to: '#EFA572' };
 
 /** 카드 일러스트 하나: 키, 카드 이름·성격(메모), 참조, 장면. 가장자리는 늘 메우고 1.35:1로 넓힌다. */
 function card(key: string, label: string, refs: readonly string[], prompt: string, more: { recolor?: ArtProcess['recolor']; note?: string } = {}): Entry {
@@ -628,7 +624,7 @@ const CARDS_A: readonly Entry[] = [
     "Scene: a cute flame with one big round eye and a simple purple rune circle around it. No dwarf in this card. The flame is a chubby rounded orange flame shape with a soft yellow inner flame, one big round cartoon eye (white with a black dot pupil), looking a bit sleepy-silly. Around it, a simple purple ring with four small diamond marks on it (never letters or numbers). Outlines exactly as thick and as dark (near-black brown) as the dwarf's outlines, ONE flat fill per shape (no shading, no glow gradients). IMPORTANT size: the whole design, ring and diamonds included, must be small and fit inside the middle 55% of the canvas height and width, with wide empty margins of flat background on every side. Background: the whole canvas is one single flat solid color, a soft pale lavender (like #D8CBEA), edge to edge, no pattern, no frame, no border."),
 ];
 
-/** 재료 카드, 전설 재료 카드, 가문 카드, 시즌 카드. */
+/** 재료 카드, 전설 재료 카드. */
 const CARDS_B: readonly Entry[] = [
   card('ironMelt', '쇳물 고르기 (재료, 철)', ['d_dwarf_idle'],
     'Subject: a small ladle of glowing orange molten iron with a little bubble. Background: one flat soft warm yellow color. Opaque image: the flat background color fills the whole square edge to edge (not transparent, no white margin, no border). Only objects (and at most a simple cartoon hand); no human faces.',
@@ -669,23 +665,142 @@ const CARDS_B: readonly Entry[] = [
   card('frostFinish', '서리 마무리 (전설 재료: 서리 왕관 조각)', ['d_dwarf_idle'],
     'Subject: a small pale blue crown shard spreading little ice crystals along a blade. Background: one flat deep golden yellow color with a single simple flat muted purple circle behind the subject (just two flat colors, no gradient, no glow), so it feels a little more special. Opaque image: the flat background color fills the whole square edge to edge (not transparent, no white margin, no border). Only objects (and at most a simple cartoon hand); no human faces.',
     { recolor: LEGEND }),
-  card('repayStrike', '갚는 일격 (가문 바일 — "외상은 반드시 갚는다", 한손검)', ['d_dwarf_idle'],
-    'Subject: a one-handed sword next to a small stack of coins and a ledger book with a ribbon. Background: one flat soft orange color. Opaque image: the flat background color fills the whole square edge to edge (not transparent, no white margin, no border). Only objects (and at most a simple cartoon hand); no human faces.',
-    { recolor: REPAY }),
-  card('windRead', '바람 읽기 (가문 네아 — "먼저 보고 먼저 말한다", 활)', ['d_dwarf_idle'],
-    'Subject: a single feather drifting on a wind swirl beside a bowstring. Background: one flat soft light green (yellow-green) color. Opaque image: the flat background color fills the whole square edge to edge (not transparent, no white margin, no border). Only objects (and at most a simple cartoon hand); no human faces.'),
-  card('downStrike', '내려찍기 (가문 오델 — "무거운 것을 먼저 든다", 대검)', ['d_dwarf_idle'],
-    'Subject: a heavy greatsword stuck straight down into cracked ground. Background: one flat warm brown color (lighter than the outlines). Opaque image: the flat background color fills the whole square edge to edge (not transparent, no white margin, no border). Only objects (and at most a simple cartoon hand); no human faces.'),
-  card('edgeHone', '잔날 세우기 (가문 아렌 — "보스 앞에서 휘파람을 분다", 단검)', ['d_dwarf_idle'],
-    'Subject: two daggers side by side, one shiny and sharp, one old with a little bandage. Background: one flat soft muted red color. Opaque image: the flat background color fills the whole square edge to edge (not transparent, no white margin, no border). Only objects (and at most a simple cartoon hand); no human faces.',
-    { recolor: HONE }),
-  card('emberWatch', '잿불 살피기 (가문 이솔 — 재가 묻은 회색 목도리, 석궁)', ['d_dwarf_idle'],
-    'Subject: a grey scarf end and a small poking stick revealing orange embers under grey ash. Make the greys clearly different: the scarf is a long narrow knitted strip hanging down in a gentle S-curve from the top-left corner (clearly a long scarf with two simple stripes across it and a short fringe at its end, NOT a glove or hand), medium-dark grey; the small ash mound is a simple rounded mid-grey blob with flat fill (no texture, no smudges); the background is a much paler light warm grey, so every shape stands out. Outlines as thick and bold as in the reference dwarf. Background: one flat pale light warm grey color. Opaque image: the flat background color fills the whole square edge to edge (not transparent, no white margin, no border). Only objects (and at most a simple cartoon hand); no human faces.'),
-  card('ashHammer', '재 섞인 망치 (시즌 「재의 악마의 탑」)', ['d_dwarf_idle', '@cards/ashQuench'],
-    'Subject (card "ash-mixed hammer"): a chunky hammer with a dark grey head and a brown handle striking down diagonally; on its head, two or three big simple pale-grey ash smudges, each a plain rounded blob WITH the same fat dark brown outline (no tiny specks, no dappled texture); under the head a simple flat cream impact star with the same fat outline; two small round grey ash puffs and two short orange spark dashes flying out. Plain flat fills only. Background: one flat ash grey color (like #9B938D), the same as the background of the second attached card image. Only objects; no humans.',
-    { note: '둘째 판. 첫 판은 재 얼룩에 외곽선이 없어 얼룩덜룩한 질감이 났다.' }),
-  card('ashQuench', '재 담금질 (시즌 「재의 악마의 탑」)', ['d_dwarf_idle'],
-    'Subject: a blade dunked into grey ashy water, a column of grey steam. Background: one flat ash grey color. Opaque image: the flat background color fills the whole square edge to edge (not transparent, no white margin, no border). Only objects (and at most a simple cartoon hand); no human faces.'),
+  // 뺀 키 (시즌 악마의 탑과 함께, 프롬프트는 git 기록에): repayStrike windRead downStrike edgeHone emberWatch ashHammer ashQuench
+];
+
+// ── refine: 광석 정제 화면 (기획서 10.1) ─────────────────────────────────
+// 덩어리, 덩어리 더미, 결과 표의 아이콘(광석 5, 골드, 선물 4), 망치 버튼, 가방. (배율 판은 CSS, 아래 뺀 키)
+// 아이콘은 ore_iron을 두 번째 참조로 받아 크기·외곽선을 한 세트로 맞췄다. 망치 버튼은 ui/btn_reheat를,
+// 덩어리 더미와 철광석(둘째 판)은 ore_chunk를 따른다. 결과 표에 줄을 더하면 여기에 아이콘을 더하고
+// render/refine/assets.ts REFINE_ITEM_ART에 잇는다.
+
+/** 아이콘 세트의 두 번째 참조(ore_iron) 안내. */
+const SAME_ITEM_SET =
+  'The second attached image is an item icon from the same set (iron ore). Match it exactly in drawing style, outline weight and how big the object sits in the frame (same scale and margin, centered), so the icons look like one set. Do NOT redraw the iron ore; draw only the new object described below.';
+/** 버튼 세트의 두 번째 참조(btn_reheat) 안내. */
+const SAME_UI_SET =
+  'The second attached image is an existing button from the same game UI. Match its very fat, crisp dark brown outline, its flat warm light grey fill and its little flat orange flame marks, so it looks like the same UI set. Do NOT redraw that button; draw only the new object described below.';
+/** 투명 배경과 여백 (정제 그림 모두). */
+const ALPHA_MARGIN =
+  'Transparent background with a real alpha channel. The object is centered with a comfortable empty margin on every side; nothing is cut off at the edges.';
+
+/** 결과 표의 아이콘: 1024 정사각, 투명, 화면에서 32~48px로 쓴다. */
+function refineIcon(key: string, label: string, prompt: string, note?: string): Entry {
+  return {
+    key,
+    size: '1024x1024',
+    transparent: true,
+    max: 160,
+    label,
+    refs: ['d_dwarf_idle', '@refine/ore_iron'],
+    prompt: `${SAME_ITEM_SET}\n\n${prompt}`,
+    ...(note !== undefined ? { note } : {}),
+  };
+}
+
+const REFINE: readonly Entry[] = [
+  {
+    key: 'ore_chunk',
+    size: '1024x1024',
+    transparent: true,
+    max: 160,
+    label: '광석 덩어리 (모루 위, 더미에서 모루로 튀는 한 덩이)',
+    refs: ['d_dwarf_idle'],
+    note: '둘째 판. 첫 판(ore_chunk.rejected1.png)은 밝고 어두운 면으로 음영이 들어가고 화면의 40%만 차지했다.',
+    prompt: `One rough lumpy grey-brown ore chunk (an unrefined rock lump with a few tiny metal flecks drawn as simple dots), small and round. ${ALPHA_MARGIN} Paint the whole rock in ONE single flat grey-brown color: no lighter or darker patches, no facets, no shadow tone; the only marks inside are a few tiny orange-yellow fleck dots and one or two short crack lines. The rock fills about two thirds of the canvas.`,
+  },
+  {
+    key: 'chunk_pile',
+    size: '1536x1024',
+    transparent: true,
+    max: 420,
+    label: '광석 덩어리 더미 (모루 옆, 덩어리 수에 따라 크기가 바뀐다)',
+    refs: ['d_dwarf_idle', '@refine/ore_chunk'],
+    note: '덩어리 8개의 낮은 언덕. 덩어리 색이 ore_chunk보다 조금 밝은 회색이다.',
+    prompt: `The second attached image is the single ore chunk from the same set. Draw the heap out of chunks that look exactly like it (same colors, same fleck dots, same outline weight). Do NOT just redraw one chunk.\n\nA heap of many rough grey-brown ore chunks piled into a little mound, wider than tall, simple rounded lumps. ${ALPHA_MARGIN} About eight to ten chunks, every chunk one single flat grey-brown color with its own outline and at most one or two tiny orange fleck dots: no lighter or darker patches, no shadow tone, no ground shadow. The heap fills about three quarters of the canvas width.`,
+  },
+  {
+    key: 'ore_iron',
+    size: '1024x1024',
+    transparent: true,
+    max: 160,
+    label: '철광석 (흔함)',
+    refs: ['d_dwarf_idle', '@refine/ore_chunk'],
+    note:
+      '아이콘 세트의 기준 그림. 나머지 아이콘이 이 그림을 두 번째 참조로 받는다 (그 아이콘들은 첫 판을 보고 뽑았다). ' +
+      '둘째 판 (v0.8 검토). 첫 판(ore_iron.rejected1.png, 회색 바위에 녹슨 줄)은 40px에서 날 덩어리(ore_chunk)와 거의 같아 보여, ' +
+      '"덩어리를 쳤더니 덩어리가 나왔다"로 읽혔다. 덩어리를 두 번째 참조로 주고 색과 모양을 다르게 했다.',
+    prompt: `The second attached image is the raw unrefined ore chunk from the same set. Match its drawing style, outline weight and how big it sits in the frame, but the new object must look clearly DIFFERENT from it: a different color, a different value and a different silhouette, so the two never get mixed up at 40px. Do NOT redraw the chunk.\n\nA small refined piece of iron ore: a chunky angular iron nugget, already knocked clean of rock. Item icon, readable at 40px. ${ALPHA_MARGIN} Angular and blocky with straight edges and a few corners (NOT a round lumpy rock), in one single flat dark rusty red-brown color (much darker and redder than the grey-brown chunk), with one flat freshly cut face on its front-top painted one single flat light silver grey, and one tiny white shine mark on that cut face. Facet edges are drawn only as outline lines. One flat color per part: no lighter or darker patches, no shadow tone. It fills about two thirds of the canvas, so it reads clearly when shrunk to a tiny icon.`,
+  },
+  refineIcon(
+    'ore_steel',
+    '강철 덩이 (드묾)',
+    `A small chunky steel nugget/ingot in blue-grey with one tiny shine mark. Item icon, readable at 40px. ${ALPHA_MARGIN} It is clearly a smooth chunky metal bar (a rounded rectangular ingot block), not a rock, in one single flat blue-grey color with one tiny white shine mark. One flat color per part: no lighter or darker patches, no shadow tone. Same scale as the iron ore in the second image (fills about two thirds of the canvas).`,
+  ),
+  refineIcon(
+    'ore_mithril',
+    '미스릴 원석 (귀함)',
+    `A small mithril ore crystal cluster in pale silvery blue with one tiny sparkle. Item icon, readable at 40px. ${ALPHA_MARGIN} Three or four chunky pointed crystals growing from a tiny grey rock base; the crystals are one single flat pale silvery blue with one tiny white four-point sparkle beside them. One flat color per part: no lighter or darker patches, no shadow tone. Same scale as the iron ore in the second image (fills about two thirds of the canvas).`,
+  ),
+  refineIcon(
+    'ore_orichalcum',
+    '오리할콘 원석 (귀함)',
+    `A small orichalcum ore lump in warm red-gold with simple short glow lines around it. Item icon, readable at 40px. ${ALPHA_MARGIN} A lumpy chunky metal nugget with a few bumps and one short crack line (clearly an ore lump like the iron ore, not a plain blob), in one single flat rosy red-gold color (a warm mix of copper and gold), with two or three tiny pale gold fleck dots on it and five short straight pale yellow glow dashes radiating around it (dashes with the same dark brown outline). One flat color per part: no lighter or darker patches, no shadow tone. Same scale as the iron ore in the second image (fills about two thirds of the canvas).`,
+    '둘째 판. 첫 판(ore_orichalcum.rejected1.png)은 매끈한 주황 덩어리라 해나 얼룩처럼 보였다.',
+  ),
+  refineIcon(
+    'ore_adamant',
+    '아다만 원석 (아주 귀함)',
+    `A small adamant ore: a dark purple-black crystal set in grey rock, two tiny star sparkles (very rare item). Item icon, readable at 40px. ${ALPHA_MARGIN} One big dark purple-black pointed crystal sticking up out of a small flat grey rock base, and two tiny white four-point star sparkles beside it. One flat color per part: no lighter or darker patches, no shadow tone. Same scale as the iron ore in the second image (fills about two thirds of the canvas).`,
+  ),
+  refineIcon(
+    'gold_coins',
+    '골드 (흔함)',
+    `A small pile of three round gold coins, flat yellow with a darker edge. Item icon, readable at 40px. ${ALPHA_MARGIN} Three thick round coins overlapping in a little heap, each a flat bright warm yellow face with a darker orange-gold rim ring and NO symbol on the face. One flat color per part: no lighter or darker patches, no shadow tone. Same scale as the iron ore in the second image (fills about two thirds of the canvas).`,
+  ),
+  refineIcon(
+    'gift_flowers',
+    '들꽃 다발 (선물, 드묾)',
+    `A tiny bouquet of wild flowers tied with a string, a gift for a hero. Item icon, readable at 40px. ${ALPHA_MARGIN} Three or four simple round wild flowers (soft pink, white, soft yellow) on green stems with two leaves, tied together with a small brown string bow. One flat color per part: no lighter or darker patches, no shadow tone. Same scale as the iron ore in the second image (fills about two thirds of the canvas).`,
+  ),
+  refineIcon(
+    'gift_honey',
+    '꿀 과자 (선물, 드묾)',
+    `A small round honey biscuit in a paper wrap, a gift for a hero. Item icon, readable at 40px. ${ALPHA_MARGIN} One round golden-brown biscuit, half wrapped in a cream paper wrap twisted at one side, with a tiny amber honey drip on top. One flat color per part: no lighter or darker patches, no shadow tone. Same scale as the iron ore in the second image (fills about two thirds of the canvas).`,
+  ),
+  refineIcon(
+    'gift_pebble',
+    '반짝 조약돌 (선물, 귀함)',
+    `A small shiny smooth pebble with a little star glint, a keepsake gift. Item icon, readable at 40px. ${ALPHA_MARGIN} One smooth flat oval pebble in a soft warm lilac-grey color, with one tiny white four-point star glint beside it. One flat color per part: no lighter or darker patches, no shadow tone. Same scale as the iron ore in the second image (fills about two thirds of the canvas).`,
+    '다른 아이콘보다 조금 작게 나왔다 (여백을 잘라 내 크기를 맞춘다).',
+  ),
+  refineIcon(
+    'gift_gloves',
+    '손뜨개 장갑 (선물, 귀함)',
+    `A pair of small hand-knitted mittens, a warm gift for a hero. Item icon, readable at 40px. ${ALPHA_MARGIN} Two small mittens side by side, soft warm red-orange with a cream cuff band each and one or two simple knit stitch marks. One flat color per part: no lighter or darker patches, no shadow tone. Same scale as the iron ore in the second image (fills about two thirds of the canvas).`,
+  ),
+  {
+    key: 'btn_hammer',
+    size: '1024x1024',
+    transparent: true,
+    max: 360,
+    label: '정제 버튼 (망치)',
+    refs: ['d_dwarf_idle', '@ui/btn_reheat'],
+    prompt: `${SAME_UI_SET}\n\nA big chunky game button shaped like a blacksmith hammer seen from the side (head on top, short handle), flat grey head and brown handle, thick outline, made to be pressed, front view. ${ALPHA_MARGIN} The hammer is drawn big and bold like a pressable button: a wide chunky rectangular flat grey head (the same warm light grey as the button in the second image) on top of a short thick brown handle, the whole thing wrapped in the same very fat crisp dark brown outline, slightly tilted for a playful look, no glow and no shadow outside the outline. One flat color per part: no lighter or darker patches. It fills about three quarters of the canvas.`,
+  },
+  // 뺀 키 badge_mult (배율 판, v0.8 검토): 첫 판은 btn_reheat를 따라 4.6:1 긴 막대, 둘째 판은 그 불꽃이 귀퉁이에 따라와
+  // '다시 달구기'처럼 읽혔다. 불꽃 대신 덩어리를 쌓으라고 다시 뽑은 두 판도 4:1 막대에 외곽선 둘레 번짐이 생겼다.
+  // 그래서 배율 판은 그림 대신 낙서풍 CSS 스티커(크림 바탕, 굵은 잉크 선, 딱딱한 그림자)에 ore_chunk 둘을 얹어 그린다
+  // (src/ui/refine/refine.css .rf-mult-plate). 마지막 프롬프트와 원본은 git 기록과 작업 폴더에 있다.
+  {
+    key: 'bag',
+    size: '1024x1024',
+    transparent: true,
+    max: 160,
+    label: '가방 (얻은 것)',
+    refs: ['d_dwarf_idle', '@refine/ore_iron'],
+    prompt: `${SAME_ITEM_SET}\n\nA small brown cloth sack tied with a string, slightly bulging with things inside, the inventory bag icon. Readable at 40px. ${ALPHA_MARGIN} A round-bottomed warm brown cloth sack, the top gathered and tied with a lighter tan string, plump and bulging, nothing sticking out. One flat color per part: no lighter or darker patches, no shadow tone. Same scale as the iron ore in the second image (fills about two thirds of the canvas).`,
+  },
 ];
 
 // ── 전체 목록 ───────────────────────────────────────────────────────────
@@ -694,8 +809,13 @@ const inGroup =
   (group: ArtGroup) =>
   (e: Entry): ArtAsset => ({ ...e, group });
 
-/** 모든 에셋. 그룹 순서(scene, ui, cards), 그룹 안에서는 위에 적은 순서. */
-export const ART_ASSETS: readonly ArtAsset[] = [...SCENE.map(inGroup('scene')), ...UI.map(inGroup('ui')), ...[...CARDS_A, ...CARDS_B].map(inGroup('cards'))];
+/** 모든 에셋. 그룹 순서(scene, ui, cards, refine), 그룹 안에서는 위에 적은 순서. */
+export const ART_ASSETS: readonly ArtAsset[] = [
+  ...SCENE.map(inGroup('scene')),
+  ...UI.map(inGroup('ui')),
+  ...[...CARDS_A, ...CARDS_B].map(inGroup('cards')),
+  ...REFINE.map(inGroup('refine')),
+];
 
 /** '그룹/키'. 키는 그룹 안에서만 겹치지 않는다 (bellows, quench는 scene과 cards에 다 있다). */
 export function assetId(a: Pick<ArtAsset, 'group' | 'key'>): string {

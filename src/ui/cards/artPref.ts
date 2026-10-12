@@ -1,6 +1,6 @@
 // 아트 화면 켜기/끄기 (실험 패널): the workshop scene with real cards, or the plain table to
 // compare with. A screen preference, not a game rule, so it has its own key in
-// platform/storage.ts and both the card prototype and a run's 단조 read it. On by default.
+// platform/storage.ts. On by default.
 
 import { useSyncExternalStore } from 'react';
 import { webStore } from '../../platform/storage.ts';
@@ -44,7 +44,7 @@ export function setArtScreen(value: boolean): void {
 
 // 게이지 띠 따라 올리기 (실험 패널): while a card is lifted, the gauge band rises just over it
 // (on, the default), or stays put and the lifted card stays in the hand's row, smaller (off).
-// A screen preference too, its own key, read by both labs.
+// A screen preference too, with its own key.
 const RISE_KEY = 'ui.bandRise';
 let rise = true;
 

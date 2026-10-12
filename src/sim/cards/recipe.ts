@@ -18,7 +18,7 @@ export interface CardRecipeInput {
   weaponType: WeaponType;
   /** Main-material band, 1 = 철. */
   materialTier: number;
-  /** 대보스 (or 시즌 보스) material put in, or null. Makes the recipe 전설. */
+  /** 대보스 material put in, or null. Makes the recipe 전설. */
   bossMaterial: UniqueId | null;
 }
 

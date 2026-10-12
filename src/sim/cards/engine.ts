@@ -41,9 +41,9 @@ import {
 
 export interface CardCraftSetup {
   seed: number;
-  /** 'craft' in the idle world (default), 'forge' in a 육성 한 판 (4.1, 13.16). */
+  /** The random stream key (3.6); default 'craft', the idle world's crafts. */
   stream?: string;
-  /** 제작 번호 (or 단조 번호). Goes up by one every time a craft starts. */
+  /** 제작 번호. Goes up by one every time a craft starts. */
   craftNo: number;
   recipe: CardRecipeInput;
   /** 기술 덱: cards and 각인. The recipe adds the material cards. */

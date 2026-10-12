@@ -189,11 +189,9 @@ describe('effectsForStart', () => {
 });
 
 describe('cardArtKey', () => {
-  it('own id, evolved → original card, family card → name without level', () => {
+  it('own id, evolved → original card', () => {
     expect(cardArtKey('hammer')).toBe('hammer');
     expect(cardArtKey('heavyHammer')).toBe('hammer');
-    expect(cardArtKey('repayStrike3')).toBe('repayStrike');
     expect(cardArtKey('dragonBreath')).toBe('dragonBreath');
-    expect(cardArtKey('ashHammer')).toBe('ashHammer');
   });
 });

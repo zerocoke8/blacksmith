@@ -1,6 +1,6 @@
 /* Portrait, touch-first base (CLAUDE.md). Shop = warm forge colors (기획서 1.1).
-   Two looks share this file: the old dark forge tokens (--bg, --panel …) that the season tower's
-   own screens still use, and the doodle look (--dd-*) of the home screen and the card craft:
+   Two looks share this file: the old dark forge tokens (--bg, --panel …) that the v0.6 comparison
+   screen (옛 방식) still uses, and the doodle look (--dd-*) of the home screen and the card craft:
    cream paper with a fat dark-brown line, flat colours, round fonts, stickers that sit a little
    off their shadow. The doodle screens (.app-home, .kc-skin, .ft-root) point the old tokens at the
    doodle ones, so shared pieces (sheets, buttons) follow whichever screen they are on. */
@@ -283,9 +283,38 @@ button {
   font-size: 0.78rem;
 }
 
-/* 시즌 악마의 탑: the tower's cool colour next to the forge's warm one (기획서 1.1). */
-.home-run {
-  background: var(--dd-sky);
+/* 광석 정제 (10.1): the second sticker, butter yellow, with the pile's count on a round tag. */
+.home-entry.home-refine {
+  position: relative;
+  background: var(--dd-butter);
+}
+
+.home-badge {
+  position: absolute;
+  top: -12px;
+  right: -8px;
+  min-width: 34px;
+  padding: 3px 8px;
+  border: var(--dd-stroke) solid var(--dd-ink);
+  border-radius: 999px;
+  background: var(--dd-paper-3);
+  box-shadow: var(--dd-pop-s);
+  font-family: var(--dd-font-round);
+  font-size: 0.95rem;
+  line-height: 1.1;
+  transform: rotate(4deg);
+}
+
+/* A screen loading on demand (the refine screen's chunk). */
+.app-loading {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  min-height: 100dvh;
+  background: var(--dd-wood);
+  color: var(--dd-paper);
+  font-family: var(--dd-font-body);
 }
 
 /* The v0.6 FF14 prototype, kept small for comparison. */

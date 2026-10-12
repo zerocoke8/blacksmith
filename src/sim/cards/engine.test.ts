@@ -120,11 +120,11 @@ describe('determinism', () => {
     }
   });
 
-  it("a 육성 한 판 forge ('forge' stream) draws differently from the idle world's craft", () => {
+  it("another stream key draws differently from the idle world's 'craft' stream", () => {
     let differ = 0;
     for (let n = 1; n <= 10; n++) {
       const a = startCardCraft(makeCardSetup({ craftNo: n }));
-      const b = startCardCraft(makeCardSetup({ craftNo: n, stream: 'forge' }));
+      const b = startCardCraft(makeCardSetup({ craftNo: n, stream: 'other' }));
       if (handIds(a).join() !== handIds(b).join()) differ += 1;
     }
     expect(differ).toBeGreaterThan(5);
