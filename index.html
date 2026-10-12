@@ -3,18 +3,19 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
-    <meta name="theme-color" content="#1c1612" />
+    <meta name="theme-color" content="#6f4c35" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <!-- The names' serif. Loaded without blocking the first paint; offline (or before it arrives) the
-         serif stack in card.css stands in. Bundle it under src/assets before wrapping with Capacitor. -->
+    <!-- The doodle look's round Korean fonts: Jua for titles, numbers, card names and buttons, Gowun
+         Dodum for reading (app.css --dd-font-*). Loaded without blocking the first paint; offline (or
+         before they arrive) the system fonts stand in. Bundle them under src/assets before wrapping with Capacitor. -->
     <link
       rel="preload"
       as="style"
-      href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&family=Jua&display=swap"
       onload="this.onload = null; this.rel = 'stylesheet'"
     />
-    <noscript><link href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&display=swap" rel="stylesheet" /></noscript>
+    <noscript><link href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&family=Jua&display=swap" rel="stylesheet" /></noscript>
     <title>용사의 대장간</title>
   </head>
   <body>

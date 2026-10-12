@@ -2,7 +2,7 @@
 // with a DOM layer on top for what must stay crisp: the dwarf's speech bubble and the floating
 // numbers, which rise by the anvil and are then drawn down into their bars in the gauge band
 // under the scene (GaugeBand). The gauges and the fire's state are not over the scene: the
-// furnace shows its state by its glow. Positions come from render/forge/layout.ts, the same
+// furnace shows its state by its flame. Positions come from render/forge/layout.ts, the same
 // numbers the scene uses.
 
 import { type CSSProperties, type MutableRefObject, useEffect, useLayoutEffect, useRef, useState } from 'react';
@@ -53,7 +53,10 @@ interface Props {
 /** A floating number's text is about this tall (px): it flies so its middle lands on the target. */
 const FLOAT_HALF_H = 11;
 
-const at = (x: number, y: number, s: number) => `translate(calc(-50% + ${x}px), ${y}px) scale(${s})`;
+/** The text: its left edge where it rose (layout.ts floatAt), moved by x, y. */
+const at = (x: number, y: number, s: number) => `translate(${x}px, ${y}px) scale(${s})`;
+/** The spark: centred on the text's middle, moved by x, y. */
+const atSpark = (x: number, y: number, s: number) => `translate(calc(-50% + ${x}px), ${y}px) scale(${s})`;
 /** Where a number holds over the anvil before it is drawn into its bar (px from where it rose). */
 const HOLD_Y = -16;
 /** The pull into the bar: slow, then faster and faster. */
@@ -81,12 +84,12 @@ function riseKeyframes(fly: boolean): Keyframe[] {
 /** Share of the pull (the rest of its life) where it lands on its bar. */
 const LAND = (FLOAT_FLIGHT.absorb - FLOAT_FLIGHT.fly) / (1 - FLOAT_FLIGHT.fly);
 
-/** The text (or its spark) is drawn into the target (dx, dy from where it rose): slow, then faster and faster. */
-function pullKeyframes(dx: number, dy: number, s0: number, s1: number, s2: number): Keyframe[] {
+/** The text (or its spark) is drawn into the target (dx, dy from where it held): slow, then faster and faster. */
+function pullKeyframes(move: typeof at, dx: number, dy: number, s0: number, s1: number, s2: number): Keyframe[] {
   return [
-    { offset: 0, transform: at(0, HOLD_Y, s0), easing: PULL },
-    { offset: LAND, transform: at(dx, dy, s1) },
-    { offset: 1, transform: at(dx, dy, s2) },
+    { offset: 0, transform: move(0, HOLD_Y, s0), easing: PULL },
+    { offset: LAND, transform: move(dx, dy, s1) },
+    { offset: 1, transform: move(dx, dy, s2) },
   ];
 }
 
@@ -232,12 +235,13 @@ export function ForgeStage(props: Props) {
         }
         const box = host.getBoundingClientRect();
         const from = floatAt(layoutRef.current, order);
-        const dx = to.x - box.left - from.x;
+        // The text's middle (it reads rightward from its left edge) lands on the target.
+        const dx = to.x - box.left - (from.x + inner.offsetWidth / 2);
         const dy = to.y - box.top - (from.y + FLOAT_HALF_H);
         const timing = { duration: FLOAT_FLIGHT.ms * (1 - FLOAT_FLIGHT.fly), fill: 'forwards' as const };
-        inner.animate(pullKeyframes(dx, dy, 1, 0.4, 0.4), timing);
+        inner.animate(pullKeyframes(at, dx, dy, 1, 0.4, 0.4), timing);
         inner.animate(TEXT_FADE, timing);
-        spark?.animate(pullKeyframes(dx, dy, 0.6, 1, 2.2), timing);
+        spark?.animate(pullKeyframes(atSpark, dx, dy, 0.6, 1, 2.2), timing);
         spark?.animate(SPARK_FADE, timing);
       };
     }

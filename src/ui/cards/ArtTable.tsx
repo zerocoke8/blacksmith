@@ -21,7 +21,7 @@ import {
 import { CARD_RECIPE_GRADE_LABEL, DWARF_LINES, FIRE_HINT, FIRE_LABEL } from '../../sim/data/cards.ts';
 import { uiArtUrl } from '../../render/forge/assets.ts';
 import { effectsForPlay, effectsForStart, FIRE_BUFFS, type FxStep, type GaugeSnap, snapOf } from '../../render/forge/fx.ts';
-import { END_HOLD_MS, TABLE_ROWS, TABLE_TIMING } from '../../render/forge/layout.ts';
+import { END_HOLD_MS, ORB_FACE, TABLE_ROWS, TABLE_TIMING } from '../../render/forge/layout.ts';
 import type { SceneView } from '../../render/forge/scene.ts';
 import { ArtHand, type HandApi, type PileKind } from './ArtHand.tsx';
 import { type Floater, ForgeStage, type StageApi } from './ForgeStage.tsx';
@@ -382,8 +382,11 @@ export default function ArtTable(props: TableProps & { onUnavailable(): void }) 
   const orbUrl = uiArtUrl('orb_durability');
   const reheatUrl = uiArtUrl('btn_reheat');
   const durAfter = preview !== null ? engine.durability + preview.durability : null;
-  // A breaking card's preview may go below 0 (shown in red); at rest the orb never does.
+  // A breaking card's preview may go below 0; at rest the orb never does.
   const durShown = Math.max(0, g.durability);
+  // The spent share of the orb's ember, covered with ash from the top (the lifted card's cost shows too).
+  const spent = 1 - Math.max(0, Math.min(1, (durAfter ?? durShown) / Math.max(1, craft.maxDurability)));
+  const orbBox = (share: number) => `${((1 - ORB_FACE.img) / 2 + ORB_FACE.img * share) * 100}%`;
 
   return (
     <div ref={rootRef} className={`ft-root${reduced ? ' reduced' : ''}${rows.top.h < TABLE_ROWS.top ? ' short' : ''}`} style={rowVars}>
@@ -486,7 +489,29 @@ export default function ArtTable(props: TableProps & { onUnavailable(): void }) 
           aria-valuenow={durShown}
           aria-valuemax={craft.maxDurability}
         >
-          {orbUrl !== null && <img className="ft-orb-img" src={orbUrl} alt="" draggable={false} />}
+          {orbUrl !== null && (
+            <>
+              <img
+                className="ft-orb-img"
+                src={orbUrl}
+                alt=""
+                draggable={false}
+                style={{ inset: orbBox(0), width: `${ORB_FACE.img * 100}%`, height: `${ORB_FACE.img * 100}%` }}
+              />
+              <span
+                className="ft-orb-ash"
+                aria-hidden="true"
+                style={{
+                  left: orbBox(ORB_FACE.cx - ORB_FACE.r),
+                  top: orbBox(ORB_FACE.cy - ORB_FACE.r),
+                  width: `${ORB_FACE.img * ORB_FACE.r * 200}%`,
+                  height: `${ORB_FACE.img * ORB_FACE.r * 200}%`,
+                }}
+              >
+                <i className={spent > 0 && spent < 1 ? 'edge' : undefined} style={{ height: `${spent * 100}%` }} />
+              </span>
+            </>
+          )}
           <b>{durAfter !== null ? durAfter : durShown}</b>
           <small>/{craft.maxDurability}</small>
           {preview !== null && preview.durability !== 0 && <span className="ft-orb-cost">{signed(preview.durability)}</span>}
@@ -517,7 +542,7 @@ export default function ArtTable(props: TableProps & { onUnavailable(): void }) 
             flow.endTurnTap();
           }}
           disabled={!active}
-          style={reheatUrl !== null ? { backgroundImage: `url("${reheatUrl}")` } : undefined}
+          style={reheatUrl !== null ? ({ '--ft-reheat': `url("${reheatUrl}")` } as CSSProperties) : undefined}
         >
           <b>다시 달구기</b>
           <small>

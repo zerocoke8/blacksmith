@@ -1,13 +1,13 @@
-// The card as a real card: frame, cost gem (내구도), name band, picture window, kind ribbon and
+// The card as a real card: frame, cost bubble (내구도), name band, picture window, kind ribbon and
 // text. One component for the hand, the sheets and the small thumbnails on the 작업대·준비
 // screens. Pictures come from src/assets/art (render/forge/assets.ts); a card without one gets
-// a painted backdrop and a glyph. Box positions live in render/forge/layout.ts (CARD_FACE).
+// a flat backdrop in its kind's colour and an outlined glyph. Box positions live in render/forge/layout.ts (CARD_FACE).
 
 import type { CSSProperties, ReactNode } from 'react';
 import { cardName, cardText } from '../../sim/cards/index.ts';
 import { CARD_KIND_LABEL, type CardEffect, type CardId, CARDS, KEYWORD_LABEL } from '../../sim/data/cards.ts';
 import { cardArtKey, cardArtUrl, frameArtUrl } from '../../render/forge/assets.ts';
-import { CARD_ART_FOCUS, CARD_ASPECT, CARD_FACE, CARD_TYPE } from '../../render/forge/layout.ts';
+import { CARD_ART_FOCUS, CARD_ASPECT, CARD_FACE, CARD_MINI_CUT, CARD_TYPE } from '../../render/forge/layout.ts';
 import './card.css';
 
 export type Glyph = 'hammer' | 'sparkle' | 'finish' | 'flame' | 'drop' | 'eye' | 'cards' | 'ingot' | 'rune' | 'wind';
@@ -86,7 +86,7 @@ export function UiIcon({ url, glyph, className }: { url: string | null; glyph: G
   );
 }
 
-/** The card picture filling its box (cut to fit), or the painted stand-in. */
+/** The card picture filling its box (cut to fit), or the flat stand-in. */
 export function CardPicture({ id }: { id: CardId }) {
   const url = cardArtUrl(id);
   const focus = CARD_ART_FOCUS[cardArtKey(id)];
@@ -105,6 +105,18 @@ export function CardPicture({ id }: { id: CardId }) {
       <CardGlyph id={id} />
     </span>
   );
+}
+
+/**
+ * The rules text without the keywords shown as pills under it: the engine writes each keyword as a
+ * sentence of its own ('좋음 전용. 품질 +150%', '… 열기 +1. 소멸'), so it would show twice.
+ */
+function withoutKeywords(text: string, keys: readonly string[]): string {
+  if (keys.length === 0) return text;
+  return text
+    .split('. ')
+    .filter((part) => !keys.includes(part))
+    .join('. ');
 }
 
 function keywordsOf(id: CardId): string[] {
@@ -152,9 +164,6 @@ export interface GameCardProps {
   children?: ReactNode;
 }
 
-/** A mini card is cut just under its picture window (the cost, name and picture are what it shows). */
-const MINI_CUT = 0.552;
-
 function px(n: number): string {
   return `${Math.round(n * 10) / 10}px`;
 }
@@ -186,40 +195,51 @@ export function GameCard(props: GameCardProps) {
   const costCls = printed === null ? '' : cost < printed ? ' down' : cost > printed ? ' up' : '';
   const keywords = keywordsOf(id);
   const name = props.name ?? cardName(id, tier);
-  const body = props.text ?? cardText(id, tier, { short: true });
+  const fullText = props.text ?? cardText(id, tier, { short: true });
   const base = width * T.base;
   // The name: the base size or its floor, but never wider than its band (then it shrinks to fit).
   const nameFit = (f.name.w * width * 0.94) / nameEms(name);
   const namePx = Math.min(nameFit, Math.max(T.nameMin, base));
-  // Long rules text steps down a size and gets a fifth line (the long-press sheet has it all).
-  const textLen = body.length + keywords.length * 5;
-  const textK = textLen > T.veryLong ? 0.72 : textLen > T.longText ? 0.78 : 0.84;
-  const textPx = Math.max(props.floor === true ? T.textMin : 0, base * textK);
   const notePx = Math.max(props.floor === true ? T.noteMin : 0, base * 0.7);
-  const keyPx = Math.max(T.keyMin, textPx * 0.8);
   const hasNote = note !== undefined && note !== null;
   const noteH = Math.max(width * 0.16, notePx * 1.6);
+  // The text box: 3% of the card's width padding top and bottom (card.css), the note over its bottom.
+  const padY = 0.03 * width;
+  const room = f.text.h * height - padY - (hasNote ? noteH : padY);
+  // Long rules text steps down a size and may take a fifth line (the long-press sheet has it all).
+  const sizeOf = (len: number) => Math.max(props.floor === true ? T.textMin : 0, base * (len > T.veryLong ? 0.72 : len > T.longText ? 0.78 : 0.84));
+  // Keywords as pills under the text on a big card that has a line to spare for them; else in the text.
+  const pillLen = withoutKeywords(fullText, keywords).length + keywords.length * 5;
+  const pillPx = sizeOf(pillLen);
+  const keyPx = Math.max(T.keyMin, pillPx * 0.8);
+  const keysH = keyPx * 1.35 + 0.03 * width;
+  const pills = keywords.length > 0 && width >= T.keysMinW && room - keysH >= pillPx * T.lineH;
+  const body = pills ? withoutKeywords(fullText, keywords) : fullText;
+  const textLen = pills ? pillLen : body.length;
+  const textPx = pills ? pillPx : sizeOf(textLen);
+  const lineH = textPx * T.lineH;
+  // As many whole lines as the box holds (the last one ends in …), never a line cut in half.
+  const lines = Math.max(1, Math.min(textLen > T.longText ? 5 : 4, Math.floor((room - (pills ? keysH : 0)) / lineH)));
   // Half under the next card: a short text keeps to the strip that shows (its right edge a little
   // inside it, above the note) when it fits there whole; a longer one stays as it is, cut by the next card.
   const cutRight = (() => {
     const shown = props.shown;
     if (shown === undefined || shown >= f.text.x + f.text.w) return 0;
     const strip = (shown - f.text.x - 0.05) * width - T.cutPad;
-    const lineH = textPx * 1.22;
-    const keysH = keywords.length > 0 ? keyPx * 1.3 + 0.03 * width : 0;
-    const room = f.text.h * height - 0.06 * width - keysH - (hasNote ? noteH : 0);
-    const lines = Math.min(textLen > T.longText ? 5 : 4, Math.floor(room / lineH));
     const need = Math.ceil((nameEms(body) * textPx * 1.15) / Math.max(1, strip));
     return strip > textPx * 3 && need <= lines ? f.text.x + f.text.w - shown : 0;
   })();
   const textStyle = {
     ...box(f.text),
     fontSize: px(textPx),
-    ...(textLen > T.longText ? { '--gc-lines': 5 } : {}),
+    '--gc-lines': lines,
     ...(cutRight > 0 ? { paddingRight: px(cutRight * width + T.cutPad) } : {}),
-    ...(cutRight > 0 && hasNote ? { paddingBottom: px(noteH) } : {}),
+    // The note sits over the box's bottom: the text keeps above it.
+    ...(hasNote ? { paddingBottom: px(noteH) } : {}),
   } as CSSProperties;
-  const showRibbon = !mini && width >= T.ribbonMinW;
+  // The kind's name in the ribbon, as small as the ribbon is thin.
+  const ribbonPx = Math.min(f.ribbon.h * height, Math.max(T.ribbonMin, base * T.ribbon));
+  const showRibbon = !mini;
   const cls = [
     'gc',
     `gc-${spec.kind}`,
@@ -232,7 +252,7 @@ export function GameCard(props: GameCardProps) {
     .filter((c) => c !== '')
     .join(' ');
   return (
-    <div className={cls} style={{ width: px(width), height: px(mini ? height * MINI_CUT : height), fontSize: px(base) }}>
+    <div className={cls} style={{ width: px(width), height: px(mini ? height * CARD_MINI_CUT : height), fontSize: px(base) }}>
       {frame !== null ? (
         <img className="gc-frame" src={frame} alt="" draggable={false} style={mini ? { height: px(height) } : undefined} />
       ) : (
@@ -247,14 +267,14 @@ export function GameCard(props: GameCardProps) {
         </span>
       )}
       {showRibbon && (
-        <span className="gc-ribbon" style={box(f.ribbon)}>
+        <span className="gc-ribbon" style={{ ...box(f.ribbon), fontSize: px(ribbonPx) }}>
           {CARD_KIND_LABEL[spec.kind]}
         </span>
       )}
       {!mini && (
         <span className="gc-text" style={textStyle}>
           <span className="gc-text-body">{body}</span>
-          {keywords.length > 0 && (
+          {pills && (
             <span className="gc-keys" style={{ fontSize: px(keyPx) }}>
               {keywords.map((k) => (
                 <i key={k}>{k}</i>
@@ -281,7 +301,7 @@ export function GameCard(props: GameCardProps) {
   );
 }
 
-/** A small picture chip with the cost gem, for list rows (작업대, 준비, 원정의 덱). */
+/** A small picture chip with the cost bubble, for list rows (작업대, 준비, 원정의 덱). */
 export function CardThumb({ id, cost }: { id: CardId; cost?: number }) {
   const spec = CARDS[id];
   const shown = spec.cost === null ? '각' : (cost ?? spec.cost);

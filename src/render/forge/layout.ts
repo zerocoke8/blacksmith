@@ -2,6 +2,8 @@
 // The art arrives as src/assets/art/<scene|ui|cards>/<key>.webp; when a picture changes
 // (a new crop, a different pose), only the numbers here move. No PixiJS here: React reads
 // this file too, and it must not pull the renderer into the first load.
+// The art is the doodle style (tools/art/assets.ts): flat colours under a fat dark-brown line, so
+// the effects are flat outlined shapes too (procedural.ts), never soft glows.
 
 import type { WeaponType } from '../../sim/core/types.ts';
 import type { CardId, FireState } from '../../sim/data/cards.ts';
@@ -15,12 +17,14 @@ export const SCENE_ART_KEYS = [
   'dwarf_strike',
   'dwarf_work',
   'dwarf_cheer',
+  'dwarf_slump',
   'anvil',
   'furnace',
   'bellows',
   'quench',
   'iron_hot',
   'iron_cracked',
+  'iron_cold',
   'weapon_oneHandSword',
   'weapon_greatsword',
   'weapon_dagger',
@@ -56,7 +60,9 @@ export const UI_ART_KEYS = [
 ] as const;
 export type UiArtKey = (typeof UI_ART_KEYS)[number];
 
-export type DwarfPose = 'idle' | 'raise' | 'strike' | 'work' | 'cheer';
+/** idle at rest, raise → strike for a blow, work for careful work, cheer when it is done, slump when it fails. */
+export type DwarfPose = 'idle' | 'raise' | 'strike' | 'work' | 'cheer' | 'slump';
+export const DWARF_POSES: readonly DwarfPose[] = ['idle', 'raise', 'strike', 'work', 'cheer', 'slump'];
 
 /** A point in a picture as fractions of its width and height (0,0 = top left). */
 export interface ArtPoint {
@@ -67,20 +73,24 @@ export interface ArtPoint {
 // ---------- Where each picture is pinned (fractions of the delivered, trimmed picture) ----------
 
 /**
- * Dwarf poses. foot = the point between the boots on the floor, head = top of the hair (y only).
- * The scene scales every pose so head→foot is the same height, so the dwarf never grows when the
- * hammer goes up. hammer = the bottom (striking) face of the hammer head in the strike pose: the
- * scene leans the dwarf forward so it lands on the iron, and tilts him back by `tilt` (radians)
- * so it lands on the bar rather than in front of it. reach = the tool tips in the work pose (the
- * dwarf steps in so they meet the iron, and bends toward it by its tilt). Measured on the delivered pictures (meta.json trims);
- * re-measure if a pose is redrawn.
+ * Dwarf poses. The six pictures were drawn on one canvas at one scale (1227×1282), so the scene
+ * shows them all at one scale too: src = the picture's height on that canvas (px, meta.json
+ * trim.h; the scene reads meta.json and falls back to this), and the idle pose's head→foot sets
+ * the dwarf's size. A pose that leans or slumps is shorter, one that lifts the hammer taller,
+ * as drawn. foot = the point between the boots on the floor (the scene keeps it still between
+ * poses), head = top of the hair (y; the idle pose's sets the size). hammer = the middle of the
+ * striking (bottom) face of the hammer head in the strike pose: the dwarf stands as high as makes
+ * it land on the top of the hot bar (sceneLayout), and steps in so it lands on the bar's middle.
+ * reach = the whetstone's tip in the work pose (he steps in and bends toward the iron by tilt,
+ * radians). Measured on the delivered pictures; re-measure if a pose is redrawn.
  */
-export const DWARF_POSE_ART: Record<DwarfPose, { foot: ArtPoint; head: number; hammer?: ArtPoint; reach?: ArtPoint; tilt?: number }> = {
-  idle: { foot: { x: 0.6, y: 0.995 }, head: 0.01 },
-  raise: { foot: { x: 0.6, y: 0.995 }, head: 0.174 },
-  strike: { foot: { x: 0.43, y: 0.995 }, head: 0.012, hammer: { x: 0.9, y: 0.69 }, tilt: -0.07 },
-  work: { foot: { x: 0.38, y: 0.995 }, head: 0.02, reach: { x: 0.95, y: 0.47 }, tilt: 0.08 },
-  cheer: { foot: { x: 0.5, y: 0.995 }, head: 0.035 },
+export const DWARF_POSE_ART: Record<DwarfPose, { foot: ArtPoint; head: number; src: number; hammer?: ArtPoint; reach?: ArtPoint; tilt?: number }> = {
+  idle: { foot: { x: 0.53, y: 0.995 }, head: 0.003, src: 815 },
+  raise: { foot: { x: 0.47, y: 0.995 }, head: 0.155, src: 1006 },
+  strike: { foot: { x: 0.29, y: 0.995 }, head: 0.003, src: 761, hammer: { x: 0.9, y: 0.765 } },
+  work: { foot: { x: 0.38, y: 0.995 }, head: 0.003, src: 788, reach: { x: 0.95, y: 0.57 }, tilt: 0.12 },
+  cheer: { foot: { x: 0.5, y: 0.995 }, head: 0.003, src: 814 },
+  slump: { foot: { x: 0.43, y: 0.995 }, head: 0.003, src: 762 },
 };
 
 /** Pose to use when a pose picture is missing (raise stands in for cheer: arms up). */
@@ -90,93 +100,174 @@ export const DWARF_POSE_FALLBACK: Record<DwarfPose, DwarfPose[]> = {
   strike: ['idle'],
   work: ['idle'],
   cheer: ['raise', 'idle'],
+  slump: ['idle'],
 };
+
+/** A pose's picture height for a dwarf of head→foot height 1 (the poses share one scale: DWARF_POSE_ART src). */
+export function poseHeight(p: DwarfPose): number {
+  const i = DWARF_POSE_ART.idle;
+  return DWARF_POSE_ART[p].src / ((i.foot.y - i.head) * i.src);
+}
+
+/** How far above the feet the strike pose's hammer face is, as a share of the dwarf's (idle) head→foot height. */
+export function strikeLift(): number {
+  const s = DWARF_POSE_ART.strike;
+  return (s.foot.y - (s.hammer?.y ?? s.foot.y)) * poseHeight('strike');
+}
+
+/** How far right of the feet the strike pose's hammer face is (px), for a dwarf bodyH tall whose strike picture is aspect wide÷tall. */
+export function strikeReach(bodyH: number, aspect: number): number {
+  const s = DWARF_POSE_ART.strike;
+  return ((s.hammer?.x ?? s.foot.x) - s.foot.x) * aspect * poseHeight('strike') * bodyH;
+}
+
+/** Where on the bar the hammer lands: this share of the bar's width left of its middle. */
+export const STRIKE_AT = 0.08;
 
 export const PROP_ART = {
   /** foot = bottom middle of the stump on the floor; face = middle of the anvil's flat top, faceW its width. */
-  anvil: { foot: { x: 0.53, y: 0.99 }, face: { x: 0.64, y: 0.035 }, faceW: 0.58 },
-  /** mouth = middle of the fire opening; top = the chimney's top edge (the fire icon sits above). */
-  furnace: { foot: { x: 0.6, y: 0.995 }, mouth: { x: 0.62, y: 0.6 }, top: 0.01 },
+  anvil: { foot: { x: 0.59, y: 0.99 }, face: { x: 0.64, y: 0.012 }, faceW: 0.62 },
+  /**
+   * mouth = middle of the fire in the arch (embers rise from here, the iron goes in here); arch =
+   * a box round the dark opening (left, right, top, floor): the scene finds the opening's own shape
+   * inside it on the picture (procedural.ts furnaceMouth, from the mouth point) and paints the
+   * painted flames over in the opening's dark, so it can draw the fire's state; flame = the drawn
+   * flame's base middle and its size at 보통 (shares of the picture), its width growing by grow ×
+   * (power − 1) with the fire; top = the chimney's top edge.
+   */
+  furnace: {
+    foot: { x: 0.55, y: 0.99 },
+    mouth: { x: 0.43, y: 0.74 },
+    arch: { x0: 0.2, x1: 0.65, top: 0.5, bottom: 0.87 },
+    flame: { x: 0.43, y: 0.835, w: 0.27, h: 0.21, grow: 0.14 },
+    top: 0.01,
+  },
   /** nozzle = the tip that points at the fire. */
-  bellows: { foot: { x: 0.4, y: 0.99 }, nozzle: { x: 0.98, y: 0.6 } },
-  /** water = middle of the water surface (steam rises from here). */
-  quench: { foot: { x: 0.41, y: 0.99 }, water: { x: 0.4, y: 0.19 } },
-  /** The hot bar lies on the anvil: rest = the line that touches the face (the bar's bottom edge). */
-  iron: { rest: { x: 0.5, y: 0.88 } },
+  bellows: { foot: { x: 0.47, y: 0.99 }, nozzle: { x: 0.98, y: 0.58 } },
+  /** water = middle of the water surface. */
+  quench: { foot: { x: 0.33, y: 0.99 }, water: { x: 0.36, y: 0.26 } },
+  /**
+   * The bar in the hot iron picture (iron_cracked and iron_cold are processed onto the same canvas,
+   * so the same ends and bottom; they are drawn a little thinner): left and right ends, top and
+   * bottom edges (the bottom lies on the anvil's face). The sparkles drawn round it are outside
+   * the box. crack = where the split bar's crack runs (share of the picture's width): the scene
+   * cuts iron_cracked there into two halves that part when it splits. Measured by the art pipeline
+   * (meta.json anchors; layout.test.ts checks these against it).
+   */
+  iron: { bar: { x0: 0.003, x1: 0.925, y0: 0.471, y1: 0.987 }, crack: 0.46 },
 } as const;
 
 /**
- * Finished weapons are painted on a diagonal: from = the butt (pommel, grip end, bow's lower
- * tip, crossbow stock), to = the tip. The scene turns the picture so that line lies across the
- * anvil, tip to the right (flip mirrors a picture whose tip points left first: the crossbow);
- * len = its length as a share of the anvil's width, so a dagger lies small and a greatsword long.
+ * The bar splitting (쇠가 갈라졌다): the two halves of iron_cracked part by gap × the bar's width
+ * and the right one tips down by tilt (radians), over the first part share of the break.
+ */
+export const IRON_SPLIT = { gap: 0.08, tilt: 0.08, part: 0.12 } as const;
+
+/**
+ * The quench (담금질): the bar lifts off the anvil in an arc lift × the anvil's height high, into
+ * the tub's water at scale, out of sight there (the steam and the drops rise off the water), and
+ * back; out = the share of the motion it takes to get there, back = where it sets off back.
+ */
+export const QUENCH_DIP = { lift: 0.45, scale: 0.6, out: 0.3, back: 0.55 } as const;
+
+/**
+ * Finished weapons are drawn on a diagonal: from = the butt (pommel, grip end, bow's lower tip,
+ * crossbow stock), to = the tip. The scene turns the picture so that line lies across the anvil,
+ * tip to the right (flip mirrors a picture whose tip points left first); len = its length as a
+ * share of the anvil's width, so a dagger lies small and a greatsword long.
  */
 export const WEAPON_ART: Record<WeaponType, { from: ArtPoint; to: ArtPoint; flip?: boolean; len: number }> = {
-  oneHandSword: { from: { x: 0.07, y: 0.95 }, to: { x: 0.97, y: 0.02 }, len: 1.1 },
-  greatsword: { from: { x: 0.05, y: 0.96 }, to: { x: 0.97, y: 0.02 }, len: 1.35 },
-  dagger: { from: { x: 0.08, y: 0.93 }, to: { x: 0.97, y: 0.03 }, len: 0.72 },
-  bow: { from: { x: 0.03, y: 0.98 }, to: { x: 0.97, y: 0.02 }, len: 1.2 },
-  crossbow: { from: { x: 0.97, y: 0.04 }, to: { x: 0.08, y: 0.9 }, flip: true, len: 0.95 },
-  staff: { from: { x: 0.06, y: 0.97 }, to: { x: 0.82, y: 0.04 }, len: 1.3 },
+  oneHandSword: { from: { x: 0.08, y: 0.92 }, to: { x: 0.96, y: 0.04 }, len: 1.15 },
+  greatsword: { from: { x: 0.07, y: 0.93 }, to: { x: 0.95, y: 0.05 }, len: 1.4 },
+  dagger: { from: { x: 0.1, y: 0.89 }, to: { x: 0.96, y: 0.05 }, len: 0.8 },
+  bow: { from: { x: 0.06, y: 0.96 }, to: { x: 0.95, y: 0.04 }, len: 1.2 },
+  crossbow: { from: { x: 0.07, y: 0.9 }, to: { x: 0.82, y: 0.2 }, len: 1.05 },
+  staff: { from: { x: 0.08, y: 0.97 }, to: { x: 0.68, y: 0.08 }, len: 1.35 },
 };
+
+/**
+ * How he takes a finished weapon: he cheers (the cheer pose) from cheerFrom ★, legendary or not
+ * (a legendary one has its sunburst; his face follows the line he says, ui/cards/text.ts TIER_LINE);
+ * under that he looks at it quietly (idle) and gives one small nod, nod = how
+ * far he dips (share of his height), nodTilt = how far he leans in (radians), at nodAt..nodTo of
+ * the 완성 motion.
+ */
+export const DONE_POSE = { cheerFrom: 4, nod: 0.04, nodTilt: 0.05, nodAt: 0.45, nodTo: 0.72 } as const;
 
 /** The drawn stand-in weapon (procedural.ts weapon) lies flat, tip to the right. */
 export const WEAPON_STANDIN = { from: { x: 0.03, y: 0.5 }, to: { x: 0.97, y: 0.5 } } as const;
 
-/** How the weapon lies on the anvil: a slight tilt (radians) and its middle above the face (share of the anvil's width). */
-export const WEAPON_REST = { tilt: -0.1, lift: 0.07 };
+/**
+ * How the weapon lies on the anvil: a slight tilt (radians), its middle above the face (share of
+ * the anvil's width), and its butt no further left than butt × the face's width left of the face's
+ * middle, so the hilt lies on the anvil and clear of the dwarf's beard; a long blade reaches out
+ * over the furnace instead (weaponRest).
+ */
+export const WEAPON_REST = { tilt: -0.1, lift: 0.1, butt: 0.42 } as const;
 
 /** Width ÷ height for pictures not loaded yet (the procedural stand-ins use the same). */
 export const DEFAULT_ASPECT: Record<SceneArtKey, number> = {
   bg_workshop: 1.5,
-  dwarf_idle: 0.96,
-  dwarf_raise: 0.53,
-  dwarf_strike: 0.67,
-  dwarf_work: 0.8,
-  dwarf_cheer: 0.73,
-  anvil: 1.15,
-  furnace: 0.8,
-  bellows: 1.4,
-  quench: 1.25,
-  iron_hot: 3.2,
-  iron_cracked: 3.6,
-  weapon_oneHandSword: 3.2,
-  weapon_greatsword: 3.6,
-  weapon_dagger: 2.4,
-  weapon_bow: 1.6,
-  weapon_crossbow: 1.6,
-  weapon_staff: 4,
+  dwarf_idle: 0.875,
+  dwarf_raise: 0.576,
+  dwarf_strike: 0.869,
+  dwarf_work: 0.737,
+  dwarf_cheer: 0.815,
+  dwarf_slump: 0.946,
+  anvil: 1.127,
+  furnace: 0.886,
+  bellows: 1.724,
+  quench: 1.343,
+  iron_hot: 2.47,
+  iron_cracked: 2.47,
+  iron_cold: 2.47,
+  weapon_oneHandSword: 1,
+  weapon_greatsword: 1.04,
+  weapon_dagger: 1.01,
+  weapon_bow: 0.94,
+  weapon_crossbow: 1.12,
+  weapon_staff: 0.72,
 };
 
 // ---------- Where things stand in the scene (fractions of the scene box) ----------
 
 /**
- * x, y = where the picture's foot point lands; h = its height as a share of the scene height,
- * capped so its width stays under maxW of the scene width (narrow phones). The dwarf's h is
- * head→foot. The scene box is what the table's rows leave between the top band and the gauge
- * band (TABLE_ROWS: about 390×430 on a 390×844 phone, 360×260 on a 360×640 one); nothing of the
- * HUD covers it, so the dwarf, the anvil and the furnace fill it to near its top.
- * Depth: the background's floor meets the wall at about 0.59 of the height. The dwarf stands a
- * little further back than the anvil (his feet higher, drawn behind it), so his hammer, held
- * low in the strike picture, lands on the iron while the anvil keeps a smith's size; the
- * furnace stands further back on the right, the bellows and the tub in front.
+ * The dwarf sets the scale: his head→foot height is dwarf.h of the scene's height, at most
+ * dwarf.maxW of its width (a tall, narrow scene). Everything else is sized from him,
+ * as drawn together: the anvil (on its stump) k = 0.39 of him, its face at his waist; the furnace
+ * 1.3 of him. x, y = where a picture's foot point lands. The scene box is what the table's rows
+ * leave between the top band and the gauge band (TABLE_ROWS: about 390×430 on a 390×844 phone,
+ * 360×260 on a 360×640 one); nothing of the HUD covers it.
+ * Depth: the background's floor meets its wall at floor (0.53) of its height, and everything
+ * stands on the floor below that line. The anvil stands in front; the dwarf a step behind it,
+ * exactly as high as puts the strike pose's hammer face on the hot bar's top, and as far left as
+ * puts it on the bar's middle less dwarf.step of the scene's width, the step he takes in as he
+ * strikes (sceneLayout); the furnace a step back on the right (its right side may leave the box);
+ * the bellows and the tub in front, the bellows' nozzle at the furnace's fire. The anvil's foot is
+ * well above the box's bottom: while a card is lifted the gauge band rises over the scene's floor
+ * (TABLE_ROWS.riseShare), and the iron and the dwarf stay in sight over it.
  */
 export const SCENE_PLACE = {
-  dwarf: { x: 0.23, y: 0.88, h: 0.7, maxW: 0.5 },
-  anvil: { x: 0.55, y: 0.985, h: 0.35, maxW: 0.4 },
-  furnace: { x: 0.85, y: 0.89, h: 0.68, maxW: 0.36 },
-  bellows: { x: 0.8, y: 0.975, h: 0.19, maxW: 0.28 },
-  quench: { x: 0.09, y: 1.0, h: 0.2, maxW: 0.22 },
+  /** maxWide: a pose drawn wider than the idle one (the raised arm, the bow) may take this × maxW of the width. */
+  dwarf: { h: 0.52, maxW: 0.56, step: 0.03, maxWide: 1.4 },
+  anvil: { x: 0.56, y: 0.79, k: 0.39 },
+  furnace: { x: 0.9, y: 0.72, k: 1.3 },
+  bellows: { x: 0.72, y: 0.85, k: 0.2 },
+  quench: { x: 0.065, y: 0.93, k: 0.21 },
   /** Hot bar width as a share of the anvil face. */
-  iron: { w: 0.95 },
-  /** How far the dwarf may lean (share of scene width) so the hammer or the tongs meet the iron. */
+  iron: { w: 0.88 },
+  /** How far the dwarf may lean (share of scene width) so the hammer or the whetstone meets the iron. */
   lunge: 0.12,
+  /** The whetstone (work pose) meets the bar this share of its width left of its middle; the polish glint starts there. */
+  workReach: 0.42,
+  /** The background's wall meets its floor at this share of its height (bg_workshop). */
+  floor: 0.53,
 } as const;
 
 /**
  * DOM overlay over the scene: the speech bubble, the played card's hover point and the floating
  * numbers. The gauges and the fire's state are not over the scene but in the gauge band under it
- * (TABLE_ROWS), right over the cards; the furnace shows its state by its glow alone.
+ * (TABLE_ROWS), right over the cards; the furnace shows its state by its flame.
  */
 export const OVERLAY_PLACE = {
   /**
@@ -184,7 +275,7 @@ export const OVERLAY_PLACE = {
    * dwarf's head→foot height (right of the head, over the open wall before the furnace). It is
    * kept edge px inside the scene, its middle at least half px from the top and the bottom.
    */
-  bubble: { dx: 0.15, dy: -0.8, maxW: 0.58, edge: 8, half: 30 },
+  bubble: { dx: 0.3, dy: -0.88, maxW: 0.6, edge: 8, half: 30 },
   /**
    * Where a played card hovers while its effect starts (its centre): above and right of the
    * iron, clear of the hammer's path and the blow. x from the iron as a share of the width; the
@@ -192,15 +283,16 @@ export const OVERLAY_PLACE = {
    */
   cardHover: { dx: 0.19, top: 8 },
   /**
-   * Floating numbers (공정 +100 …) rise from above the hammer head that lands on the iron, left
-   * of the played card hovering to its right: x = the iron's middle + dx × its width, the first
-   * number lift × the scene's height over the iron's top edge (the strike pose's hammer head
-   * stands about 0.15 of it over the iron), each next one of the same beat step px higher and
-   * alt × the iron's width to the side. A short scene squeezes lift and step so the stack stays
-   * top px under the scene's top edge. Then each one is drawn down into its bar in the gauge
-   * band (FLOAT_FLIGHT).
+   * Floating numbers (공정 +100 …) rise just right of where the hammer lands and read rightward
+   * (x is their left edge), so they never reach back over the dwarf's face at the blow (his face
+   * is left of his hammer in every pose): x = the hammer's landing point (STRIKE_AT) + dx × the
+   * bar's width, the first number lift × the scene's height over the bar's top edge, each next
+   * one of the same beat step px higher and slant × the bar's width further right (a short
+   * diagonal, up and away from him). A short scene squeezes lift and step so the stack stays top
+   * px under the scene's top edge. Then each one is drawn down into its bar in the gauge band
+   * (FLOAT_FLIGHT).
    */
-  floats: { dx: -0.24, lift: 0.17, step: 26, alt: 0.2, top: 8 },
+  floats: { dx: 0.14, lift: 0.14, step: 26, slant: 0.22, top: 8 },
 } as const;
 
 /**
@@ -208,11 +300,11 @@ export const OVERLAY_PLACE = {
  * of its life, then is drawn into its bar (공정, 품질), the 열기 badge or the durability orb,
  * arriving at `absorb`, where the bar flashes; the numbers of one beat follow each other by
  * stagger. Its target is taken when it sets off (the band may have moved meanwhile). On the way
- * the text fades into a spark (spark px wide), so only the spark lands on the bar's own number.
- * Reduced motion: no flight, it shows for reducedMs where it rose, brightest (and the bar
- * flashing) at reducedPeak of that.
+ * the text shrinks into a little outlined star (spark px wide), so only the star lands on the
+ * bar's own number. Reduced motion: no flight, it shows for reducedMs where it rose, brightest
+ * (and the bar flashing) at reducedPeak of that.
  */
-export const FLOAT_FLIGHT = { ms: 1250, fly: 0.56, absorb: 0.86, stagger: 90, spark: 9, reducedMs: 940, reducedPeak: 0.15 } as const;
+export const FLOAT_FLIGHT = { ms: 1250, fly: 0.56, absorb: 0.86, stagger: 90, spark: 12, reducedMs: 940, reducedPeak: 0.15 } as const;
 
 /**
  * The art table's rows, top to bottom (ui/cards/tableLayout.ts tableRows): the top band, the
@@ -241,6 +333,7 @@ export const TABLE_ROWS = {
   ledge: 22,
 } as const;
 
+
 export interface Rect {
   x: number;
   y: number;
@@ -251,7 +344,7 @@ export interface Rect {
 export interface SceneLayout {
   w: number;
   h: number;
-  /** Feet point of the dwarf and its head→foot height, px. */
+  /** Feet point of the dwarf and his (idle) head→foot height, px. */
   dwarf: { x: number; y: number; bodyH: number };
   anvil: Rect;
   /** Anvil working face: centre point and width. */
@@ -263,24 +356,11 @@ export interface SceneLayout {
   nozzle: ArtPoint;
   quench: Rect;
   water: ArtPoint;
-  /** The hot bar: middle point (where blows land), width and height. */
+  /** The hot bar: its middle (where blows land), its width and height (the bar, not the picture). */
   iron: { x: number; y: number; w: number; h: number };
   bubble: { x: number; y: number; maxW: number };
   /** Centre of a played card while it hovers over the scene, and the most height it may take. */
   cardHover: ArtPoint & { maxH: number };
-}
-
-function placed(
-  w: number,
-  h: number,
-  place: { x: number; y: number; h: number; maxW: number },
-  aspect: number,
-  foot: ArtPoint,
-): Rect {
-  let ph = place.h * h;
-  if (ph * aspect > place.maxW * w) ph = (place.maxW * w) / aspect;
-  const pw = ph * aspect;
-  return { x: place.x * w - foot.x * pw, y: place.y * h - foot.y * ph, w: pw, h: ph };
 }
 
 /**
@@ -290,30 +370,42 @@ function placed(
  */
 export function sceneLayout(w: number, h: number, aspect: Partial<Record<SceneArtKey, number>> = {}): SceneLayout {
   const a = (k: SceneArtKey) => aspect[k] ?? DEFAULT_ASPECT[k];
-  const anvil = placed(w, h, SCENE_PLACE.anvil, a('anvil'), PROP_ART.anvil.foot);
+  const P = SCENE_PLACE;
+  const body = Math.min(P.dwarf.h * h, P.dwarf.maxW * w);
+  const prop = (place: { x: number; y: number; k: number }, ratio: number, foot: ArtPoint): Rect => {
+    const ph = place.k * body;
+    const pw = ph * ratio;
+    return { x: place.x * w - foot.x * pw, y: place.y * h - foot.y * ph, w: pw, h: ph };
+  };
+  const anvil = prop(P.anvil, a('anvil'), PROP_ART.anvil.foot);
   const face = {
     x: anvil.x + PROP_ART.anvil.face.x * anvil.w,
     y: anvil.y + PROP_ART.anvil.face.y * anvil.h,
     w: PROP_ART.anvil.faceW * anvil.w,
   };
-  const furnace = placed(w, h, SCENE_PLACE.furnace, a('furnace'), PROP_ART.furnace.foot);
-  const bellows = placed(w, h, SCENE_PLACE.bellows, a('bellows'), PROP_ART.bellows.foot);
-  const quench = placed(w, h, SCENE_PLACE.quench, a('quench'), PROP_ART.quench.foot);
-  const ironW = face.w * SCENE_PLACE.iron.w;
-  const ironH = ironW / a('iron_hot');
-  const ironY = face.y - (PROP_ART.iron.rest.y - 0.5) * ironH;
+  const furnace = prop(P.furnace, a('furnace'), PROP_ART.furnace.foot);
+  const bellows = prop(P.bellows, a('bellows'), PROP_ART.bellows.foot);
+  const quench = prop(P.quench, a('quench'), PROP_ART.quench.foot);
+  // The bar lies on the face; the picture around it is sized from the bar.
+  const bar = PROP_ART.iron.bar;
+  const ironW = face.w * P.iron.w;
+  const ironH = (ironW / (bar.x1 - bar.x0) / a('iron_hot')) * (bar.y1 - bar.y0);
+  const ironY = face.y - ironH / 2;
+  // The dwarf stands as high as puts the strike pose's hammer face on the bar's top, on the floor,
+  // and a step left of where it lands on the bar's middle.
+  const footY = Math.min(h - 1, Math.max(P.floor * h + 2, face.y - ironH + strikeLift() * body));
+  const footX = face.x - ironW * STRIKE_AT - strikeReach(body, a('dwarf_strike')) - P.dwarf.step * w;
   const furnaceTop = { x: furnace.x + furnace.w / 2, y: furnace.y + PROP_ART.furnace.top * furnace.h };
-  const dwarfBody = SCENE_PLACE.dwarf.h * h;
   // The played card hovers between the scene's top and the iron, so neither the numbers nor the blow hide.
   const hoverFrom = OVERLAY_PLACE.cardHover.top;
   const hoverH = Math.max(40, ironY - ironH * 0.7 - hoverFrom);
   const bub = OVERLAY_PLACE.bubble;
-  const bubbleX = SCENE_PLACE.dwarf.x * w + bub.dx * dwarfBody;
+  const bubbleX = footX + bub.dx * body;
   const bubbleLow = Math.max(bub.half + bub.edge, h - bub.half - bub.edge - TABLE_ROWS.ledge);
   return {
     w,
     h,
-    dwarf: { x: SCENE_PLACE.dwarf.x * w, y: SCENE_PLACE.dwarf.y * h, bodyH: dwarfBody },
+    dwarf: { x: footX, y: footY, bodyH: body },
     anvil,
     face,
     furnace,
@@ -328,7 +420,7 @@ export function sceneLayout(w: number, h: number, aspect: Partial<Record<SceneAr
     bubble: {
       x: bubbleX,
       // Its middle stays clear of the scene's top and of the chips over the gauge band.
-      y: Math.min(bubbleLow, Math.max(bub.half + bub.edge, SCENE_PLACE.dwarf.y * h + bub.dy * dwarfBody)),
+      y: Math.min(bubbleLow, Math.max(bub.half + bub.edge, footY + bub.dy * body)),
       maxW: Math.max(120, Math.min(bub.maxW * w, w - bub.edge - bubbleX)),
     },
   };
@@ -337,9 +429,14 @@ export function sceneLayout(w: number, h: number, aspect: Partial<Record<SceneAr
 /** Numbers a beat can stack (공정, 품질, 열기, 내구도). */
 const FLOAT_STACK = 4;
 
+/** Where the strike pose's hammer lands on the bar (x, scene px): STRIKE_AT of its width left of its middle. */
+export function hammerX(l: SceneLayout): number {
+  return l.iron.x - l.iron.w * STRIKE_AT;
+}
+
 /**
- * Where the floating number of this order (0 = the beat's first) starts: its centre x and top y
- * in the scene box (px), under the scene's top edge.
+ * Where the floating number of this order (0 = the beat's first) starts: its left edge x and top
+ * y in the scene box (px), under the scene's top edge.
  */
 export function floatAt(l: SceneLayout, order: number): ArtPoint {
   const f = OVERLAY_PLACE.floats;
@@ -348,7 +445,19 @@ export function floatAt(l: SceneLayout, order: number): ArtPoint {
   const lift = f.lift * l.h;
   const k = Math.max(0.3, Math.min(1, room / (lift + f.step * (FLOAT_STACK - 1))));
   const i = order % FLOAT_STACK;
-  return { x: l.iron.x + (f.dx + (i % 2 === 1 ? f.alt : 0)) * l.iron.w, y: top - k * (lift + i * f.step) };
+  return { x: hammerX(l) + (f.dx + i * f.slant) * l.iron.w, y: top - k * (lift + i * f.step) };
+}
+
+/**
+ * Where the finished weapon's middle lies (scene px) for a weapon len px long: over the anvil's
+ * face, moved right as far as keeps its butt at most WEAPON_REST.butt × the face's width left of
+ * the face's middle.
+ */
+export function weaponRest(l: SceneLayout, len: number): ArtPoint {
+  const r = WEAPON_REST;
+  const half = (len / 2) * Math.cos(r.tilt);
+  const x = Math.max(l.face.x - l.face.w * 0.05, l.face.x - l.face.w * r.butt + half);
+  return { x, y: l.face.y - l.anvil.w * r.lift };
 }
 
 // ---------- Effect timing (ms) ----------
@@ -437,7 +546,7 @@ export const HAND_FAN = {
   minW: 96,
   maxW: 150,
   maxShare: 0.33,
-  show: 0.56,
+  show: 0.58,
   spread: 3,
   maxFan: 4.5,
   /** Room over the cards for the hint line, the side margin and the room under the cards (px). */
@@ -461,49 +570,78 @@ export const HAND_FAN = {
 } as const;
 
 // ---------- Colours ----------
+// Flat colours under the art's dark-brown line: the hot bar is painted in one flat colour by its
+// heat, the effects are flat shapes in these colours with an INK outline (procedural.ts).
 
-/** Iron colour by 열기 0..10, cold to white hot. */
+/** The outline of every drawn effect shape, the art's own line colour. */
+export const INK = 0x3b2a20;
+
+/** The hot bar's flat colour by 열기 0..10: deep red when it has little heat, orange, then yellow at white heat. */
 export const HEAT_TINT: readonly number[] = [
-  0xc0583a, 0xd0623a, 0xdc6e3a, 0xe57c3c, 0xee8c40, 0xf49c46, 0xf8ad50, 0xfbbf62, 0xfdd078, 0xffe093, 0xfff0b8,
+  0xb9412f, 0xc54a30, 0xd15532, 0xdc6334, 0xe67337, 0xee843b, 0xf49641, 0xf8a849, 0xfbba55, 0xfdcb63, 0xffdc78,
 ];
 
-/** Fire glow per 화로 상태: colour and strength (1 = 보통). */
-export const FIRE_GLOW: Record<FireState, { color: number; power: number }> = {
-  normal: { color: 0xff8a3a, power: 1 },
-  good: { color: 0xffa640, power: 1.3 },
-  excellent: { color: 0xffd36a, power: 1.75 },
-  poor: { color: 0xb8543a, power: 0.55 },
-  sturdy: { color: 0xd98a5a, power: 1 },
-  surge: { color: 0xff6a2a, power: 1.5 },
-  malleable: { color: 0xffb070, power: 1.15 },
-  goodOmen: { color: 0xffc860, power: 1.2 },
+/** The bar gone cold (quenched, split, put down): flat iron grey. */
+export const IRON_COLD = 0x8e8984;
+
+/**
+ * The furnace's flame per 화로 상태: the colour of the flat flame drawn in its mouth (as in the
+ * fire_<state> icons) and its size (1 = 보통). The flame's core is the colour mixed with white.
+ */
+export const FIRE_FLAME: Record<FireState, { color: number; power: number }> = {
+  normal: { color: 0xff9a4a, power: 1 },
+  good: { color: 0xffc23a, power: 1.25 },
+  excellent: { color: 0xfff0c4, power: 1.5 },
+  poor: { color: 0x9db4cc, power: 0.6 },
+  sturdy: { color: 0xf5934a, power: 0.95 },
+  surge: { color: 0xf25a48, power: 1.45 },
+  malleable: { color: 0xf49aa8, power: 1.1 },
+  goodOmen: { color: 0xffa94a, power: 1.05 },
 };
 
-/** Metal glow seeping into the iron when a material card is played. */
+/** The metal's colour the bar takes for a moment when a material card is played (and its sparkles). */
 export const METAL_TINT: Partial<Record<CardId, number>> = {
   ironMelt: 0xff9a50,
   steelFold: 0xcfe2ff,
-  mithrilGrain: 0x9fe8ff,
+  mithrilGrain: 0x9fe0f5,
   orichalcumGlow: 0xffc84a,
-  adamantCore: 0xb48cff,
-  dragonBreath: 0xff4a24,
-  rekindle: 0xffb03a,
+  adamantCore: 0xb48cf0,
+  dragonBreath: 0xf25a48,
+  rekindle: 0xffa33a,
   giantHammer: 0xc8925a,
   layeredShell: 0x9fd07a,
-  stormBellows: 0x7fe0e0,
-  tailwind: 0xd8ffd0,
-  deepWater: 0x4a8cff,
-  frostFinish: 0xc8f0ff,
+  stormBellows: 0x7fd6e0,
+  tailwind: 0xd0f2c4,
+  deepWater: 0x6aa6f0,
+  frostFinish: 0xc8ecff,
 };
 
+/** Fill colours of the effect shapes (all drawn white under an INK outline and tinted). */
 export const FX_COLOR = {
-  spark: [0xffe9a8, 0xffc35a, 0xff8a2a],
-  silver: [0xffffff, 0xd8ecff, 0xa8d4ff],
-  gold: [0xfff2c0, 0xffd66a, 0xffb43a],
-  rune: [0xd6b0ff, 0xa070ff],
-  steam: 0xf4f0ea,
-  smoke: 0x3a3430,
-  crack: 0xff3a1a,
+  /** Sparks off a blow: little stars, crosses and drops. */
+  spark: [0xffc24a, 0xff9a3a, 0xffe07a],
+  /** 품질: sky-blue and white ✦. */
+  silver: [0xffffff, 0xcfeaff, 0x9fd2f5],
+  /** 마무리, 완성, 걸작: gold ✦. */
+  gold: [0xfff2b8, 0xffe27a, 0xffc94a],
+  rune: [0xc4a4f4, 0x9f78e6],
+  /** The comic impact star at a blow. */
+  impact: 0xffe066,
+  steam: 0xfbf7ef,
+  smoke: 0xa39b94,
+  /** The air the bellows push. */
+  wind: 0xf6f1e6,
+  /** Drops flying off the quench. */
+  water: 0x9fd2f5,
+  crack: 0xd9503a,
+  /** The sparks off a split bar: the crack's red and an ember orange. */
+  crackSparks: [0xd9503a, 0xf59a50],
+  /** The flat sunburst behind a 걸작 or a legendary weapon. */
+  burst: 0xffe7a0,
+  /** The pale colour a bar takes for a moment as it is struck, polished, finished, fanned, reheated. */
+  flash: { strike: 0xfff6d8, polish: 0xe8f6ff, finish: 0xfff0b0, bellows: 0xffd890, reheat: 0xffe0a0 },
+  /** The metal colour of a material card with no METAL_TINT entry (a blow; a soak). */
+  metalDefault: { strike: 0xffb060, infuse: 0xffc080 },
 } as const;
 
 // ---------- Card face (fractions of the card: x, w of its width; y, h of its height) ----------
@@ -512,29 +650,35 @@ export const FX_COLOR = {
 export const CARD_ASPECT = 2 / 3;
 
 /**
- * Boxes on the card face, measured on the delivered (trimmed) frame_<kind> pictures, which all
- * share one layout (±0.3%): the cost gem over the round socket (centre cx, cy and diameter d as a
- * share of the width; a little wider than the socket's hole so it covers its rim), the name band,
- * the picture window (the card art is cut to fill it, just inside the frame's dark window), the
- * kind ribbon and the parchment text box. The CSS frame uses the same boxes, so a frame picture
- * can be swapped in without moving anything else.
+ * Boxes on the card face: the cream insides of the doodle frame_<kind> pictures (measured on the
+ * delivered, trimmed pictures, which all share one layout within 1%; the picture is stretched to
+ * the 2:3 card): the round cost bubble at the top-left corner (centre cx, cy and diameter d as a
+ * share of the width; the cost is written in it), the name band, the picture window (the card art
+ * is cut to fill it, inside the window's line), the kind ribbon and the text box. The CSS frame
+ * draws the same boxes, so a frame picture can be swapped in without moving anything else.
  */
 export const CARD_FACE = {
-  cost: { cx: 0.124, cy: 0.084, d: 0.172 },
-  /** The name starts at the band's left end, just right of the gem, so a card half under another still shows it. */
-  name: { x: 0.232, y: 0.056, w: 0.658, h: 0.068 },
-  art: { x: 0.119, y: 0.156, w: 0.77, h: 0.373 },
-  ribbon: { x: 0.235, y: 0.54, w: 0.54, h: 0.053 },
-  text: { x: 0.095, y: 0.614, w: 0.815, h: 0.305 },
+  cost: { cx: 0.131, cy: 0.089, d: 0.215 },
+  /** The name starts at the band's left end, just right of the bubble, so a card half under another still shows it. */
+  name: { x: 0.27, y: 0.073, w: 0.64, h: 0.061 },
+  art: { x: 0.084, y: 0.175, w: 0.84, h: 0.346 },
+  ribbon: { x: 0.231, y: 0.55, w: 0.545, h: 0.044 },
+  text: { x: 0.078, y: 0.621, w: 0.856, h: 0.326 },
 } as const;
+
+/** A mini card (the top of a card: cost, name band and picture) is cut just under the picture window's line. */
+export const CARD_MINI_CUT = 0.545;
 
 /**
  * Type on the card (px, at the card's own size): the base is base × the card's width; names,
  * rules text and notes never go under their floors (small phones), names shrink only to fit
- * their band. The kind ribbon is left out on cards narrower than ribbonMinW (the frame's colour
- * already says the kind). Long rules text (more than longText, or veryLong characters) steps
- * down and gets a fifth line; the long-press sheet has all of it. A card half under the next one
- * in the fan wraps a short text cutPad px inside the strip that shows.
+ * their band. The kind's name in the ribbon is ribbon × the base, at least ribbonMin px and at
+ * most as tall as the ribbon. Long rules text (more than longText, or veryLong characters) steps
+ * down and may take a fifth line; the text gets as many whole lines as its box holds over the
+ * keywords and the note (the last one ends in …, the long-press sheet has all of it). Keywords
+ * (소멸, 첫 손 …) are ink pills under the text on cards at least keysMinW wide; on smaller cards
+ * they stay in the text, where they take less room. A card half under the next one in the fan
+ * wraps a short text cutPad px inside the strip that shows.
  */
 export const CARD_TYPE = {
   base: 0.088,
@@ -542,27 +686,38 @@ export const CARD_TYPE = {
   nameMin: 10.5,
   textMin: 10.5,
   noteMin: 10,
-  keyMin: 9,
-  ribbonMinW: 140,
+  keyMin: 10,
+  keysMinW: 140,
+  ribbon: 0.62,
+  ribbonMin: 7,
   longText: 30,
   veryLong: 40,
+  /** Line height of the rules text (card.css .gc-text, the same number). */
+  lineH: 1.24,
 } as const;
 
 /**
+ * The durability orb (orb_durability): the middle and radius of the ember inside its iron ring
+ * (shares of the picture's width and height; r of its width), and the picture's size as a share
+ * of the orb's box (it overhangs the box evenly, so the number sits on the ember). The table
+ * covers the spent share of the ember with ash from the top (ArtTable), so how much is left shows
+ * at a glance and the number stays ink on a quiet colour.
+ */
+export const ORB_FACE = { cx: 0.502, cy: 0.505, r: 0.33, img: 1.26 } as const;
+
+/**
  * Where a card picture is cut (object-position y, 0 = keep the top, 0.5 = centre). The pictures
- * are square and the window is about 4:3, so a subject that reaches the top edge (a raised
- * hammer, a feather, a crown) keeps its head with a value under 0.5. Keys are art keys
- * (render/forge/assets.ts cardArtKey).
+ * are 1.35:1 (tools/art: widened from squares) and the window about 1.6:1, so a little of the top
+ * and the bottom goes; a subject that reaches up (a raised hammer, a light bulb, a scarf hanging
+ * from the top) keeps its top with a value under 0.5. Keys are art keys (render/forge/assets.ts
+ * cardArtKey).
  */
 export const CARD_ART_FOCUS: Readonly<Record<string, number>> = {
-  trainedArm: 0.3,
-  giantHammer: 0.3,
-  dragonBreath: 0.3,
-  rekindle: 0.35,
-  downStrike: 0.25,
-  stormBellows: 0.35,
-  frostFinish: 0.35,
-  allIn: 0.4,
+  bigStrike: 0.3,
+  smithSense: 0.35,
+  finisher: 0.4,
+  emberWatch: 0.2,
+  heatUp: 0.4,
 };
 
 /**

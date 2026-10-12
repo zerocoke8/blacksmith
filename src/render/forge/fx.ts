@@ -12,21 +12,21 @@ import { FX_MAX_MOTIONS } from './layout.ts';
 
 /** How the dwarf works the iron for a card. */
 export type Motion =
-  /** 공정: raise → strike, sparks, shake, white flash. */
+  /** 공정: raise → strike, a comic impact star with speed lines, sparks, shake. */
   | 'strike'
-  /** 품질: careful work, silver sparkles. */
+  /** 품질: careful work, a ✦ glint along the bar, sky-blue ✦. */
   | 'polish'
-  /** 마무리 (열기를 쓰는 품질): golden flash, long sparkle line. */
+  /** 마무리 (열기를 쓰는 품질): a gold impact star, one long ✦ glint, gold ✦. */
   | 'finish'
   /** 열기 (풀무질·달구기, 열기만 오르는 카드): bellows pump, the fire flares. */
   | 'bellows'
-  /** 담금질·물: steam over the iron. */
+  /** 담금질·물: puffy steam clouds over the iron, water drops; the bar goes grey for a moment. */
   | 'quench'
   /** 재료 카드: the metal's colour seeps into the iron. */
   | 'infuse'
   /** 화로 상태를 바꾼 카드: the fire flares and the badge turns. */
   | 'fire'
-  /** 그 밖의 보조: a short glow on the dwarf. */
+  /** 그 밖의 보조: a few gold stars pop round the dwarf. */
   | 'focus';
 
 /** Gauge values after a step; the screen's bars follow these while effects play. */

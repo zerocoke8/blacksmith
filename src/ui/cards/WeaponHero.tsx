@@ -1,5 +1,5 @@
-// The head of the result screen: the finished weapon lying in the forge light with its stars,
-// or, when the iron broke, the cracked bar, quietly. The weapon picture is weapon_<type> from
+// The head of the result screen: the finished weapon on its paper sign with its stars, or, when
+// the iron broke, the split bar (put down: the cold bar, whole), quietly. The weapon picture is weapon_<type> from
 // src/assets/art/scene; a drawn silhouette stands in until it arrives.
 
 import type { QualityTier, WeaponType } from '../../sim/core/types.ts';
@@ -18,56 +18,45 @@ const WEAPON_PATH: Record<WeaponType, string> = {
   staff: 'M14 28h140v4H14zM160 18a12 12 0 1 1 0 24 12 12 0 0 1 0-24z',
 };
 
+/** The weapon's flat silhouette under an ink line, until its picture arrives. */
 function WeaponDrawing({ type }: { type: WeaponType }) {
   return (
     <svg className="wh-weapon-svg" viewBox="0 0 190 60" aria-hidden="true">
-      <defs>
-        <linearGradient id="wh-steel" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#f6f8fc" />
-          <stop offset="0.5" stopColor="#b7bfcc" />
-          <stop offset="1" stopColor="#6c7280" />
-        </linearGradient>
-      </defs>
-      <path d={WEAPON_PATH[type]} fill="url(#wh-steel)" stroke="#2a2420" strokeWidth="1.2" />
+      <path d={WEAPON_PATH[type]} fill="var(--dd-steel)" stroke="var(--dd-ink)" strokeWidth="2.5" strokeLinejoin="round" />
     </svg>
   );
 }
 
-/** The cold, split bar: the painted iron_cracked, else the painted iron_hot greyed out with cracks drawn over it, else a drawing. */
+/** The bar put down whole: the drawn cold bar (iron_cold, no sparkle, no shine), else a drawing. */
+function ColdIron() {
+  const url = sceneArtUrl('iron_cold');
+  if (url === null) return <IronDrawing cracked={false} />;
+  return (
+    <span className="wh-iron-art">
+      <img src={url} alt="" draggable={false} />
+    </span>
+  );
+}
+
+/** The cold, split bar: the drawn iron_cracked, else a drawing. */
 function CrackedIron() {
-  const painted = sceneArtUrl('iron_cracked');
-  if (painted !== null) {
-    return (
-      <span className="wh-iron-art wh-iron-split">
-        <img src={painted} alt="" draggable={false} />
-      </span>
-    );
-  }
-  const url = sceneArtUrl('iron_hot');
-  if (url !== null) {
-    return (
-      <span className="wh-iron-art">
-        <img src={url} alt="" draggable={false} />
-        <svg viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden="true">
-          <path d="M38 12l4 8-3 5 5 7-2 6M64 13l-3 7 4 6-4 7 2 5" fill="none" stroke="#120a08" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
-          <path d="M38 12l4 8-3 5 5 7-2 6" fill="none" stroke="#b0402a" strokeWidth="0.8" opacity="0.75" />
-        </svg>
-      </span>
-    );
-  }
+  const url = sceneArtUrl('iron_cracked');
+  if (url === null) return <IronDrawing cracked />;
+  return (
+    <span className="wh-iron-art">
+      <img src={url} alt="" draggable={false} />
+    </span>
+  );
+}
+
+/** A flat grey bar under an ink line (the pictures' stand-in), split by a crack or whole. */
+function IronDrawing({ cracked }: { cracked: boolean }) {
   return (
     <svg className="wh-iron-svg" viewBox="0 0 190 60" aria-hidden="true">
-      <rect x="12" y="20" width="166" height="20" rx="8" fill="#5f5752" stroke="#2a2420" strokeWidth="1.5" />
-      <rect x="22" y="23" width="110" height="4" rx="2" fill="#7a716a" />
-      <path
-        d="M70 18l6 8-5 5 8 6-4 6M118 18l-4 7 6 6-6 6 3 6"
-        fill="none"
-        stroke="#1a1210"
-        strokeWidth="3"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path d="M70 18l6 8-5 5 8 6-4 6" fill="none" stroke="#b0402a" strokeWidth="1" opacity="0.7" />
+      <rect x="12" y="20" width="166" height="22" rx="9" fill="var(--dd-ash)" stroke="var(--dd-ink)" strokeWidth="4" />
+      {cracked && (
+        <path d="M92 18l7 8-6 6 8 6-5 7" fill="none" stroke="var(--dd-ink)" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+      )}
     </svg>
   );
 }
@@ -102,6 +91,8 @@ export function WeaponHero(props: {
           ) : (
             <WeaponDrawing type={weaponType} />
           )
+        ) : abandoned ? (
+          <ColdIron />
         ) : (
           <CrackedIron />
         )}

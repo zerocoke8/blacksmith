@@ -261,7 +261,9 @@ export function CardCraft({ onExit }: Props) {
           ? '제작 준비'
           : phase === 'craft'
             ? '제작'
-            : '완성';
+            : session?.craft.status === 'success'
+              ? '완성'
+              : '결과';
 
   const saveWarning = (
     <p className="kc-why" role="alert">

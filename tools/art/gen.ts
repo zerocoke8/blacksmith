@@ -12,7 +12,8 @@
 //
 // Options:
 //   --out DIR      원본 PNG 폴더 (기본: OS 임시 폴더/blacksmith-art/raw, process.ts --raw의 기본값과 같다)
-//   --ref DIR      참조 그림 폴더 (기본: <out>의 옆 폴더 ref, 즉 <out>/../ref)
+//   --ref DIR      참조 그림 폴더 (기본: <out>의 옆 폴더 ref, 즉 <out>/../ref). 화풍 기준 그림(D 드워프)은
+//                  저장소의 tools/art/ref에 있으니 보통 '--ref tools/art/ref'로 준다
 //   --model M      Codex 모델 (기본: Codex 설정)
 //   --force        copy 표시된 에셋(이미 있는 원본, 예: dwarf_idle)도 다시 뽑는다
 //   --dry          실행하지 않고 만들 명령과 프롬프트만 찍는다

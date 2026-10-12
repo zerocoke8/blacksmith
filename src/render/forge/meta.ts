@@ -17,6 +17,8 @@ export interface ArtMeta {
   face?: ArtPoint;
   mouth?: ArtPoint;
   top?: number;
+  /** Height of the trimmed picture on its source canvas (px, trim.h): poses drawn on one canvas share a scale. */
+  trimH?: number;
 }
 
 function isObj(v: unknown): v is Record<string, unknown> {
@@ -50,5 +52,6 @@ export function artMeta(group: ArtGroup, key: string): ArtMeta | null {
     face: point(raw.face),
     mouth: point(raw.mouth),
     top: num(raw.top),
+    trimH: isObj(raw.trim) ? num(raw.trim.h) : undefined,
   };
 }

@@ -1,146 +1,477 @@
-/* The card craft's screens around the anvil (준비, 작업대, 완성, 실험) dressed like the anvil:
-   the workshop wall behind, a wooden top band, leather and riveted iron panels, forged
-   buttons, serif headings. Scoped to .kc-skin (CardCraft.tsx); the run's screens keep theirs. */
+/* The card craft's screens around the anvil (준비, 작업대, 완성, 실험, and the sheets over the art
+   table) in the doodle look: the workshop floor's warm brown behind (the workshop wall at the top),
+   paper stickers on it — panels, buttons, rows — with a fat dark-brown line and a hard shadow they
+   sink into when pressed, the round font (Jua) for headings, names, numbers and buttons, Gowun Dodum
+   for reading. Text on the wood is paper-coloured, text on paper is ink. Scoped to .kc-skin
+   (CardCraft.tsx) and .ft-root (the art table's sheets); the season tower's own screens keep theirs.
+   Colour names: app.css --dd-*. */
 
-.kc-skin {
-  --kc-panel-top: rgba(60, 42, 28, 0.93);
-  --kc-panel-bottom: rgba(34, 24, 17, 0.95);
-  --kc-brass: #a07a4a;
+/* .kc-root too: app.css (loaded later) points .kc-skin's tokens at ink; on this screen's wood they are paper. */
+.kc-root.kc-skin {
+  --text: var(--dd-paper);
+  --muted: var(--dd-paper-muted);
+  --accent-2: var(--dd-butter);
   padding-top: 0;
-  background:
-    linear-gradient(180deg, rgba(16, 10, 7, 0.72), rgba(16, 10, 7, 0.9) 34%, rgba(12, 8, 6, 0.97) 70%),
-    var(--kc-bg, none) center top / cover no-repeat fixed,
-    #140d09;
+  color: var(--dd-paper);
+  background: var(--kc-bg, none) center top / 100% auto no-repeat, var(--dd-wood);
 }
 
-/* Top band: wood and soot, like the anvil's. */
+/* Paper surfaces: ink inside them. */
+:is(.kc-skin, .ft-root)
+  :is(.kc-panel, .kc-block, .kc-note, .kc-sheet, .kc-face, .kc-seg-btn, .kc-stepper-val, .kc-toggle, .kc-pick, .kc-evo, .kc-evo-btn, .kc-slot, .kc-preview, .kc-input, .kc-json, .kc-weapon) {
+  --text: var(--dd-ink);
+  --muted: var(--dd-ink-soft);
+  --accent-2: var(--dd-orange-ink);
+  color: var(--dd-ink);
+}
+
+/* Top band: a paper strip with the ink line under it. */
 .kc-skin .kc-bar {
   position: sticky;
   top: 0;
   z-index: 6;
-  min-height: 52px;
+  min-height: 54px;
   margin: 0 -12px;
-  padding: calc(4px + env(safe-area-inset-top)) 8px 4px;
-  border-bottom: 2px solid #0e0805;
-  background:
-    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.05) 0 3px, transparent 3px 7px),
-    linear-gradient(180deg, #43301f, #2a1c12 60%, #22170f);
-  box-shadow:
-    inset 0 -1px 0 rgba(255, 200, 140, 0.16),
-    0 3px 8px rgba(0, 0, 0, 0.55);
+  padding: calc(5px + env(safe-area-inset-top)) 8px 5px;
+  border-bottom: var(--dd-stroke-fat) solid var(--dd-ink);
+  background: var(--dd-paper);
+  color: var(--dd-ink);
+  --text: var(--dd-ink);
+  --muted: var(--dd-ink-soft);
 }
 
 .kc-skin .kc-bar-title {
-  color: #ffe3b0;
-  font-family: var(--ft-serif);
-  font-size: 1.04rem;
-  text-shadow: 0 1px 0 #000;
+  color: var(--dd-ink);
+  font-family: var(--dd-font-round);
+  font-size: 1.1rem;
 }
 
-/* Buttons: worn leather; the main one a plate pulled from the forge. */
-.kc-skin .kc-btn {
-  border: 1px solid #120a06;
-  background: linear-gradient(180deg, #5a4230, #352418);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 220, 180, 0.22),
-    0 1px 2px rgba(0, 0, 0, 0.6);
-  color: #f6e2c2;
+.kc-skin .kc-bar-title.kc-bar-craft b {
+  font-weight: 400;
 }
 
-.kc-skin .kc-btn.ghost {
-  background: linear-gradient(180deg, rgba(70, 50, 34, 0.75), rgba(40, 28, 19, 0.75));
+/* ---------- Buttons: flat colour, fat line, a hard shadow they sink into ---------- */
+
+:is(.kc-skin, .ft-root) .kc-btn {
+  border: var(--dd-stroke) solid var(--dd-ink);
+  border-radius: 13px;
+  background: var(--dd-paper-3);
+  box-shadow: var(--dd-pop);
+  color: var(--dd-ink);
+  font-family: var(--dd-font-round);
+  font-size: 1rem;
+  line-height: 1.2;
 }
 
-.kc-skin .kc-btn.primary {
-  border: 1px solid #2a1208;
-  background: linear-gradient(180deg, #e0913f, #b05a1e 55%, #7e3812);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 232, 190, 0.6),
-    inset 0 -2px 0 rgba(0, 0, 0, 0.28),
-    0 0 0 2px #1a0e08,
-    0 0 0 3.5px var(--kc-brass),
-    0 6px 14px rgba(0, 0, 0, 0.5);
-  color: #fff6e4;
-  font-family: var(--ft-serif);
-  letter-spacing: 0.06em;
-  text-shadow: 0 1px 0 #3a1806;
+:is(.kc-skin, .ft-root) .kc-btn:active:not(:disabled) {
+  transform: translateY(3px);
+  box-shadow: none;
+  filter: none;
+}
+
+:is(.kc-skin, .ft-root) .kc-btn.small {
+  font-size: 0.9rem;
+  box-shadow: var(--dd-pop-s);
+}
+
+:is(.kc-skin, .ft-root) .kc-btn.small:active:not(:disabled) {
+  transform: translateY(2px);
+}
+
+/* A ghost button: just the line (in the bar, beside a main button). */
+:is(.kc-skin, .ft-root) .kc-btn.ghost {
+  background: transparent;
+  box-shadow: none;
+  color: var(--text);
+}
+
+.kc-skin .kc-bar .kc-btn.ghost {
+  background: var(--dd-paper-3);
+  box-shadow: var(--dd-pop-s);
+  color: var(--dd-ink);
+}
+
+:is(.kc-skin, .ft-root) .kc-btn.primary {
+  background: var(--dd-orange);
+  font-weight: 400;
+}
+
+:is(.kc-skin, .ft-root) .kc-btn.danger {
+  background: var(--dd-red);
+  color: var(--dd-paper-3);
+  font-weight: 400;
 }
 
 .kc-skin .kc-btn.primary.big {
   min-height: 58px;
-  margin: 4px 0;
-  font-size: 1.15rem;
+  margin: 4px 0 6px;
+  border-width: var(--dd-stroke-fat);
+  font-size: 1.24rem;
 }
 
-.kc-skin .kc-btn.primary:disabled {
-  filter: grayscale(0.7) brightness(0.7);
-  opacity: 1;
+:is(.kc-skin, .ft-root) .kc-btn:disabled {
+  filter: grayscale(0.8);
+  opacity: 0.55;
+  box-shadow: none;
 }
 
-/* Panels: leather in a thin brass rim, a rivet in each corner. */
-.kc-skin .kc-panel {
-  border: 1px solid #120a06;
-  border-radius: 12px;
-  background:
-    radial-gradient(circle at 9px 9px, #c8a070 0 1.6px, #3a2614 2.4px, transparent 3px),
-    radial-gradient(circle at calc(100% - 9px) 9px, #c8a070 0 1.6px, #3a2614 2.4px, transparent 3px),
-    radial-gradient(circle at 9px calc(100% - 9px), #c8a070 0 1.6px, #3a2614 2.4px, transparent 3px),
-    radial-gradient(circle at calc(100% - 9px) calc(100% - 9px), #c8a070 0 1.6px, #3a2614 2.4px, transparent 3px),
-    linear-gradient(180deg, var(--kc-panel-top), var(--kc-panel-bottom));
-  box-shadow:
-    inset 0 1px 0 rgba(255, 220, 170, 0.14),
-    inset 0 0 0 1px rgba(160, 122, 74, 0.38),
-    0 4px 12px rgba(0, 0, 0, 0.45);
+/* ---------- Panels: paper stickers ---------- */
+
+.kc-skin .kc-panel,
+.kc-skin .kc-block {
+  padding: 10px 12px 12px;
+  border: var(--dd-stroke) solid var(--dd-ink);
+  border-radius: var(--dd-round);
+  background: var(--dd-paper);
+  box-shadow: var(--dd-pop);
 }
 
-.kc-skin .kc-panel h3,
-.kc-skin .kc-block h3 {
-  color: #e8c890;
-  font-family: var(--ft-serif);
+:is(.kc-skin, .ft-root) .kc-panel h3,
+:is(.kc-skin, .ft-root) .kc-block h3 {
+  margin: 0 0 8px;
+  color: var(--dd-ink);
+  font-family: var(--dd-font-round);
+  font-size: 1.04rem;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+}
+
+:is(.kc-skin, .ft-root) .kc-panel h4 {
+  color: var(--dd-ink);
+  font-family: var(--dd-font-round);
   font-size: 0.95rem;
+  font-weight: 400;
+}
+
+:is(.kc-skin, .ft-root) :is(.kc-panel, .kc-block) h3 small,
+:is(.kc-skin, .ft-root) .kc-panel h4 small {
+  color: var(--dd-ink-soft);
+  font-family: var(--dd-font-body);
   font-weight: 700;
-  letter-spacing: 0.04em;
-  text-shadow: 0 1px 0 #000;
 }
 
-.kc-skin .kc-panel h4 {
-  color: #e8d2b0;
-  font-family: var(--ft-serif);
-}
-
+/* The screen's own heading, on the wood: paper letters with an ink line round them. */
 .kc-skin .kc-lead {
-  margin-top: 8px;
-  color: #ffe3b0;
-  font-family: var(--ft-serif);
-  font-size: 1.3rem;
-  text-shadow:
-    0 1px 0 #000,
-    0 0 14px rgba(255, 160, 70, 0.35);
+  margin: 10px 0 0;
+  color: var(--dd-paper-3);
+  font-family: var(--dd-font-round);
+  font-size: 1.5rem;
+  -webkit-text-stroke: 5px var(--dd-ink);
+  paint-order: stroke fill;
 }
 
-.kc-skin .kc-seg-btn {
-  border: 1px solid #120a06;
-  background: linear-gradient(180deg, rgba(74, 54, 38, 0.92), rgba(42, 30, 21, 0.92));
-  box-shadow: inset 0 1px 0 rgba(255, 220, 180, 0.16);
+:is(.kc-skin, .ft-root) .kc-hint {
+  font-size: 0.84rem;
+  font-weight: 700;
 }
 
-.kc-skin .kc-seg-btn.on {
-  border-color: #2a1208;
-  background: linear-gradient(180deg, #7a4a22, #4a2a12);
+:is(.kc-skin, .ft-root) .kc-kv {
+  font-size: 0.92rem;
+}
+
+:is(.kc-skin, .ft-root) .kc-kv > b {
+  font-family: var(--dd-font-round);
+  font-weight: 400;
+}
+
+:is(.kc-skin, .ft-root) .kc-kv small {
+  font-family: var(--dd-font-body);
+}
+
+:is(.kc-skin, .ft-root) .kc-kv b.bad,
+:is(.kc-skin, .ft-root) .kc-problems {
+  color: var(--dd-bad);
+}
+
+:is(.kc-skin, .ft-root) .kc-problems {
+  font-weight: 700;
+}
+
+:is(.kc-skin, .ft-root) .kc-ok {
+  color: var(--dd-ok);
+  font-weight: 700;
+}
+
+/* A warning: a red sticker. */
+:is(.kc-skin, .ft-root) .kc-why {
+  padding: 6px 10px;
+  border: 2px solid var(--dd-ink);
+  border-radius: var(--dd-round-s);
+  background: var(--dd-red);
+  color: var(--dd-paper-3);
+  font-weight: 700;
+}
+
+.kc-skin .kc-note {
+  padding: 8px 10px 8px 14px;
+  border: 2px solid var(--dd-ink);
+  border-radius: var(--dd-round-s);
+  background: var(--dd-paper);
+  box-shadow: inset 6px 0 0 var(--dd-orange), var(--dd-pop-s);
+  color: var(--dd-ink);
+  font-weight: 700;
+}
+
+/* Recipe grade tags: little pills. */
+:is(.kc-skin, .ft-root) .kc-tag {
+  padding: 0 8px;
+  border: 2px solid var(--dd-ink);
+  background: var(--dd-paper-2);
+  color: var(--dd-ink);
+  font-family: var(--dd-font-round);
+  font-size: 0.74rem;
+  font-weight: 400;
+  line-height: 1.45;
+}
+
+:is(.kc-skin, .ft-root) .kc-tag.kc-grade-advanced {
+  background: var(--dd-sky);
+  color: var(--dd-ink);
+}
+
+:is(.kc-skin, .ft-root) .kc-tag.kc-grade-legendary {
+  background: var(--dd-butter);
+  color: var(--dd-ink);
+}
+
+/* ---------- Choices: segments, stepper, toggles, picks ---------- */
+
+:is(.kc-skin, .ft-root) .kc-seg {
+  gap: 8px;
+}
+
+:is(.kc-skin, .ft-root) .kc-seg-btn {
+  border: var(--dd-stroke) solid var(--dd-ink);
+  border-radius: 13px;
+  background: var(--dd-paper-3);
+  box-shadow: var(--dd-pop-s);
+  font-family: var(--dd-font-round);
+  font-size: 0.98rem;
+}
+
+:is(.kc-skin, .ft-root) .kc-seg-btn small {
+  font-family: var(--dd-font-body);
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+:is(.kc-skin, .ft-root) .kc-seg-btn.on {
+  background: var(--dd-orange);
+  box-shadow: var(--dd-pop);
+  color: var(--dd-ink);
+}
+
+:is(.kc-skin, .ft-root) .kc-seg-btn:disabled {
+  opacity: 0.45;
+  box-shadow: none;
+}
+
+:is(.kc-skin, .ft-root) .kc-stepper-val {
+  border: var(--dd-stroke) solid var(--dd-ink);
+  background: var(--dd-paper-3);
+}
+
+:is(.kc-skin, .ft-root) .kc-stepper-val b {
+  font-family: var(--dd-font-round);
+  font-size: 1.05rem;
+  font-weight: 400;
+}
+
+:is(.kc-skin, .ft-root) .kc-toggle {
+  border: var(--dd-stroke) solid var(--dd-ink);
+  background: var(--dd-paper-3);
+  box-shadow: var(--dd-pop-s);
+  font-family: var(--dd-font-round);
+}
+
+:is(.kc-skin, .ft-root) .kc-toggle-text small {
+  font-family: var(--dd-font-body);
+  font-weight: 700;
+}
+
+:is(.kc-skin, .ft-root) .kc-toggle-knob {
+  border: 2px solid var(--dd-ink);
+  background: var(--dd-paper-2);
+}
+
+:is(.kc-skin, .ft-root) .kc-toggle-knob::after {
+  top: 2px;
+  left: 2px;
+  background: var(--dd-ink);
+}
+
+:is(.kc-skin, .ft-root) .kc-toggle.on .kc-toggle-knob {
+  background: var(--dd-green);
+}
+
+:is(.kc-skin, .ft-root) .kc-toggle.on .kc-toggle-knob::after {
+  background: var(--dd-ink);
+}
+
+:is(.kc-skin, .ft-root) .kc-input,
+:is(.kc-skin, .ft-root) .kc-json {
+  border: var(--dd-stroke) solid var(--dd-ink);
+  background: var(--dd-paper-3);
+  color: var(--dd-ink);
+}
+
+:is(.kc-skin, .ft-root) .kc-pick {
+  border: var(--dd-stroke) solid var(--dd-ink);
+  border-radius: 13px;
+  background: var(--dd-paper-3);
+  box-shadow: var(--dd-pop-s);
+}
+
+:is(.kc-skin, .ft-root) .kc-pick b {
+  font-family: var(--dd-font-round);
+  font-weight: 400;
+}
+
+:is(.kc-skin, .ft-root) .kc-pick.on {
+  background: var(--dd-butter);
+  box-shadow: var(--dd-pop);
+}
+
+/* A card laid flat in a list: a paper row, its kind's colour down its left edge. */
+:is(.kc-skin, .ft-root) .kc-face {
+  border: 2px solid var(--dd-ink);
+  border-radius: 13px;
+  background: var(--dd-paper-3);
+  box-shadow: inset 6px 0 0 var(--k);
+}
+
+:is(.kc-skin, .ft-root) .kc-face-name b {
+  font-family: var(--dd-font-round);
+  font-weight: 400;
+}
+
+:is(.kc-skin, .ft-root) .kc-face-main small {
+  font-weight: 700;
+}
+
+:is(.kc-skin, .ft-root) .kc-deckrow.in .kc-face {
+  background: var(--dd-cream);
   box-shadow:
-    inset 0 1px 0 rgba(255, 220, 170, 0.35),
-    0 0 0 2px #ffcf8a,
-    0 0 12px 2px rgba(255, 170, 80, 0.45);
-  color: #fff3dc;
+    inset 6px 0 0 var(--k),
+    var(--dd-pop-s);
 }
 
-.kc-skin .kc-face {
-  border-color: rgba(160, 122, 74, 0.35);
-  background: linear-gradient(180deg, rgba(56, 40, 27, 0.92), rgba(34, 24, 17, 0.92));
+/* Fire states as little pills (the fire icons' colours). */
+:is(.kc-skin, .ft-root) .kc-dot {
+  border: 2px solid var(--dd-ink);
+  color: var(--dd-ink);
+  font-family: var(--dd-font-round);
+  font-weight: 400;
 }
 
+:is(.kc-skin, .ft-root) .kc-dot small {
+  font-family: var(--dd-font-body);
+  font-weight: 700;
+}
+
+:is(.kc-skin, .ft-root) .kc-fire-normal {
+  background: #f9c08a;
+  color: var(--dd-ink);
+}
+:is(.kc-skin, .ft-root) .kc-fire-good {
+  background: #ffd45a;
+  color: var(--dd-ink);
+}
+:is(.kc-skin, .ft-root) .kc-fire-excellent {
+  background: #fff0b0;
+  color: var(--dd-ink);
+}
+:is(.kc-skin, .ft-root) .kc-fire-poor {
+  background: #c4d2e0;
+  color: var(--dd-ink);
+}
+:is(.kc-skin, .ft-root) .kc-fire-sturdy {
+  background: #d9c6b4;
+  color: var(--dd-ink);
+}
+:is(.kc-skin, .ft-root) .kc-fire-surge {
+  background: #f39a86;
+  color: var(--dd-ink);
+}
+:is(.kc-skin, .ft-root) .kc-fire-malleable {
+  background: #f7bcc6;
+  color: var(--dd-ink);
+}
+:is(.kc-skin, .ft-root) .kc-fire-goodOmen {
+  background: #ffcf8a;
+  color: var(--dd-ink);
+}
+
+:is(.kc-skin, .ft-root) .kc-chip {
+  border: 2px solid var(--dd-ink);
+  border-radius: 999px;
+  background: var(--dd-paper-3);
+  box-shadow: inset 5px 0 0 var(--k, var(--dd-paper-2));
+  color: var(--dd-ink);
+  font-family: var(--dd-font-round);
+}
+
+/* The start button stays at the bottom of the screen: on the wood, no fade. */
 .kc-skin .kc-start {
-  background: linear-gradient(180deg, rgba(16, 10, 7, 0), rgba(16, 10, 7, 0.94) 30%);
+  background: var(--dd-wood);
+  box-shadow: 0 calc(-1 * var(--dd-stroke)) 0 color-mix(in srgb, var(--dd-ink) 35%, transparent);
+}
+
+/* ---------- Sheets: paper rising from the bottom ---------- */
+
+:is(.kc-skin, .ft-root) .kc-backdrop {
+  background: color-mix(in srgb, var(--dd-ink) 50%, transparent);
+}
+
+:is(.kc-skin, .ft-root) .kc-sheet {
+  border: var(--dd-stroke-fat) solid var(--dd-ink);
+  border-bottom: none;
+  border-radius: 22px 22px 0 0;
+  background: var(--dd-paper);
+  font-family: var(--dd-font-body);
+}
+
+:is(.kc-skin, .ft-root) .kc-sheet--danger {
+  box-shadow: inset 0 5px 0 var(--dd-red);
+}
+
+:is(.kc-skin, .ft-root) .kc-sheet p {
+  font-weight: 700;
+}
+
+:is(.kc-skin, .ft-root) .kc-sheet-title {
+  color: var(--dd-ink);
+  font-family: var(--dd-font-round);
+  font-size: 1.2rem;
+  font-weight: 400;
+}
+
+/* The cost in the card info sheet: a round sticker. */
+:is(.kc-skin, .ft-root) .kc-cost {
+  border: 2px solid var(--dd-ink);
+  background: var(--dd-paper-3);
+  color: var(--dd-ink);
+  font-family: var(--dd-font-round);
+  font-weight: 400;
+}
+
+:is(.kc-skin, .ft-root) .kc-preview {
+  border: 2px solid var(--dd-ink);
+  background: var(--dd-paper-3);
+}
+
+:is(.kc-skin, .ft-root) .kc-fulllog li {
+  border-bottom: 1px dashed color-mix(in srgb, var(--dd-ink) 30%, transparent);
+}
+
+:is(.kc-skin, .ft-root) .kc-fulllog li.turn {
+  font-family: var(--dd-font-round);
+  font-weight: 400;
+}
+
+:is(.kc-skin, .ft-root) .kc-pile-sec h4 {
+  font-family: var(--dd-font-round);
+  font-weight: 400;
 }
 
 /* ---------- 준비: the weapon to forge, as pictures ---------- */
@@ -157,85 +488,78 @@
   flex-direction: column;
   align-items: center;
   justify-content: flex-end;
-  min-height: 84px;
-  padding: 4px 4px 6px;
+  min-height: 92px;
+  padding: 4px 4px 5px;
   overflow: hidden;
-  border: 1px solid #120a06;
-  border-radius: 10px;
-  background:
-    radial-gradient(ellipse at 50% 45%, rgba(255, 160, 80, 0.18), transparent 70%),
-    linear-gradient(180deg, rgba(58, 42, 28, 0.92), rgba(30, 21, 15, 0.94));
-  box-shadow: inset 0 1px 0 rgba(255, 220, 180, 0.14);
-  color: #e8d2b0;
+  border: var(--dd-stroke) solid var(--dd-ink);
+  border-radius: 14px;
+  background: var(--dd-paper-3);
+  box-shadow: var(--dd-pop-s);
+  color: var(--dd-ink);
   font: inherit;
   cursor: pointer;
 }
 
-/* Centred without a transform: the crossbow's mirror (an inline scale) must not move it. */
+/* Centred without a transform: a mirrored picture (an inline scale) must not move it. */
 .kc-weapon img {
   position: absolute;
-  top: 6%;
+  top: 5px;
   right: 0;
   left: 0;
-  width: 62px;
-  height: 52px;
+  width: 56px;
+  height: 48px;
   margin: 0 auto;
   object-fit: contain;
-  filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.6)) brightness(0.85);
 }
 
 .kc-weapon span {
   position: relative;
-  font-family: var(--ft-serif);
-  font-size: 0.92rem;
-  text-shadow: 0 1px 2px #000;
+  font-family: var(--dd-font-round);
+  font-size: 0.95rem;
 }
 
 .kc-weapon.on {
-  border-color: #2a1208;
-  background:
-    radial-gradient(ellipse at 50% 45%, rgba(255, 190, 100, 0.42), transparent 70%),
-    linear-gradient(180deg, #6a4222, #3a2210);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 220, 170, 0.35),
-    0 0 0 2px #ffcf8a,
-    0 0 14px 3px rgba(255, 170, 80, 0.45);
-  color: #fff3dc;
-}
-
-.kc-weapon.on img {
-  filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.6)) drop-shadow(0 0 6px rgba(255, 200, 120, 0.6));
+  background: var(--dd-orange);
+  box-shadow: var(--dd-pop);
 }
 
 .kc-weapon:active {
-  transform: translateY(1px);
+  transform: translateY(2px);
+  box-shadow: none;
 }
 
 /* ---------- 완성 ---------- */
 
 .kc-skin .kc-line-main {
   margin: 2px 0 0;
-  color: #ffe8c8;
-  font-family: var(--ft-serif);
+  color: var(--dd-paper-3);
+  font-family: var(--dd-font-body);
   font-size: 1.08rem;
+  font-weight: 700;
   text-align: center;
   word-break: keep-all;
+}
+
+.kc-skin .kc-lines p {
+  font-weight: 700;
 }
 
 .kc-learned {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
 
 .kc-learned h3 {
   margin: 0;
-  color: #ffd98a;
-  font-family: var(--ft-serif);
-  font-size: 1rem;
-  letter-spacing: 0.08em;
-  text-shadow: 0 0 12px rgba(255, 190, 90, 0.5);
+  color: var(--dd-butter);
+  font-family: var(--dd-font-round);
+  font-size: 1.15rem;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  -webkit-text-stroke: 4px var(--dd-ink);
+  paint-order: stroke fill;
 }
 
 .kc-learned .kc-hint {
@@ -245,31 +569,24 @@
 .kc-learned-cards {
   display: flex;
   justify-content: center;
-  gap: 8px;
+  gap: 10px;
 }
 
-/* A new card turns over out of the light, one after another. */
+/* A new card flips over and lands, one after another. */
 .kc-reveal {
-  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.6));
+  filter: drop-shadow(0 3px 0 var(--dd-ink));
   animation: kc-reveal 0.6s cubic-bezier(0.2, 0.9, 0.3, 1.15) backwards;
-}
-
-.kc-reveal .gc {
-  box-shadow: 0 0 16px 3px rgba(255, 200, 110, 0.35);
 }
 
 @keyframes kc-reveal {
   0% {
     opacity: 0;
-    filter: brightness(2.4) drop-shadow(0 0 16px rgba(255, 220, 140, 0.9));
     transform: translateY(16px) rotateY(80deg) scale(0.85);
   }
   60% {
     opacity: 1;
-    filter: brightness(1.4) drop-shadow(0 0 12px rgba(255, 210, 130, 0.7));
   }
   100% {
-    filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.6));
     transform: none;
   }
 }
@@ -288,9 +605,9 @@
 .kc-slotpick > summary {
   min-height: 44px;
   padding: 10px 0;
-  color: #e8c890;
-  font-family: var(--ft-serif);
-  font-size: 0.95rem;
+  color: var(--dd-ink);
+  font-family: var(--dd-font-round);
+  font-size: 1rem;
   cursor: pointer;
   list-style-position: inside;
 }
@@ -298,9 +615,10 @@
 .kc-more > summary small,
 .kc-slotpick > summary small {
   margin-left: 6px;
-  color: var(--muted);
-  font-family: system-ui, sans-serif;
-  font-size: 0.75rem;
+  color: var(--dd-ink-soft);
+  font-family: var(--dd-font-body);
+  font-size: 0.76rem;
+  font-weight: 700;
 }
 
 .kc-weapon-sum h4 {
@@ -312,12 +630,22 @@
   overflow-wrap: anywhere;
 }
 
+:is(.kc-skin, .ft-root) .kc-slot {
+  border: 2px dashed var(--dd-ink);
+  background: var(--dd-paper-3);
+}
+
+:is(.kc-skin, .ft-root) .kc-slot.filled {
+  border-style: solid;
+  background: var(--dd-cream);
+}
+
 /* ---------- 작업대: the cards as cards ---------- */
 
 .kc-benchgrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
-  gap: 12px 8px;
+  gap: 14px 8px;
   justify-items: center;
 }
 
@@ -337,32 +665,45 @@
   background: none;
   color: inherit;
   cursor: pointer;
-  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.55));
+  filter: drop-shadow(0 3px 0 var(--dd-ink));
 }
 
 .kc-benchcard.in .kc-benchcard-face .gc {
   box-shadow:
-    0 0 0 2px #ffcf8a,
-    0 0 12px 3px rgba(255, 170, 80, 0.45);
+    0 0 0 3px var(--dd-orange),
+    0 0 0 5.5px var(--dd-ink);
 }
 
 .kc-benchcard-n {
   position: absolute;
-  top: -8px;
-  right: -6px;
+  top: -9px;
+  right: -7px;
   z-index: 5;
-  padding: 1px 7px;
+  padding: 0 7px;
+  border: 2px solid var(--dd-ink);
   border-radius: 999px;
-  background: #1a100a;
-  box-shadow: 0 0 0 1.5px #ffcf8a;
-  color: #ffe3b0;
-  font-size: 0.72rem;
-  font-weight: 800;
+  background: var(--dd-paper-3);
+  color: var(--dd-ink);
+  font-family: var(--dd-font-round);
+  font-size: 0.8rem;
+  line-height: 1.4;
   white-space: nowrap;
 }
 
 .kc-benchcard .kc-deckrow-ctl {
   justify-content: center;
+  gap: 2px;
+}
+
+/* The −/+ under a bench card fit its width. */
+.kc-benchcard .kc-step {
+  width: 36px;
+  min-width: 0;
+  min-height: 40px;
+}
+
+.kc-benchcard .kc-deckrow-n {
+  min-width: 24px;
 }
 
 .kc-benchcard .kc-deckrow-why {
@@ -372,11 +713,313 @@
 }
 
 .kc-benchcard.dim .kc-benchcard-face {
-  filter: grayscale(0.85) brightness(0.55) drop-shadow(0 4px 6px rgba(0, 0, 0, 0.55));
+  filter: grayscale(0.85) brightness(0.85) drop-shadow(0 3px 0 var(--dd-ink));
+}
+
+:is(.kc-skin, .ft-root) .kc-deckrow-n {
+  font-family: var(--dd-font-round);
+}
+
+:is(.kc-skin, .ft-root) .kc-later summary {
+  font-family: var(--dd-font-round);
+}
+
+:is(.kc-skin, .ft-root) .kc-evo,
+:is(.kc-skin, .ft-root) .kc-evo-btn {
+  border: 2px solid var(--dd-ink);
+  border-radius: 13px;
+  background: var(--dd-paper-3);
+}
+
+:is(.kc-skin, .ft-root) .kc-evo.open {
+  background: var(--dd-cream);
+}
+
+:is(.kc-skin, .ft-root) .kc-evo-bar {
+  height: 8px;
+  border: 2px solid var(--dd-ink);
+  border-radius: 999px;
+  background: var(--dd-paper-2);
+}
+
+:is(.kc-skin, .ft-root) .kc-evo-bar div {
+  background: var(--dd-orange);
+}
+
+/* ---------- 실험 ---------- */
+
+:is(.kc-skin, .ft-root) .kc-group {
+  border-top: 1px dashed color-mix(in srgb, var(--dd-ink) 35%, transparent);
+}
+
+:is(.kc-skin, .ft-root) .kc-group-label {
+  font-family: var(--dd-font-round);
 }
 
 @media (prefers-reduced-motion: reduce) {
   .kc-reveal {
     animation: none;
   }
+}
+
+/* List rows take the cards' own kind colours (app.css --dd-kind-*, as card.css .gc-*). */
+:is(.kc-skin, .ft-root) .kc-kind-progress {
+  --k: var(--dd-kind-progress);
+}
+:is(.kc-skin, .ft-root) .kc-kind-quality {
+  --k: var(--dd-kind-quality);
+}
+:is(.kc-skin, .ft-root) .kc-kind-support {
+  --k: var(--dd-kind-support);
+}
+:is(.kc-skin, .ft-root) .kc-kind-material {
+  --k: var(--dd-kind-material);
+}
+:is(.kc-skin, .ft-root) .kc-kind-imprint {
+  --k: var(--dd-kind-imprint);
+}
+
+/* The plain table's end-turn button (아트 화면 off): ink on its paper. */
+.kc-skin .kc-endturn {
+  background: var(--dd-orange);
+}
+
+.kc-skin .kc-endturn small {
+  color: var(--dd-ink);
+}
+
+/* ---------- The plain table (아트 화면 off in 실험, or no WebGL / the art failed: Table.tsx) ----------
+   The same paper and ink as the art table: paper cards with their kind's band on top, paper-2
+   tracks under an ink line, flat fills, no glows. cards.css keeps the season tower's dark one. */
+
+.kc-skin .kc-table {
+  --kc-progress: var(--dd-orange);
+  --kc-quality: var(--dd-sky);
+  --kc-durability: var(--dd-green);
+  --kc-heat: var(--dd-red);
+  --kc-well: var(--dd-paper-2);
+}
+
+.kc-skin .kc-gauge-label,
+.kc-skin .kc-heat .kc-gauge-label {
+  font-family: var(--dd-font-round);
+  font-weight: 400;
+}
+
+.kc-skin .kc-gauge-bar {
+  height: 14px;
+  border: 2px solid var(--dd-ink);
+  border-radius: 999px;
+}
+
+.kc-skin .kc-gauge-fill {
+  border-radius: 999px 0 0 999px;
+}
+
+.kc-skin .kc-gauge-quality .kc-gauge-fill {
+  background: var(--kc-quality);
+}
+
+.kc-skin .kc-gauge-durability.danger .kc-gauge-fill {
+  background: var(--dd-red);
+}
+
+.kc-skin .kc-gauge-ghost {
+  background: repeating-linear-gradient(45deg, color-mix(in srgb, var(--dd-ink) 22%, transparent) 0 4px, transparent 4px 8px);
+}
+
+.kc-skin .kc-gauge-mark {
+  background: var(--dd-ink);
+}
+
+.kc-skin .kc-gauge-num b.down {
+  color: var(--dd-red);
+}
+
+.kc-skin .kc-pip {
+  height: 12px;
+  border: 2px solid var(--dd-ink);
+  border-radius: 4px;
+}
+
+.kc-skin .kc-pip.on {
+  box-shadow: none;
+}
+
+.kc-skin .kc-pip.gain {
+  background: color-mix(in srgb, var(--dd-red) 35%, var(--dd-paper-2));
+  outline: none;
+}
+
+.kc-skin .kc-pip.loss {
+  background: color-mix(in srgb, var(--dd-red) 30%, var(--dd-paper-2));
+}
+
+.kc-skin .kc-fire {
+  border: 2px solid var(--dd-ink);
+  box-shadow: var(--dd-pop-s);
+  color: var(--dd-ink);
+  font-family: var(--dd-font-round);
+}
+
+.kc-skin .kc-fire b {
+  font-weight: 400;
+}
+
+.kc-skin .kc-tier-5 {
+  color: var(--dd-butter);
+  text-shadow: none;
+}
+
+.kc-skin .kc-tierup {
+  border: 2px solid var(--dd-ink);
+  background: var(--dd-butter-paper);
+  box-shadow: var(--dd-pop-s);
+  color: var(--dd-ink);
+  font-family: var(--dd-font-round);
+}
+
+/* The anvil strip: a paper panel, the dwarf's line in ink on paper. */
+.kc-skin .kc-stage {
+  border: var(--dd-stroke) solid var(--dd-ink);
+  border-radius: var(--dd-round);
+  background: var(--dd-paper);
+  box-shadow: var(--dd-pop-s);
+  color: var(--dd-ink);
+}
+
+.kc-skin .kc-iron {
+  border: 2px solid var(--dd-ink);
+  box-shadow: none;
+}
+
+.kc-skin .kc-anvil-top,
+.kc-skin .kc-anvil-foot {
+  background: var(--dd-ink-soft);
+}
+
+.kc-skin .kc-log {
+  color: var(--dd-ink-soft);
+}
+
+.kc-skin .kc-log-line.now {
+  color: var(--dd-ink);
+}
+
+.kc-skin .kc-say {
+  border: 2px solid var(--dd-ink);
+  background: var(--dd-paper-3);
+  color: var(--dd-ink);
+  font-weight: 700;
+}
+
+.kc-skin .kc-flash {
+  color: var(--dd-paper-3);
+  font-family: var(--dd-font-round);
+  -webkit-text-stroke: 3px var(--dd-ink);
+  paint-order: stroke fill;
+  text-shadow: none;
+}
+
+.kc-skin .kc-end {
+  border: var(--dd-stroke-fat) solid var(--dd-ink);
+  border-radius: var(--dd-round);
+  background: var(--dd-paper);
+  box-shadow: var(--dd-pop);
+  color: var(--dd-ink);
+}
+
+.kc-skin .kc-end b {
+  color: var(--dd-ink);
+  font-family: var(--dd-font-round);
+  font-weight: 400;
+}
+
+.kc-skin .kc-end.fail {
+  background: var(--dd-paper-2);
+}
+
+.kc-skin .kc-end.fail b,
+.kc-skin .kc-end small {
+  color: var(--dd-ink-soft);
+}
+
+/* The cards: paper, their kind's colour as a band along the top, ink letters. */
+.kc-skin .kc-card {
+  border: var(--dd-stroke) solid var(--dd-ink);
+  border-top: 6px solid var(--k);
+  border-radius: 12px;
+  background: var(--dd-paper-3);
+  box-shadow: var(--dd-pop-s);
+  color: var(--dd-ink);
+}
+
+.kc-skin .kc-card .kc-cost {
+  border: 2px solid var(--dd-ink);
+  background: var(--k);
+  color: var(--dd-ink);
+  font-family: var(--dd-font-round);
+  font-weight: 400;
+}
+
+.kc-skin .kc-card .kc-cost.down {
+  background: var(--dd-green);
+}
+
+.kc-skin .kc-card .kc-cost.up {
+  background: var(--dd-red);
+  color: var(--dd-paper-3);
+}
+
+.kc-skin .kc-card-name {
+  font-family: var(--dd-font-round);
+  font-weight: 400;
+}
+
+.kc-skin .kc-card-kind,
+.kc-skin .kc-card-text {
+  color: var(--dd-ink-soft);
+  font-weight: 700;
+}
+
+.kc-skin .kc-card-foot .why,
+.kc-skin .kc-card-foot .brk {
+  color: var(--dd-bad);
+}
+
+.kc-skin .kc-card-foot .fin {
+  color: var(--dd-orange-ink);
+}
+
+.kc-skin .kc-card-foot .keep {
+  color: var(--cool);
+}
+
+.kc-skin .kc-card.finishes {
+  box-shadow:
+    0 0 0 3px var(--dd-gold),
+    0 0 0 5.5px var(--dd-ink);
+}
+
+.kc-skin .kc-card.breaks {
+  border-color: var(--dd-red);
+  border-top-color: var(--k);
+}
+
+.kc-skin .kc-card.selected {
+  box-shadow:
+    0 0 0 3px var(--dd-orange),
+    0 0 0 5.5px var(--dd-ink);
+}
+
+/* The bottom bar: on the wood, an ink line over it, no fade. */
+.kc-skin .kc-bottom {
+  border-top: var(--dd-stroke) solid var(--dd-ink);
+  background: var(--dd-wood);
+}
+
+/* The gauges' names and numbers sit on the wood (and the workshop picture at the top): paper letters in an ink rim. */
+.kc-skin .kc-table .kc-gauge-top {
+  -webkit-text-stroke: 3px var(--dd-ink);
+  paint-order: stroke fill;
 }

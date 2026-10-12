@@ -2,6 +2,8 @@
 // returns null and the caller draws its stand-in. Only URLs live here (no image is fetched
 // until something shows it), so React screens can import this without growing the first load.
 // meta.json is read by meta.ts, which only the scene (a chunk of its own) imports.
+// '?no-inline': the doodle icons are small (3–4 KB), under Vite's inline limit; inlined, they would
+// ride in the first load's JS as base64. As files, they load only when shown.
 
 import { type CardId, type CardKind, CARDS } from '../../sim/data/cards.ts';
 import { CARD_FRAME_ART, type SceneArtKey, type UiArtKey } from './layout.ts';
@@ -9,7 +11,7 @@ import { CARD_FRAME_ART, type SceneArtKey, type UiArtKey } from './layout.ts';
 export type ArtGroup = 'scene' | 'ui' | 'cards';
 
 const FILES = import.meta.glob('/src/assets/art/**/*.{webp,png}', {
-  query: '?url',
+  query: '?no-inline',
   import: 'default',
   eager: true,
 }) as Record<string, string>;

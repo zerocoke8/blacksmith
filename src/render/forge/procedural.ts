@@ -1,10 +1,14 @@
-// Stand-ins drawn on a 2D canvas for scene pictures that have not arrived yet, and the small
-// effect textures (soft dot, glow, shine line, rune ring, crack, rays). The scene turns each
-// canvas into a texture. Shapes follow the anchors in layout.ts (anvil face, furnace mouth …),
-// so a real picture can replace a stand-in without moving anything else.
+// The effect shapes, drawn on a 2D canvas in the art's doodle style (tools/art/assets.ts): flat
+// white shapes under a fat dark-brown (INK) line, which the scene tints (a sprite's tint multiplies,
+// so the white fill takes the colour and the line stays dark): little stars, crosses and drops for
+// sparks, a spiky comic impact star and speed lines for a blow, puffy clouds for steam and smoke,
+// a flat flame for the furnace, a ring of runes, a flat sunburst. No soft glows or gradients.
+// furnaceMouth paints the furnace picture's own flames out, so the scene's flame shows its state.
+// Also stand-ins for scene pictures that fail to load, drawn the same flat way, which follow the
+// anchors in layout.ts (anvil face, furnace mouth …), so a real picture replaces one without moving anything.
 
 import type { WeaponType } from '../../sim/core/types.ts';
-import { type DwarfPose, PROP_ART } from './layout.ts';
+import { type DwarfPose, INK, PROP_ART, SCENE_PLACE } from './layout.ts';
 
 function canvas(w: number, h: number): { c: HTMLCanvasElement; g: CanvasRenderingContext2D } {
   const c = document.createElement('canvas');
@@ -15,180 +19,481 @@ function canvas(w: number, h: number): { c: HTMLCanvasElement; g: CanvasRenderin
   return { c, g };
 }
 
-// ---------- Effect textures ----------
+const INK_CSS = `#${INK.toString(16).padStart(6, '0')}`;
 
-/** White radial dot, soft edge (particles, glows). */
-export function softDot(size = 64, hard = 0.15): HTMLCanvasElement {
+/** Fill white and outline in ink: the outline is drawn first, twice as wide, so the fill keeps its full size. */
+function inked(g: CanvasRenderingContext2D, path: () => void, line: number): void {
+  g.lineJoin = 'round';
+  g.lineCap = 'round';
+  path();
+  g.strokeStyle = INK_CSS;
+  g.lineWidth = line * 2;
+  g.stroke();
+  g.fillStyle = '#ffffff';
+  g.fill();
+}
+
+// ---------- Effect shapes ----------
+
+export type DoodleShape = 'star' | 'cross' | 'drop' | 'dot' | 'diamond';
+
+/**
+ * A small outlined shape (white, tinted when shown), centred in a size×size canvas with room for
+ * its line. star = a four-point ✦, cross = a fat plus, drop = a teardrop pointing right (the
+ * scene turns it along its flight), dot = a round blob, diamond = a rhombus.
+ */
+export function doodle(kind: DoodleShape, size = 64): HTMLCanvasElement {
   const { c, g } = canvas(size, size);
-  const r = size / 2;
-  const grad = g.createRadialGradient(r, r, 0, r, r, r);
-  grad.addColorStop(0, 'rgba(255,255,255,1)');
-  grad.addColorStop(hard, 'rgba(255,255,255,0.9)');
-  grad.addColorStop(0.55, 'rgba(255,255,255,0.28)');
-  grad.addColorStop(1, 'rgba(255,255,255,0)');
-  g.fillStyle = grad;
-  g.fillRect(0, 0, size, size);
+  const line = size * 0.07;
+  const r = size / 2 - line * 1.4;
+  const m = size / 2;
+  inked(
+    g,
+    () => {
+      g.beginPath();
+      switch (kind) {
+        case 'star': {
+          // Four points with curved (pinched) sides: ✦.
+          const pts = [
+            [0, -1],
+            [1, 0],
+            [0, 1],
+            [-1, 0],
+          ] as const;
+          g.moveTo(m, m - r);
+          for (let i = 0; i < 4; i++) {
+            const [ax, ay] = pts[i] as readonly [number, number];
+            const [bx, by] = pts[(i + 1) % 4] as readonly [number, number];
+            g.quadraticCurveTo(m + (ax + bx) * r * 0.12, m + (ay + by) * r * 0.12, m + bx * r, m + by * r);
+          }
+          g.closePath();
+          break;
+        }
+        case 'cross': {
+          const a = r * 0.36;
+          g.moveTo(m - a, m - r);
+          g.lineTo(m + a, m - r);
+          g.lineTo(m + a, m - a);
+          g.lineTo(m + r, m - a);
+          g.lineTo(m + r, m + a);
+          g.lineTo(m + a, m + a);
+          g.lineTo(m + a, m + r);
+          g.lineTo(m - a, m + r);
+          g.lineTo(m - a, m + a);
+          g.lineTo(m - r, m + a);
+          g.lineTo(m - r, m - a);
+          g.lineTo(m - a, m - a);
+          g.closePath();
+          break;
+        }
+        case 'drop': {
+          // Round tail on the left, point on the right.
+          const t = r * 0.5;
+          g.moveTo(m + r, m);
+          g.quadraticCurveTo(m + r * 0.1, m - t * 1.1, m - r + t, m - t);
+          g.arc(m - r + t, m, t, -Math.PI / 2, Math.PI / 2, true);
+          g.quadraticCurveTo(m + r * 0.1, m + t * 1.1, m + r, m);
+          g.closePath();
+          break;
+        }
+        case 'dot':
+          g.arc(m, m, r * 0.8, 0, Math.PI * 2);
+          break;
+        case 'diamond':
+          g.moveTo(m, m - r);
+          g.lineTo(m + r * 0.7, m);
+          g.lineTo(m, m + r);
+          g.lineTo(m - r * 0.7, m);
+          g.closePath();
+          break;
+      }
+    },
+    line,
+  );
   return c;
 }
 
-/** Wide soft puff with a lumpy edge (steam, smoke). */
-export function puff(size = 128): HTMLCanvasElement {
+/** The comic impact star of a blow: a spiky, slightly uneven star with a fat line (white, tinted yellow). */
+export function burst(size = 256, points = 9): HTMLCanvasElement {
   const { c, g } = canvas(size, size);
-  const r = size / 2;
-  for (let i = 0; i < 7; i++) {
-    const a = (i / 7) * Math.PI * 2;
-    const x = r + Math.cos(a) * r * 0.28;
-    const y = r + Math.sin(a) * r * 0.22;
-    const grad = g.createRadialGradient(x, y, 0, x, y, r * 0.62);
-    grad.addColorStop(0, 'rgba(255,255,255,0.35)');
-    grad.addColorStop(1, 'rgba(255,255,255,0)');
-    g.fillStyle = grad;
-    g.fillRect(0, 0, size, size);
+  const line = size * 0.035;
+  const m = size / 2;
+  const outer = size / 2 - line * 1.6;
+  inked(
+    g,
+    () => {
+      g.beginPath();
+      for (let i = 0; i < points * 2; i++) {
+        const a = -Math.PI / 2 + (i * Math.PI) / points;
+        // Uneven spikes, as if drawn by hand.
+        const k = i % 2 === 0 ? (i % 4 === 0 ? 1 : 0.84) : 0.46 + 0.05 * Math.sin(i * 2.3);
+        const x = m + Math.cos(a) * outer * k;
+        const y = m + Math.sin(a) * outer * k;
+        if (i === 0) g.moveTo(x, y);
+        else g.lineTo(x, y);
+      }
+      g.closePath();
+    },
+    line,
+  );
+  return c;
+}
+
+/** Short speed lines radiating round an empty middle (ink, drawn white-on-nothing: tint them dark or leave as ink). */
+export function speedLines(size = 256, count = 10): HTMLCanvasElement {
+  const { c, g } = canvas(size, size);
+  const m = size / 2;
+  g.strokeStyle = INK_CSS;
+  g.lineCap = 'round';
+  g.lineWidth = size * 0.026;
+  for (let i = 0; i < count; i++) {
+    const a = (i / count) * Math.PI * 2 + (i % 2 === 0 ? 0.12 : -0.08);
+    const r0 = size * (i % 2 === 0 ? 0.33 : 0.37);
+    const r1 = size * (i % 2 === 0 ? 0.47 : 0.44);
+    g.beginPath();
+    g.moveTo(m + Math.cos(a) * r0, m + Math.sin(a) * r0);
+    g.lineTo(m + Math.cos(a) * r1, m + Math.sin(a) * r1);
+    g.stroke();
   }
   return c;
 }
 
-/** Horizontal shine streak: a long soft ellipse, white in the middle. */
-export function shineLine(w = 256, h = 24): HTMLCanvasElement {
-  const { c, g } = canvas(w, h);
-  g.save();
-  g.translate(w / 2, h / 2);
-  g.scale(w / 2, h / 2);
-  const grad = g.createRadialGradient(0, 0, 0, 0, 0, 1);
-  grad.addColorStop(0, 'rgba(255,255,255,1)');
-  grad.addColorStop(0.2, 'rgba(255,255,255,0.7)');
-  grad.addColorStop(1, 'rgba(255,255,255,0)');
-  g.fillStyle = grad;
-  g.fillRect(-1, -1, 2, 2);
-  g.restore();
+/** A puffy cloud of round lumps with one outline round all of them (steam, smoke, the bellows' air). */
+export function cloud(size = 128): HTMLCanvasElement {
+  const { c, g } = canvas(size, size);
+  const line = size * 0.05;
+  const m = size / 2;
+  const lumps: [number, number, number][] = [
+    [-0.2, 0.08, 0.24],
+    [0.04, -0.12, 0.27],
+    [0.24, 0.06, 0.22],
+    [0.02, 0.14, 0.24],
+  ];
+  const path = () => {
+    g.beginPath();
+    for (const [x, y, r] of lumps) {
+      g.moveTo(m + (x + r) * size, m + y * size);
+      g.arc(m + x * size, m + y * size, r * size, 0, Math.PI * 2);
+    }
+  };
+  // The union's outline: every lump stroked wide, then every lump filled over the inner lines.
+  path();
+  g.strokeStyle = INK_CSS;
+  g.lineWidth = line * 2;
+  g.stroke();
+  path();
+  g.fillStyle = '#ffffff';
+  g.fill();
   return c;
 }
 
-/** A ring of runes (각인). */
+/**
+ * A flat cartoon flame (white, tinted by the fire's state), its base along the bottom edge and
+ * centred: one tall tongue and two small ones on the sides. inner = the lighter core laid inside
+ * the flame: one plain round-bottomed tongue, no outline.
+ */
+export function flame(w = 128, h = 160, inner = false): HTMLCanvasElement {
+  if (inner) return flameCore(w, h);
+  const { c, g } = canvas(w, h);
+  const line = w * 0.05;
+  const L = line * 1.2;
+  const x0 = L;
+  const x1 = w - L;
+  const top = L;
+  const base = h - L;
+  const mx = w / 2;
+  const path = () => {
+    g.beginPath();
+    g.moveTo(mx, top);
+    // Right side: down to a small tongue, then round the base.
+    g.bezierCurveTo(mx + w * 0.14, top + h * 0.22, x1, top + h * 0.3, x1 - w * 0.02, top + h * 0.42);
+    g.bezierCurveTo(x1 - w * 0.08, top + h * 0.5, x1 + w * 0.0, top + h * 0.56, x1, base - h * 0.28);
+    g.bezierCurveTo(x1, base - h * 0.06, mx + w * 0.22, base, mx, base);
+    g.bezierCurveTo(mx - w * 0.22, base, x0, base - h * 0.06, x0, base - h * 0.28);
+    g.bezierCurveTo(x0, top + h * 0.5, x0 + w * 0.08, top + h * 0.44, x0 + w * 0.04, top + h * 0.34);
+    g.bezierCurveTo(x0 + w * 0.2, top + h * 0.4, mx - w * 0.1, top + h * 0.3, mx, top);
+    g.closePath();
+  };
+  inked(g, path, line);
+  return c;
+}
+
+/** The flame's core: a single tongue, round at the bottom, its tip leaning a little. */
+function flameCore(w: number, h: number): HTMLCanvasElement {
+  const { c, g } = canvas(w, h);
+  const mx = w / 2;
+  const r = w * 0.42;
+  const cy = h - r - 1;
+  g.fillStyle = '#ffffff';
+  g.beginPath();
+  g.moveTo(mx + w * 0.04, 1);
+  g.bezierCurveTo(mx + w * 0.18, h * 0.3, mx + r, cy - r * 0.6, mx + r, cy);
+  g.arc(mx, cy, r, 0, Math.PI);
+  g.bezierCurveTo(mx - r, cy - r * 0.8, mx - w * 0.1, h * 0.28, mx + w * 0.04, 1);
+  g.closePath();
+  g.fill();
+  return c;
+}
+
+/** The box (shares of the picture) the furnace's opening is looked for in, and the point inside it to start from. */
+export interface MouthSearch {
+  x0: number;
+  x1: number;
+  top: number;
+  bottom: number;
+}
+
+/**
+ * The furnace picture's painted flames painted out, so the drawn flame can show the fire's state:
+ * from the mouth point, every pixel inside the box that is dark (the opening and its line) or warm
+ * (the painted flames) and joined to it is the opening; its warm pixels, and a 2 px rim round them
+ * inside the opening, are painted in the opening's own dark (the middle of its dark pixels). The
+ * rest of the canvas (the picture's size) stays clear, so it lies over the picture exactly and
+ * follows the opening's own shape, whatever stones are drawn round it. Null when nothing warm is
+ * found (a picture with an empty mouth needs no cover).
+ */
+export function furnaceMouth(source: CanvasImageSource, w: number, h: number, box: MouthSearch, seed: { x: number; y: number }): HTMLCanvasElement | null {
+  const { c, g } = canvas(w, h);
+  g.drawImage(source, 0, 0, c.width, c.height);
+  const W = c.width;
+  const H = c.height;
+  const img = g.getImageData(0, 0, W, H);
+  const d = img.data;
+  const x0 = Math.max(0, Math.floor(box.x0 * W));
+  const x1 = Math.min(W - 1, Math.ceil(box.x1 * W));
+  const y0 = Math.max(0, Math.floor(box.top * H));
+  const y1 = Math.min(H - 1, Math.ceil(box.bottom * H));
+  // Dark: the opening and the ink line (lum under 0.3); warm: the painted flames (red well over blue).
+  const kind = (p: number): 0 | 1 | 2 => {
+    const i = p * 4;
+    if ((d[i + 3] ?? 0) < 128) return 0;
+    const r = d[i] ?? 0;
+    const gg = d[i + 1] ?? 0;
+    const b = d[i + 2] ?? 0;
+    if (r > 150 && r - b > 80) return 2;
+    return (0.3 * r + 0.59 * gg + 0.11 * b) / 255 < 0.3 ? 1 : 0;
+  };
+  const inBox = (x: number, y: number) => x >= x0 && x <= x1 && y >= y0 && y <= y1;
+  // The opening: flood from the mouth point (or the nearest dark or warm pixel to it).
+  const region = new Uint8Array(W * H);
+  let start = -1;
+  const sx = Math.round(seed.x * W);
+  const sy = Math.round(seed.y * H);
+  for (let r = 0; r < 24 && start < 0; r++) {
+    for (let dy = -r; dy <= r && start < 0; dy++) {
+      for (let dx = -r; dx <= r && start < 0; dx++) {
+        const x = sx + dx;
+        const y = sy + dy;
+        if (inBox(x, y) && kind(y * W + x) !== 0) start = y * W + x;
+      }
+    }
+  }
+  if (start < 0) return null;
+  const stack = [start];
+  region[start] = 1;
+  const warm: number[] = [];
+  const dark: number[] = [];
+  while (stack.length > 0) {
+    const p = stack.pop() as number;
+    const x = p % W;
+    const y = (p - x) / W;
+    if (kind(p) === 2) warm.push(p);
+    else dark.push(p);
+    for (const [nx, ny] of [
+      [x - 1, y],
+      [x + 1, y],
+      [x, y - 1],
+      [x, y + 1],
+    ] as const) {
+      if (!inBox(nx, ny)) continue;
+      const q = ny * W + nx;
+      if (region[q] === 0 && kind(q) !== 0) {
+        region[q] = 1;
+        stack.push(q);
+      }
+    }
+  }
+  if (warm.length === 0 || dark.length === 0) return null;
+  // The opening's own dark: the middle of its dark pixels, each channel.
+  const pick = (ch: number) => {
+    const v: number[] = [];
+    for (let k = 0; k < dark.length; k += Math.max(1, Math.floor(dark.length / 4000))) v.push(d[(dark[k] as number) * 4 + ch] ?? 0);
+    v.sort((a, b) => a - b);
+    return v[v.length >> 1] ?? 0;
+  };
+  const fill = [pick(0), pick(1), pick(2)];
+  // The flames and a 2 px rim round them, inside the opening.
+  const paint = new Uint8Array(W * H);
+  for (const p of warm) {
+    const x = p % W;
+    const y = (p - x) / W;
+    for (let dy = -2; dy <= 2; dy++) {
+      for (let dx = -2; dx <= 2; dx++) {
+        const q = (y + dy) * W + (x + dx);
+        if (inBox(x + dx, y + dy) && region[q] === 1) paint[q] = 1;
+      }
+    }
+  }
+  const out = g.createImageData(W, H);
+  const o = out.data;
+  for (let p = 0; p < W * H; p++) {
+    if (paint[p] === 0) continue;
+    o[p * 4] = fill[0] ?? 0;
+    o[p * 4 + 1] = fill[1] ?? 0;
+    o[p * 4 + 2] = fill[2] ?? 0;
+    o[p * 4 + 3] = 255;
+  }
+  g.putImageData(out, 0, 0);
+  return c;
+}
+
+/** A ring of runes (각인) in an outlined band: ink line under a white one, tinted violet. */
 export function runeRing(size = 256): HTMLCanvasElement {
   const { c, g } = canvas(size, size);
   const r = size / 2;
-  g.strokeStyle = 'rgba(255,255,255,0.95)';
   g.lineCap = 'round';
-  g.lineWidth = size * 0.012;
-  g.beginPath();
-  g.arc(r, r, r * 0.9, 0, Math.PI * 2);
-  g.stroke();
-  g.lineWidth = size * 0.008;
-  g.beginPath();
-  g.arc(r, r, r * 0.66, 0, Math.PI * 2);
-  g.stroke();
-  // Runes between the rings: short strokes, a different shape each.
-  g.lineWidth = size * 0.014;
-  for (let i = 0; i < 10; i++) {
-    const a = (i / 10) * Math.PI * 2;
-    const cx = r + Math.cos(a) * r * 0.78;
-    const cy = r + Math.sin(a) * r * 0.78;
-    const s = size * 0.045;
-    g.save();
-    g.translate(cx, cy);
-    g.rotate(a + Math.PI / 2);
+  g.lineJoin = 'round';
+  const strokes = (width: number, colour: string) => {
+    g.strokeStyle = colour;
+    g.lineWidth = width;
     g.beginPath();
-    g.moveTo(0, -s);
-    g.lineTo(0, s);
-    if (i % 3 === 0) {
-      g.moveTo(0, -s);
-      g.lineTo(s * 0.8, -s * 0.2);
-    } else if (i % 3 === 1) {
-      g.moveTo(-s * 0.7, -s * 0.4);
-      g.lineTo(s * 0.7, s * 0.4);
-    } else {
-      g.moveTo(0, 0);
-      g.lineTo(-s * 0.7, s * 0.6);
-      g.moveTo(0, 0);
-      g.lineTo(s * 0.7, s * 0.6);
-    }
+    g.arc(r, r, r * 0.86, 0, Math.PI * 2);
     g.stroke();
-    g.restore();
-  }
-  // A star in the middle.
-  g.lineWidth = size * 0.01;
-  g.beginPath();
-  for (let i = 0; i <= 5; i++) {
-    const a = -Math.PI / 2 + (i * 4 * Math.PI) / 5;
-    const x = r + Math.cos(a) * r * 0.5;
-    const y = r + Math.sin(a) * r * 0.5;
-    if (i === 0) g.moveTo(x, y);
-    else g.lineTo(x, y);
-  }
-  g.stroke();
+    g.beginPath();
+    g.arc(r, r, r * 0.62, 0, Math.PI * 2);
+    g.stroke();
+    // Runes between the rings: short strokes, a different shape each.
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      const cx = r + Math.cos(a) * r * 0.74;
+      const cy = r + Math.sin(a) * r * 0.74;
+      const s = size * 0.045;
+      g.save();
+      g.translate(cx, cy);
+      g.rotate(a + Math.PI / 2);
+      g.beginPath();
+      g.moveTo(0, -s);
+      g.lineTo(0, s);
+      if (i % 3 === 0) {
+        g.moveTo(0, -s);
+        g.lineTo(s * 0.8, -s * 0.2);
+      } else if (i % 3 === 1) {
+        g.moveTo(-s * 0.7, -s * 0.4);
+        g.lineTo(s * 0.7, s * 0.4);
+      } else {
+        g.moveTo(0, 0);
+        g.lineTo(-s * 0.7, s * 0.6);
+        g.moveTo(0, 0);
+        g.lineTo(s * 0.7, s * 0.6);
+      }
+      g.stroke();
+      g.restore();
+    }
+  };
+  strokes(size * 0.05, INK_CSS);
+  strokes(size * 0.022, '#ffffff');
   return c;
 }
 
-/** Jagged crack across a bar (white; tinted when shown). */
+/** Jagged crack across a bar (ink with a white core, tinted): the stand-in when iron_cracked is missing. */
 export function crack(w = 256, h = 80): HTMLCanvasElement {
   const { c, g } = canvas(w, h);
-  g.strokeStyle = 'rgba(255,255,255,1)';
-  g.lineJoin = 'miter';
+  g.lineJoin = 'round';
   g.lineCap = 'round';
   const path = [
-    [0.08, 0.5],
-    [0.2, 0.38],
-    [0.3, 0.6],
-    [0.42, 0.34],
-    [0.5, 0.56],
-    [0.6, 0.3],
-    [0.7, 0.62],
-    [0.8, 0.42],
-    [0.92, 0.55],
+    [0.3, 0.12],
+    [0.42, 0.4],
+    [0.36, 0.55],
+    [0.5, 0.75],
+    [0.46, 0.92],
   ];
-  g.lineWidth = h * 0.08;
-  g.beginPath();
-  path.forEach(([x, y], i) => (i === 0 ? g.moveTo((x as number) * w, (y as number) * h) : g.lineTo((x as number) * w, (y as number) * h)));
-  g.stroke();
-  g.lineWidth = h * 0.04;
-  g.beginPath();
-  g.moveTo(0.42 * w, 0.34 * h);
-  g.lineTo(0.46 * w, 0.1 * h);
-  g.moveTo(0.6 * w, 0.3 * h);
-  g.lineTo(0.66 * w, 0.12 * h);
-  g.moveTo(0.3 * w, 0.6 * h);
-  g.lineTo(0.27 * w, 0.88 * h);
-  g.moveTo(0.7 * w, 0.62 * h);
-  g.lineTo(0.75 * w, 0.9 * h);
-  g.stroke();
+  const draw = (width: number, colour: string) => {
+    g.strokeStyle = colour;
+    g.lineWidth = width;
+    g.beginPath();
+    path.forEach(([x, y], i) => (i === 0 ? g.moveTo((x as number) * w, (y as number) * h) : g.lineTo((x as number) * w, (y as number) * h)));
+    g.stroke();
+  };
+  draw(h * 0.16, INK_CSS);
+  draw(h * 0.05, '#ffffff');
   return c;
 }
 
-/** Soft rays from the middle (a finished masterpiece). */
-export function rays(size = 256, count = 14): HTMLCanvasElement {
+/** Flat wedges round the middle (white, tinted pale gold, shown faint): behind a 걸작 or a legendary weapon. */
+export function sunburst(size = 256, count = 12): HTMLCanvasElement {
   const { c, g } = canvas(size, size);
   const r = size / 2;
   g.translate(r, r);
+  g.fillStyle = '#ffffff';
   for (let i = 0; i < count; i++) {
-    g.rotate((Math.PI * 2) / count);
-    const grad = g.createLinearGradient(0, 0, r, 0);
-    grad.addColorStop(0, 'rgba(255,255,255,0.9)');
-    grad.addColorStop(1, 'rgba(255,255,255,0)');
-    g.fillStyle = grad;
+    const a = (i / count) * Math.PI * 2;
+    const half = Math.PI / count / 2;
     g.beginPath();
     g.moveTo(0, 0);
-    g.lineTo(r, -r * 0.07);
-    g.lineTo(r, r * 0.07);
+    g.arc(0, 0, r, a - half, a + half);
     g.closePath();
     g.fill();
   }
   return c;
 }
 
-/** Dark edges (the scene sits in a warm, dim room). */
-export function vignette(size = 256): HTMLCanvasElement {
-  const { c, g } = canvas(size, size);
-  const r = size / 2;
-  const grad = g.createRadialGradient(r, r * 0.9, r * 0.35, r, r, r * 1.05);
-  grad.addColorStop(0, 'rgba(0,0,0,0)');
-  grad.addColorStop(1, 'rgba(8,4,2,0.72)');
-  g.fillStyle = grad;
-  g.fillRect(0, 0, size, size);
+/**
+ * The hot bar's picture made tintable: every pixel's brightness over the bar's own (its fill turns
+ * white, its dark line stays dark), so a tint paints the whole bar one flat colour by its heat.
+ * Pixels brighter than the fill (its light stripe, the sparkles) clamp to white with it.
+ */
+export function tintable(source: CanvasImageSource, w: number, h: number, fill = 0.7): HTMLCanvasElement {
+  const { c, g } = canvas(w, h);
+  g.drawImage(source, 0, 0, w, h);
+  const img = g.getImageData(0, 0, c.width, c.height);
+  const d = img.data;
+  for (let i = 0; i < d.length; i += 4) {
+    const lum = (0.3 * (d[i] ?? 0) + 0.59 * (d[i + 1] ?? 0) + 0.11 * (d[i + 2] ?? 0)) / 255;
+    const v = Math.round(Math.min(1, lum / fill) * 255);
+    d[i] = v;
+    d[i + 1] = v;
+    d[i + 2] = v;
+  }
+  g.putImageData(img, 0, 0);
   return c;
 }
 
 // ---------- Scene stand-ins ----------
+// Drawn the same way as the pictures they stand in for: flat colours under the fat INK line, no
+// gradients, no glow. They show only when a picture fails to load.
+
+/** Stand-in colours: the doodle palette (app.css --dd-*) and the pictures' own flat fills. */
+const STAND = {
+  wall: '#cbbba6',
+  stone: '#d8c9b4',
+  wood: '#876045',
+  beam: '#9a6a45',
+  iron: '#8e8984',
+  ironLight: '#b3aea8',
+  stump: '#b07a4a',
+  stumpTop: '#cf9a66',
+  leather: '#a8703e',
+  water: '#8ec8ee',
+  shirt: '#f6ebd5',
+  apron: '#8a5a3a',
+  skin: '#f6d3b8',
+  hair: '#b9b6b2',
+  boots: '#6f4c35',
+  gold: '#f3d36a',
+  orb: '#f2a65a',
+} as const;
+
+/** Fill a path with a colour under the ink line (the line drawn first, twice as wide, so the fill keeps its size). */
+function flat(g: CanvasRenderingContext2D, path: () => void, fill: string, line: number): void {
+  g.lineJoin = 'round';
+  g.lineCap = 'round';
+  path();
+  g.strokeStyle = INK_CSS;
+  g.lineWidth = line * 2;
+  g.stroke();
+  g.fillStyle = fill;
+  g.fill();
+}
 
 function roundRect(g: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number): void {
   g.beginPath();
@@ -200,372 +505,305 @@ function roundRect(g: CanvasRenderingContext2D, x: number, y: number, w: number,
   g.closePath();
 }
 
-/** Stone wall, shelves of shadow, a warm floor, light from the right (the furnace). */
+/** Stone wall over a plain wooden floor that meets it at SCENE_PLACE.floor of the height, as bg_workshop. */
 export function background(w = 600, h = 400): HTMLCanvasElement {
   const { c, g } = canvas(w, h);
-  const wall = g.createLinearGradient(0, 0, 0, h);
-  wall.addColorStop(0, '#1d1511');
-  wall.addColorStop(0.68, '#33251c');
-  wall.addColorStop(0.7, '#2a1d15');
-  wall.addColorStop(1, '#3a2a1e');
-  g.fillStyle = wall;
-  g.fillRect(0, 0, w, h);
-  // Stones.
-  const rowH = h * 0.085;
-  for (let row = 0; row * rowH < h * 0.68; row++) {
-    const off = row % 2 === 0 ? 0 : w * 0.06;
-    for (let x = -off; x < w; x += w * 0.12) {
-      const shade = 34 + ((row * 7 + Math.round(x)) % 9);
-      g.fillStyle = `rgb(${shade + 10},${shade},${shade - 6})`;
-      roundRect(g, x + 2, row * rowH + 2, w * 0.12 - 4, rowH - 4, 4);
-      g.fill();
+  const floorY = h * SCENE_PLACE.floor;
+  g.fillStyle = STAND.wall;
+  g.fillRect(0, 0, w, floorY);
+  // Stones: rounded blocks with an ink line, every other row offset by half a block.
+  const rowH = floorY / 5;
+  const blockW = w / 7;
+  for (let row = 0; row < 5; row++) {
+    const off = row % 2 === 0 ? 0 : blockW / 2;
+    for (let x = -off; x < w; x += blockW) {
+      flat(g, () => roundRect(g, x + 4, row * rowH + 4, blockW - 8, rowH - 8, 8), STAND.stone, 1.5);
     }
   }
-  // Beams.
-  g.fillStyle = '#21160f';
-  g.fillRect(w * 0.31, 0, w * 0.035, h * 0.69);
-  g.fillRect(w * 0.63, 0, w * 0.035, h * 0.69);
-  g.fillRect(0, h * 0.08, w, h * 0.03);
-  // Tools on the wall (dark shapes).
-  g.fillStyle = 'rgba(20,14,10,0.85)';
-  for (let i = 0; i < 6; i++) {
-    const x = w * (0.38 + i * 0.035);
-    g.fillRect(x, h * 0.15, w * 0.008, h * 0.2);
-    g.fillRect(x - w * 0.008, h * 0.33, w * 0.024, h * 0.035);
-  }
-  // Floor stones.
-  g.strokeStyle = 'rgba(0,0,0,0.35)';
-  g.lineWidth = 2;
-  for (let i = 0; i < 6; i++) {
-    g.beginPath();
-    g.moveTo(0, h * (0.74 + i * 0.05));
-    g.lineTo(w, h * (0.73 + i * 0.055));
-    g.stroke();
-  }
-  // Furnace light from the right, a cool window on the left.
-  const warm = g.createRadialGradient(w * 0.88, h * 0.6, 0, w * 0.88, h * 0.6, w * 0.7);
-  warm.addColorStop(0, 'rgba(255,140,50,0.38)');
-  warm.addColorStop(1, 'rgba(255,140,50,0)');
-  g.fillStyle = warm;
-  g.fillRect(0, 0, w, h);
-  const cool = g.createRadialGradient(w * 0.12, h * 0.15, 0, w * 0.12, h * 0.15, w * 0.25);
-  cool.addColorStop(0, 'rgba(120,150,210,0.22)');
-  cool.addColorStop(1, 'rgba(120,150,210,0)');
-  g.fillStyle = cool;
-  g.fillRect(0, 0, w, h);
+  // Two posts and a beam.
+  for (const x of [w * 0.32, w * 0.66]) flat(g, () => roundRect(g, x, -4, w * 0.035, floorY + 4, 3), STAND.beam, 2);
+  flat(g, () => roundRect(g, -4, h * 0.06, w + 8, h * 0.035, 3), STAND.beam, 2);
+  // The floor, its line along the wall.
+  g.fillStyle = STAND.wood;
+  g.fillRect(0, floorY, w, h - floorY);
+  g.strokeStyle = INK_CSS;
+  g.lineWidth = 4;
+  g.beginPath();
+  g.moveTo(0, floorY);
+  g.lineTo(w, floorY);
+  g.stroke();
   return c;
 }
 
 /** Anvil on a stump; the flat face matches PROP_ART.anvil.face. */
 export function anvil(w = 320, h = 280): HTMLCanvasElement {
   const { c, g } = canvas(w, h);
-  const faceY = PROP_ART.anvil.face.y * h;
+  const line = w * 0.018;
+  const faceY = PROP_ART.anvil.face.y * h + line;
   const faceX = PROP_ART.anvil.face.x * w;
   const faceW = PROP_ART.anvil.faceW * w;
-  // Stump.
-  const stumpTop = h * 0.52;
-  const wood = g.createLinearGradient(w * 0.2, 0, w * 0.85, 0);
-  wood.addColorStop(0, '#4a2f1b');
-  wood.addColorStop(0.5, '#7a5230');
-  wood.addColorStop(1, '#3d2616');
-  g.fillStyle = wood;
-  g.beginPath();
-  g.moveTo(w * 0.24, stumpTop);
-  g.lineTo(w * 0.82, stumpTop);
-  g.lineTo(w * 0.88, h);
-  g.lineTo(w * 0.18, h);
-  g.closePath();
-  g.fill();
-  g.strokeStyle = 'rgba(30,18,10,0.6)';
-  g.lineWidth = 2;
-  for (let i = 1; i < 7; i++) {
-    const x = w * (0.24 + i * 0.085);
-    g.beginPath();
-    g.moveTo(x, stumpTop + 4);
-    g.lineTo(x + (i % 2 === 0 ? 4 : -3), h - 4);
-    g.stroke();
-  }
-  g.fillStyle = '#8a6038';
-  g.beginPath();
-  g.ellipse(w * 0.53, stumpTop, w * 0.29, h * 0.035, 0, 0, Math.PI * 2);
-  g.fill();
-  // Anvil body.
-  const iron = g.createLinearGradient(0, faceY, 0, stumpTop);
-  iron.addColorStop(0, '#5d5a5e');
-  iron.addColorStop(0.25, '#3b383c');
-  iron.addColorStop(1, '#232024');
-  g.fillStyle = iron;
-  g.beginPath();
+  const stumpTop = h * 0.56;
+  flat(
+    g,
+    () => {
+      g.beginPath();
+      g.moveTo(w * 0.24, stumpTop);
+      g.lineTo(w * 0.84, stumpTop);
+      g.lineTo(w * 0.86, h - line * 1.5);
+      g.lineTo(w * 0.22, h - line * 1.5);
+      g.closePath();
+    },
+    STAND.stump,
+    line,
+  );
+  flat(
+    g,
+    () => {
+      g.beginPath();
+      g.ellipse(w * 0.54, stumpTop, w * 0.3, h * 0.045, 0, 0, Math.PI * 2);
+    },
+    STAND.stumpTop,
+    line,
+  );
   const left = faceX - faceW / 2;
   const right = faceX + faceW / 2;
-  g.moveTo(left, faceY);
-  g.lineTo(right, faceY);
-  g.lineTo(right, faceY + h * 0.11);
-  g.lineTo(right - faceW * 0.12, faceY + h * 0.14);
-  g.quadraticCurveTo(right - faceW * 0.22, faceY + h * 0.27, right - faceW * 0.08, stumpTop - h * 0.06);
-  g.lineTo(right + faceW * 0.04, stumpTop);
-  g.lineTo(left - faceW * 0.12, stumpTop);
-  g.lineTo(left - faceW * 0.02, stumpTop - h * 0.06);
-  g.quadraticCurveTo(left + faceW * 0.16, faceY + h * 0.27, left + faceW * 0.06, faceY + h * 0.14);
-  g.lineTo(left - faceW * 0.1, faceY + h * 0.12);
-  // Horn to the left.
-  g.quadraticCurveTo(left - faceW * 0.42, faceY + h * 0.07, w * 0.04, faceY + h * 0.02);
-  g.quadraticCurveTo(left - faceW * 0.3, faceY - h * 0.005, left, faceY);
-  g.closePath();
-  g.fill();
-  g.strokeStyle = 'rgba(0,0,0,0.5)';
-  g.lineWidth = 2;
-  g.stroke();
-  // Face highlight (warm rim from the furnace on the right).
-  g.fillStyle = 'rgba(255,200,150,0.35)';
-  g.fillRect(left, faceY, faceW, h * 0.018);
-  g.fillStyle = 'rgba(255,150,80,0.25)';
-  g.fillRect(right - 4, faceY, 4, h * 0.11);
+  flat(
+    g,
+    () => {
+      g.beginPath();
+      g.moveTo(left, faceY);
+      g.lineTo(right, faceY);
+      g.lineTo(right, faceY + h * 0.12);
+      g.lineTo(right - faceW * 0.16, faceY + h * 0.16);
+      g.lineTo(right - faceW * 0.1, stumpTop - h * 0.02);
+      g.lineTo(left + faceW * 0.04, stumpTop - h * 0.02);
+      g.lineTo(left + faceW * 0.12, faceY + h * 0.16);
+      g.lineTo(left - faceW * 0.1, faceY + h * 0.12);
+      // The horn, to the left.
+      g.quadraticCurveTo(left - faceW * 0.4, faceY + h * 0.06, w * 0.05, faceY + h * 0.02);
+      g.quadraticCurveTo(left - faceW * 0.3, faceY, left, faceY);
+      g.closePath();
+    },
+    STAND.iron,
+    line,
+  );
   return c;
 }
 
-/** Stone furnace: chimney on top, arched mouth at PROP_ART.furnace.mouth. */
+/** Stone furnace with a chimney; its opening is drawn empty and dark round PROP_ART.furnace.flame, where the scene draws the fire. */
 export function furnace(w = 260, h = 330): HTMLCanvasElement {
   const { c, g } = canvas(w, h);
-  const top = PROP_ART.furnace.top * h;
-  const mouth = PROP_ART.furnace.mouth;
-  // Chimney.
-  g.fillStyle = '#3a2c24';
-  g.fillRect(w * 0.36, top, w * 0.28, h * 0.3);
-  g.fillStyle = '#4a382c';
-  g.fillRect(w * 0.33, top, w * 0.34, h * 0.04);
-  // Body (dome).
-  const body = g.createLinearGradient(0, h * 0.3, w, h * 0.3);
-  body.addColorStop(0, '#2c211b');
-  body.addColorStop(0.5, '#4b3a2e');
-  body.addColorStop(1, '#2a1f19');
-  g.fillStyle = body;
-  g.beginPath();
-  g.moveTo(w * 0.06, h);
-  g.lineTo(w * 0.06, h * 0.48);
-  g.quadraticCurveTo(w * 0.1, h * 0.28, w * 0.5, h * 0.27);
-  g.quadraticCurveTo(w * 0.9, h * 0.28, w * 0.94, h * 0.48);
-  g.lineTo(w * 0.94, h);
-  g.closePath();
-  g.fill();
-  // Bricks.
-  g.strokeStyle = 'rgba(0,0,0,0.35)';
-  g.lineWidth = 2;
-  for (let y = h * 0.36; y < h; y += h * 0.07) {
-    g.beginPath();
-    g.moveTo(w * 0.07, y);
-    g.lineTo(w * 0.93, y);
-    g.stroke();
-  }
-  // Mouth: dark arch with hot coals.
-  const mx = mouth.x * w;
-  const my = mouth.y * h;
-  const mw = w * 0.46;
-  const mh = h * 0.26;
-  const hot = g.createRadialGradient(mx, my + mh * 0.25, 0, mx, my + mh * 0.25, mw * 0.6);
-  hot.addColorStop(0, '#ffd27a');
-  hot.addColorStop(0.35, '#ff7a2a');
-  hot.addColorStop(1, '#3a0e04');
-  g.fillStyle = hot;
-  g.beginPath();
-  g.moveTo(mx - mw / 2, my + mh / 2);
-  g.lineTo(mx - mw / 2, my - mh * 0.1);
-  g.quadraticCurveTo(mx, my - mh * 0.75, mx + mw / 2, my - mh * 0.1);
-  g.lineTo(mx + mw / 2, my + mh / 2);
-  g.closePath();
-  g.fill();
-  g.strokeStyle = '#1a120d';
-  g.lineWidth = 5;
-  g.stroke();
-  // Ledge.
-  g.fillStyle = '#56443a';
-  g.fillRect(w * 0.18, my + mh / 2, w * 0.64, h * 0.035);
+  const line = w * 0.02;
+  const top = PROP_ART.furnace.top * h + line;
+  const fl = PROP_ART.furnace.flame;
+  flat(g, () => roundRect(g, w * 0.58, top, w * 0.24, h * 0.36, w * 0.04), STAND.iron, line);
+  flat(
+    g,
+    () => {
+      g.beginPath();
+      g.moveTo(w * 0.08, h - line * 1.5);
+      g.lineTo(w * 0.08, h * 0.5);
+      g.quadraticCurveTo(w * 0.1, h * 0.3, w * 0.5, h * 0.29);
+      g.quadraticCurveTo(w * 0.9, h * 0.3, w * 0.92, h * 0.5);
+      g.lineTo(w * 0.92, h - line * 1.5);
+      g.closePath();
+    },
+    STAND.stone,
+    line,
+  );
+  // The opening: an arch round where the flame stands.
+  const mw = fl.w * w * 1.5;
+  const mx = fl.x * w;
+  const base = fl.y * h + line;
+  const mTop = base - fl.h * h * 1.3;
+  flat(
+    g,
+    () => {
+      g.beginPath();
+      g.moveTo(mx - mw / 2, base);
+      g.lineTo(mx - mw / 2, mTop + mw / 2);
+      g.arc(mx, mTop + mw / 2, mw / 2, Math.PI, 0);
+      g.lineTo(mx + mw / 2, base);
+      g.closePath();
+    },
+    INK_CSS,
+    line,
+  );
   return c;
 }
 
-/** Leather bellows; the nozzle at PROP_ART.bellows.nozzle points right. */
+/** Bellows; the nozzle at PROP_ART.bellows.nozzle points right. */
 export function bellows(w = 280, h = 200): HTMLCanvasElement {
   const { c, g } = canvas(w, h);
-  const nx = PROP_ART.bellows.nozzle.x * w;
+  const line = w * 0.02;
+  const nx = PROP_ART.bellows.nozzle.x * w - line;
   const ny = PROP_ART.bellows.nozzle.y * h;
-  // Handles.
-  g.fillStyle = '#5a3b22';
-  g.fillRect(w * 0.02, h * 0.18, w * 0.2, h * 0.08);
-  g.fillRect(w * 0.02, h * 0.68, w * 0.2, h * 0.08);
-  // Boards.
-  g.fillStyle = '#6e4a2a';
-  g.beginPath();
-  g.moveTo(w * 0.18, h * 0.14);
-  g.lineTo(w * 0.72, ny - h * 0.06);
-  g.lineTo(w * 0.72, ny);
-  g.lineTo(w * 0.18, h * 0.3);
-  g.closePath();
-  g.fill();
-  g.beginPath();
-  g.moveTo(w * 0.18, h * 0.86);
-  g.lineTo(w * 0.72, ny + h * 0.08);
-  g.lineTo(w * 0.72, ny + h * 0.02);
-  g.lineTo(w * 0.18, h * 0.7);
-  g.closePath();
-  g.fill();
-  // Leather folds.
-  const leather = g.createLinearGradient(0, h * 0.3, 0, h * 0.7);
-  leather.addColorStop(0, '#4a2c1a');
-  leather.addColorStop(0.5, '#7a4b2c');
-  leather.addColorStop(1, '#3e2414');
-  g.fillStyle = leather;
-  g.beginPath();
-  g.moveTo(w * 0.2, h * 0.3);
-  g.quadraticCurveTo(w * 0.42, h * 0.5, w * 0.7, ny);
-  g.quadraticCurveTo(w * 0.42, h * 0.52, w * 0.2, h * 0.7);
-  g.quadraticCurveTo(w * 0.1, h * 0.5, w * 0.2, h * 0.3);
-  g.fill();
-  // Nozzle.
-  g.fillStyle = '#3a3438';
-  g.beginPath();
-  g.moveTo(w * 0.7, ny - h * 0.05);
-  g.lineTo(nx, ny - h * 0.02);
-  g.lineTo(nx, ny + h * 0.03);
-  g.lineTo(w * 0.7, ny + h * 0.07);
-  g.closePath();
-  g.fill();
+  flat(
+    g,
+    () => {
+      g.beginPath();
+      g.moveTo(w * 0.7, ny - h * 0.06);
+      g.lineTo(nx, ny - h * 0.02);
+      g.lineTo(nx, ny + h * 0.03);
+      g.lineTo(w * 0.7, ny + h * 0.07);
+      g.closePath();
+    },
+    STAND.iron,
+    line,
+  );
+  flat(
+    g,
+    () => {
+      g.beginPath();
+      g.moveTo(w * 0.16, h * 0.28);
+      g.quadraticCurveTo(w * 0.45, h * 0.12, w * 0.72, ny - h * 0.04);
+      g.lineTo(w * 0.72, ny + h * 0.06);
+      g.quadraticCurveTo(w * 0.45, h * 0.88, w * 0.16, h * 0.72);
+      g.quadraticCurveTo(w * 0.08, h * 0.5, w * 0.16, h * 0.28);
+      g.closePath();
+    },
+    STAND.leather,
+    line,
+  );
+  flat(g, () => roundRect(g, w * 0.03, h * 0.42, w * 0.16, h * 0.16, h * 0.08), STAND.beam, line);
   return c;
 }
 
-/** Wooden quench tub with water at PROP_ART.quench.water. */
+/** Wooden tub with water at PROP_ART.quench.water. */
 export function quench(w = 250, h = 200): HTMLCanvasElement {
   const { c, g } = canvas(w, h);
+  const line = w * 0.02;
   const wy = PROP_ART.quench.water.y * h;
-  const wood = g.createLinearGradient(0, 0, w, 0);
-  wood.addColorStop(0, '#3e2817');
-  wood.addColorStop(0.5, '#6a4626');
-  wood.addColorStop(1, '#3a2414');
-  g.fillStyle = wood;
-  g.beginPath();
-  g.moveTo(w * 0.08, wy);
-  g.lineTo(w * 0.92, wy);
-  g.lineTo(w * 0.86, h);
-  g.lineTo(w * 0.14, h);
-  g.closePath();
-  g.fill();
-  g.fillStyle = '#2a2a2e';
-  g.fillRect(w * 0.1, wy + h * 0.2, w * 0.8, h * 0.06);
-  g.fillRect(w * 0.12, h * 0.8, w * 0.76, h * 0.06);
-  g.fillStyle = '#20384a';
-  g.beginPath();
-  g.ellipse(w * 0.5, wy, w * 0.42, h * 0.07, 0, 0, Math.PI * 2);
-  g.fill();
-  g.fillStyle = 'rgba(160,200,230,0.35)';
-  g.beginPath();
-  g.ellipse(w * 0.45, wy - h * 0.01, w * 0.2, h * 0.025, 0, 0, Math.PI * 2);
-  g.fill();
+  flat(
+    g,
+    () => {
+      g.beginPath();
+      g.moveTo(w * 0.1, wy);
+      g.lineTo(w * 0.9, wy);
+      g.lineTo(w * 0.84, h - line * 1.5);
+      g.lineTo(w * 0.16, h - line * 1.5);
+      g.closePath();
+    },
+    STAND.stump,
+    line,
+  );
+  for (const y of [wy + h * 0.22, h * 0.78]) flat(g, () => roundRect(g, w * 0.12, y, w * 0.76, h * 0.06, 3), STAND.iron, line * 0.7);
+  flat(
+    g,
+    () => {
+      g.beginPath();
+      g.ellipse(w * 0.5, wy, w * 0.4, h * 0.07, 0, 0, Math.PI * 2);
+    },
+    STAND.water,
+    line,
+  );
   return c;
 }
 
-/** Hot bar, drawn near white so the sprite tint gives its colour. */
-export function ironBar(w = 320, h = 100): HTMLCanvasElement {
+/** Hot bar, white under an ink line so the tint gives its colour; the bar fills PROP_ART.iron.bar. */
+export function ironBar(w = 320, h = 130): HTMLCanvasElement {
   const { c, g } = canvas(w, h);
-  const grad = g.createLinearGradient(0, h * 0.2, 0, h * 0.8);
-  grad.addColorStop(0, '#ffffff');
-  grad.addColorStop(0.5, '#f2f2f2');
-  grad.addColorStop(1, '#a8a8a8');
-  g.fillStyle = grad;
-  roundRect(g, w * 0.04, h * 0.3, w * 0.92, h * 0.42, h * 0.16);
-  g.fill();
-  g.fillStyle = 'rgba(255,255,255,0.9)';
-  roundRect(g, w * 0.12, h * 0.36, w * 0.62, h * 0.08, h * 0.04);
-  g.fill();
+  const bar = PROP_ART.iron.bar;
+  const line = h * 0.05;
+  const x = bar.x0 * w + line;
+  const y = bar.y0 * h + line;
+  const bw = (bar.x1 - bar.x0) * w - line * 2;
+  const bh = (bar.y1 - bar.y0) * h - line * 2;
+  inked(g, () => roundRect(g, x, y, bw, bh, bh * 0.3), line);
   return c;
 }
 
-/** A plain finished weapon lying flat (when its picture is missing). */
+/** A plain finished weapon lying flat, tip to the right (when its picture is missing). */
 export function weapon(type: WeaponType, w = 360, h = 120): HTMLCanvasElement {
   const { c, g } = canvas(w, h);
-  const steel = g.createLinearGradient(0, h * 0.3, 0, h * 0.7);
-  steel.addColorStop(0, '#f4f6fa');
-  steel.addColorStop(0.5, '#b9c0cc');
-  steel.addColorStop(1, '#6e7480');
-  const leather = '#5a3a22';
-  const brass = '#c89a4a';
+  const line = h * 0.035;
   const cy = h / 2;
-  const blade = (x0: number, x1: number, half: number) => {
-    g.fillStyle = steel;
-    g.beginPath();
-    g.moveTo(x0, cy - half);
-    g.lineTo(x1 - half * 2.2, cy - half);
-    g.lineTo(x1, cy);
-    g.lineTo(x1 - half * 2.2, cy + half);
-    g.lineTo(x0, cy + half);
-    g.closePath();
-    g.fill();
-    g.strokeStyle = 'rgba(60,60,70,0.6)';
-    g.lineWidth = 1.5;
-    g.beginPath();
-    g.moveTo(x0, cy);
-    g.lineTo(x1 - half * 2.4, cy);
-    g.stroke();
-  };
+  const blade = (x0: number, x1: number, half: number) =>
+    flat(
+      g,
+      () => {
+        g.beginPath();
+        g.moveTo(x0, cy - half);
+        g.lineTo(x1 - half * 2, cy - half);
+        g.quadraticCurveTo(x1, cy - half * 0.4, x1, cy);
+        g.quadraticCurveTo(x1, cy + half * 0.4, x1 - half * 2, cy + half);
+        g.lineTo(x0, cy + half);
+        g.closePath();
+      },
+      STAND.ironLight,
+      line,
+    );
   const hilt = (x: number, guardH: number, gripW: number) => {
-    g.fillStyle = brass;
-    g.fillRect(x - w * 0.015, cy - guardH / 2, w * 0.03, guardH);
-    g.fillStyle = leather;
-    g.fillRect(x - gripW, cy - h * 0.05, gripW - w * 0.015, h * 0.1);
-    g.fillStyle = brass;
-    g.beginPath();
-    g.arc(x - gripW - h * 0.04, cy, h * 0.07, 0, Math.PI * 2);
-    g.fill();
+    flat(g, () => roundRect(g, x - gripW, cy - h * 0.06, gripW, h * 0.12, h * 0.04), STAND.apron, line);
+    flat(
+      g,
+      () => {
+        g.beginPath();
+        g.arc(x - gripW - h * 0.05, cy, h * 0.08, 0, Math.PI * 2);
+      },
+      STAND.gold,
+      line,
+    );
+    flat(g, () => roundRect(g, x - w * 0.02, cy - guardH / 2, w * 0.04, guardH, w * 0.015), STAND.gold, line);
   };
   switch (type) {
     case 'oneHandSword':
-      blade(w * 0.3, w * 0.97, h * 0.075);
-      hilt(w * 0.3, h * 0.42, w * 0.16);
+      blade(w * 0.3, w * 0.95, h * 0.09);
+      hilt(w * 0.3, h * 0.42, w * 0.15);
       break;
     case 'greatsword':
-      blade(w * 0.26, w * 0.98, h * 0.11);
-      hilt(w * 0.26, h * 0.56, w * 0.2);
+      blade(w * 0.26, w * 0.96, h * 0.13);
+      hilt(w * 0.26, h * 0.56, w * 0.18);
       break;
     case 'dagger':
-      blade(w * 0.42, w * 0.86, h * 0.08);
+      blade(w * 0.42, w * 0.84, h * 0.09);
       hilt(w * 0.42, h * 0.32, w * 0.12);
       break;
-    case 'staff': {
-      g.fillStyle = '#6a4626';
-      g.fillRect(w * 0.04, cy - h * 0.045, w * 0.8, h * 0.09);
-      const orb = g.createRadialGradient(w * 0.88, cy, 0, w * 0.88, cy, h * 0.18);
-      orb.addColorStop(0, '#e8f6ff');
-      orb.addColorStop(1, '#4a86c8');
-      g.fillStyle = orb;
-      g.beginPath();
-      g.arc(w * 0.88, cy, h * 0.17, 0, Math.PI * 2);
-      g.fill();
-      g.fillStyle = brass;
-      g.fillRect(w * 0.8, cy - h * 0.07, w * 0.03, h * 0.14);
+    case 'staff':
+      flat(g, () => roundRect(g, w * 0.05, cy - h * 0.06, w * 0.76, h * 0.12, h * 0.06), STAND.beam, line);
+      flat(
+        g,
+        () => {
+          g.beginPath();
+          g.arc(w * 0.87, cy, h * 0.17, 0, Math.PI * 2);
+        },
+        STAND.orb,
+        line,
+      );
       break;
-    }
     case 'bow':
     case 'crossbow': {
-      g.strokeStyle = '#6a4626';
-      g.lineWidth = h * 0.08;
+      const limb = () => {
+        g.beginPath();
+        if (type === 'bow') {
+          g.moveTo(w * 0.1, h * 0.15);
+          g.quadraticCurveTo(w * 0.5, h * 0.95, w * 0.9, h * 0.15);
+        } else {
+          g.moveTo(w * 0.7, h * 0.1);
+          g.quadraticCurveTo(w * 0.78, cy, w * 0.7, h * 0.9);
+        }
+      };
+      if (type === 'crossbow') flat(g, () => roundRect(g, w * 0.08, cy - h * 0.06, w * 0.8, h * 0.12, h * 0.05), STAND.beam, line);
+      // The limb: an ink stroke with its colour inside.
       g.lineCap = 'round';
+      limb();
+      g.strokeStyle = INK_CSS;
+      g.lineWidth = h * 0.12;
+      g.stroke();
+      limb();
+      g.strokeStyle = type === 'bow' ? STAND.beam : STAND.ironLight;
+      g.lineWidth = h * 0.12 - line * 2;
+      g.stroke();
+      g.strokeStyle = INK_CSS;
+      g.lineWidth = line;
       g.beginPath();
       if (type === 'bow') {
-        g.moveTo(w * 0.1, h * 0.1);
-        g.quadraticCurveTo(w * 0.5, h * 0.95, w * 0.9, h * 0.1);
-        g.stroke();
-        g.strokeStyle = '#e8e0d0';
-        g.lineWidth = 2;
-        g.beginPath();
-        g.moveTo(w * 0.1, h * 0.1);
-        g.lineTo(w * 0.9, h * 0.1);
+        g.moveTo(w * 0.1, h * 0.15);
+        g.lineTo(w * 0.9, h * 0.15);
       } else {
-        g.moveTo(w * 0.1, cy);
-        g.lineTo(w * 0.85, cy);
-        g.stroke();
-        g.strokeStyle = '#8a8f9a';
-        g.lineWidth = h * 0.06;
-        g.beginPath();
-        g.moveTo(w * 0.7, h * 0.08);
-        g.quadraticCurveTo(w * 0.76, cy, w * 0.7, h * 0.92);
+        g.moveTo(w * 0.7, h * 0.1);
+        g.lineTo(w * 0.6, cy);
+        g.lineTo(w * 0.7, h * 0.9);
       }
       g.stroke();
       break;
@@ -575,70 +813,97 @@ export function weapon(type: WeaponType, w = 360, h = 120): HTMLCanvasElement {
 }
 
 /**
- * A stand-in dwarf: boots, apron, white beard, a hammer whose place depends on the pose.
- * Foot and head match DWARF_POSE_ART for the idle picture (foot y 0.985, head y 0.02).
+ * A stand-in dwarf: boots, shirt and apron, a round head in a big grey beard, a hammer whose place
+ * depends on the pose (slump: head down, eyes shut, the hammer hanging by his boots). Foot and head
+ * match what the scene expects of a stand-in (foot y 0.985, head y 0.02).
  */
 export function dwarf(pose: DwarfPose, w = 220, h = 300): HTMLCanvasElement {
   const { c, g } = canvas(w, h);
+  const line = w * 0.018;
   const foot = h * 0.985;
   const head = h * 0.02;
   const bodyH = foot - head;
-  const cx = w * 0.5;
+  const cx = w * 0.46;
   const y = (f: number) => head + f * bodyH;
-  // Boots and legs.
-  g.fillStyle = '#3a2416';
-  g.fillRect(cx - w * 0.2, y(0.86), w * 0.16, y(1) - y(0.86));
-  g.fillRect(cx + w * 0.04, y(0.86), w * 0.16, y(1) - y(0.86));
-  g.fillStyle = '#3f4630';
-  g.fillRect(cx - w * 0.17, y(0.68), w * 0.34, y(0.87) - y(0.68));
-  // Body and apron.
-  g.fillStyle = '#d9c7a6';
-  roundRect(g, cx - w * 0.24, y(0.3), w * 0.48, y(0.72) - y(0.3), w * 0.08);
-  g.fill();
-  g.fillStyle = '#6a4228';
-  roundRect(g, cx - w * 0.17, y(0.36), w * 0.36, y(0.82) - y(0.36), w * 0.04);
-  g.fill();
-  // Head, hair and beard.
-  g.fillStyle = '#c99a78';
-  g.beginPath();
-  g.arc(cx + w * 0.04, y(0.14), w * 0.12, 0, Math.PI * 2);
-  g.fill();
-  g.fillStyle = '#d8d6d2';
-  g.beginPath();
-  g.arc(cx - w * 0.02, y(0.1), w * 0.13, Math.PI, Math.PI * 2);
-  g.fill();
-  g.beginPath();
-  g.moveTo(cx - w * 0.06, y(0.16));
-  g.lineTo(cx + w * 0.18, y(0.16));
-  g.lineTo(cx + w * 0.08, y(0.42));
-  g.closePath();
-  g.fill();
+  const sag = pose === 'slump' ? 0.05 : 0;
+  // Boots.
+  for (const x of [cx - w * 0.17, cx + w * 0.03]) flat(g, () => roundRect(g, x, y(0.88), w * 0.15, y(1) - y(0.88) - line, w * 0.04), STAND.boots, line);
+  // Body: shirt, apron.
+  flat(g, () => roundRect(g, cx - w * 0.22, y(0.34 + sag), w * 0.44, y(0.9) - y(0.34 + sag), w * 0.12), STAND.shirt, line);
+  flat(g, () => roundRect(g, cx - w * 0.15, y(0.44 + sag), w * 0.3, y(0.88) - y(0.44 + sag), w * 0.05), STAND.apron, line);
   // Arm and hammer.
-  g.strokeStyle = '#c99a78';
-  g.lineWidth = w * 0.08;
-  g.lineCap = 'round';
-  const shoulder = { x: cx + w * 0.05, y: y(0.36) };
+  const shoulder = { x: cx + w * 0.12, y: y(0.42 + sag) };
   const hand =
     pose === 'raise' || pose === 'cheer'
-      ? { x: cx + w * 0.02, y: y(0.02) }
+      ? { x: cx + w * 0.16, y: y(0.08) }
       : pose === 'strike'
-        ? { x: cx + w * 0.34, y: y(0.5) }
+        ? { x: cx + w * 0.4, y: y(0.52) }
         : pose === 'work'
-          ? { x: cx + w * 0.3, y: y(0.46) }
-          : { x: cx + w * 0.16, y: y(0.6) };
+          ? { x: cx + w * 0.36, y: y(0.5) }
+          : pose === 'slump'
+            ? { x: cx + w * 0.26, y: y(0.8) }
+            : { x: cx + w * 0.3, y: y(0.62) };
+  g.lineCap = 'round';
+  g.strokeStyle = INK_CSS;
+  g.lineWidth = w * 0.09;
   g.beginPath();
   g.moveTo(shoulder.x, shoulder.y);
   g.lineTo(hand.x, hand.y);
   g.stroke();
-  g.strokeStyle = '#5a3a22';
-  g.lineWidth = w * 0.035;
-  const hx = pose === 'raise' || pose === 'cheer' ? hand.x + w * 0.02 : hand.x + w * 0.12;
-  const hy = pose === 'raise' || pose === 'cheer' ? hand.y - h * 0.01 : hand.y + (pose === 'idle' ? h * 0.08 : 0);
-  g.beginPath();
-  g.moveTo(hand.x, hand.y);
-  g.lineTo(hx, hy);
+  g.strokeStyle = STAND.shirt;
+  g.lineWidth = w * 0.09 - line * 2;
   g.stroke();
-  g.fillStyle = '#6e6e76';
-  g.fillRect(hx - w * 0.06, hy - w * 0.05, w * 0.12, w * 0.1);
+  const up = pose === 'raise' || pose === 'cheer';
+  const hx = up ? hand.x : hand.x + w * 0.04;
+  const hy = up ? hand.y - h * 0.07 : pose === 'slump' ? hand.y + h * 0.08 : hand.y + h * 0.02;
+  flat(g, () => roundRect(g, hx - w * 0.06, hy - w * 0.045, w * 0.12, w * 0.09, w * 0.02), STAND.iron, line);
+  // Head, hair and the big beard over the chest.
+  const hcx = cx + w * 0.06;
+  const hcy = y(0.16 + sag);
+  flat(
+    g,
+    () => {
+      g.beginPath();
+      g.arc(hcx - w * 0.02, hcy - w * 0.02, w * 0.2, Math.PI * 0.95, Math.PI * 2.05);
+      g.closePath();
+    },
+    STAND.hair,
+    line,
+  );
+  flat(
+    g,
+    () => {
+      g.beginPath();
+      g.arc(hcx + w * 0.04, hcy + w * 0.02, w * 0.14, 0, Math.PI * 2);
+    },
+    STAND.skin,
+    line,
+  );
+  flat(
+    g,
+    () => {
+      g.beginPath();
+      g.ellipse(hcx + w * 0.02, y(0.36 + sag), w * 0.2, bodyH * 0.17, 0, 0, Math.PI * 2);
+    },
+    STAND.hair,
+    line,
+  );
+  // Eyes: dots, or little shut arcs (glad when he cheers, tired when he slumps).
+  g.fillStyle = INK_CSS;
+  g.strokeStyle = INK_CSS;
+  g.lineWidth = line;
+  for (const ex of [hcx + w * 0.06, hcx + w * 0.13]) {
+    g.beginPath();
+    if (pose === 'cheer') {
+      g.arc(ex, hcy + w * 0.01, w * 0.025, Math.PI, 0);
+      g.stroke();
+    } else if (pose === 'slump') {
+      g.arc(ex, hcy + w * 0.02, w * 0.025, 0, Math.PI);
+      g.stroke();
+    } else {
+      g.arc(ex, hcy, w * 0.018, 0, Math.PI * 2);
+      g.fill();
+    }
+  }
   return c;
 }

@@ -1,4 +1,9 @@
-/* Portrait, touch-first base (CLAUDE.md). Shop = warm forge colors (기획서 1.1). */
+/* Portrait, touch-first base (CLAUDE.md). Shop = warm forge colors (기획서 1.1).
+   Two looks share this file: the old dark forge tokens (--bg, --panel …) that the season tower's
+   own screens still use, and the doodle look (--dd-*) of the home screen and the card craft:
+   cream paper with a fat dark-brown line, flat colours, round fonts, stickers that sit a little
+   off their shadow. The doodle screens (.app-home, .kc-skin, .ft-root) point the old tokens at the
+   doodle ones, so shared pieces (sheets, buttons) follow whichever screen they are on. */
 
 :root {
   --bg: #1c1612;
@@ -13,6 +18,57 @@
   --good: #8fc27a;
   --cool: #7fa6c9; /* 탑의 차가운 색 */
 
+  /* ---- 낙서풍 (the doodle look): every colour name in one place ---- */
+  --dd-ink: #3b2a20; /* the line, and text on paper */
+  --dd-ink-soft: #7a6352; /* quiet text on paper */
+  --dd-paper: #f6ebd5; /* panels, cards, bubbles */
+  --dd-paper-2: #eadbbd; /* a step darker: wells, tracks, pressed */
+  --dd-paper-3: #fff8ea; /* a step lighter: insides */
+  --dd-wood: #876045; /* screen background: the workshop's floor (bg_workshop's own, so they meet without a seam) */
+  --dd-wood-2: #6f4c35; /* bands over the wood */
+  --dd-wood-3: #5a3d2b; /* the band's shade */
+  --dd-paper-muted: #ecdcc0; /* quiet text on the wood */
+  /* The UI's own soft colours: the gauge bars and buttons (not the cards: --dd-kind-* below). */
+  --dd-orange: #f2a65a; /* the 공정 bar, the main button */
+  --dd-orange-2: #e8843a;
+  --dd-orange-ink: #b8641e; /* orange text on paper */
+  --dd-sky: #8ec8ee; /* the 품질 bar */
+  --dd-sky-paper: #cfe6f7; /* a pale blue sticker (the lab's chips) */
+  --dd-mint: #9fd3a8;
+  --dd-butter: #f3d36a; /* ★, a chosen thing */
+  --dd-butter-paper: #fbe8a6; /* butter paper: 걸작, the good fires, the next fire */
+  --dd-cream: #fdeec8; /* a row that is in (the deck, a filled slot, an open evolution) */
+  --dd-lilac: #b9a0e6;
+  --dd-red: #e46f5a; /* 위험, 열기 */
+  --dd-green: #8cc47a; /* 좋음, 내구도 */
+  --dd-blue: #7fa6c9; /* 탑 */
+  --dd-gold: #f6c945;
+  --dd-gold-hi: #fff1b0; /* the gold ring's bright beat */
+  --dd-ok: #2f7a2a; /* good news written on paper */
+  --dd-bad: #c8402e; /* bad news written on paper */
+  --dd-ash: #b9b2aa; /* cold iron and ash: the bar put down, the spent share of the durability orb */
+  --dd-steel: #c9c9cf; /* a blade drawn without its picture */
+  /* The card kinds: the frame_<kind> pictures' bands, for anything that stands for a card. */
+  --dd-kind-progress: #ea6846;
+  --dd-kind-quality: #87c0f3;
+  --dd-kind-support: #a6d2af;
+  --dd-kind-material: #f7c843;
+  --dd-kind-imprint: #bb9ce8;
+  /* The numbers that rise over the scene: lighter than their bars, to read on the wall under a fat ink line. */
+  --dd-num-progress: #f7a04a;
+  --dd-num-quality: #8fcdf5;
+  --dd-num-heat: #f0644a;
+  --dd-num-restore: #8fd176;
+  --dd-stroke: 2.5px;
+  --dd-stroke-fat: 3px;
+  --dd-round: 16px;
+  --dd-round-s: 11px;
+  /* A sticker: its shadow sits a little under it, hard, no blur. */
+  --dd-pop: 0 3px 0 var(--dd-ink);
+  --dd-pop-s: 0 2px 0 var(--dd-ink);
+  --dd-font-round: 'Jua', 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', system-ui, sans-serif;
+  --dd-font-body: 'Gowun Dodum', 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', system-ui, sans-serif;
+
   color-scheme: dark;
   font-family: system-ui, -apple-system, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
   font-size: 16px;
@@ -21,6 +77,27 @@
   background: var(--bg);
   -webkit-text-size-adjust: 100%;
   -webkit-tap-highlight-color: transparent;
+}
+
+/* The doodle screens: the old tokens point at paper and ink there. */
+.app-home,
+.kc-skin,
+.ft-root {
+  --bg: var(--dd-wood);
+  --panel: var(--dd-paper);
+  --panel-2: var(--dd-paper-2);
+  --line: var(--dd-ink);
+  --text: var(--dd-ink);
+  --muted: var(--dd-ink-soft);
+  --accent: var(--dd-orange);
+  --accent-2: var(--dd-orange-ink);
+  --danger: var(--dd-red);
+  --good: var(--dd-ok);
+  --cool: #4f7fae;
+
+  color-scheme: light;
+  color: var(--dd-ink);
+  font-family: var(--dd-font-body);
 }
 
 * {
@@ -81,73 +158,12 @@ button {
   color: var(--muted);
 }
 
-.home-entry {
-  margin-top: 24px;
-  min-width: 200px;
-  min-height: 52px;
-  padding: 10px 20px;
-  border: 1px solid var(--accent);
-  border-radius: 12px;
-  background: var(--accent);
-  color: #2a1608;
-  font-weight: 700;
-  font-size: 1.05rem;
-  cursor: pointer;
-}
-
-.home-entry:active {
-  transform: translateY(1px);
-  filter: brightness(1.1);
-}
-
-/* The v0.6 FF14 prototype, kept small for comparison. */
-.home-old {
-  display: block;
-  margin: 18px auto 0;
-  min-height: 44px;
-  padding: 8px 14px;
-  border: 0;
-  background: transparent;
-  color: var(--muted);
-  font-size: 0.85rem;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  cursor: pointer;
-}
-
-/* 시즌 악마의 탑: the tower's cool color next to the forge's warm one (기획서 1.1). */
-.home-run {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin: 14px auto 0;
-  border-color: var(--cool);
-  background: #2a3a48;
-  color: var(--text);
-}
-
-.home-run small {
-  color: #bcd3e6;
-  font-size: 0.75rem;
-  font-weight: 400;
-}
-
-/* '모루 위에 쇠가 기다린다' under the card craft entry. */
-.home-entry small {
-  display: block;
-  font-size: 0.75rem;
-  font-weight: 400;
-}
-
-/* ---------- Home: the workshop at dusk, the dwarf at his anvil ---------- */
+/* ---------- Home: the workshop wall, the dwarf at his anvil, three stickers to tap ---------- */
 
 .app-home {
   min-height: 100dvh;
-  background:
-    radial-gradient(ellipse at 50% 62%, rgba(255, 140, 60, 0.22), transparent 58%),
-    linear-gradient(180deg, rgba(14, 9, 6, 0.55), rgba(14, 9, 6, 0.35) 40%, rgba(14, 9, 6, 0.9) 82%, #0e0906),
-    var(--home-bg, none) center 30% / cover no-repeat,
-    #140d09;
+  /* The workshop picture over the top, its floor running on into the screen's own floor colour. */
+  background: var(--home-bg, none) center top / auto max(58%, 420px) no-repeat, var(--dd-wood);
 }
 
 .home {
@@ -155,29 +171,35 @@ button {
   flex-direction: column;
   align-items: center;
   min-height: 100dvh;
-  padding: calc(28px + env(safe-area-inset-top)) 16px calc(18px + env(safe-area-inset-bottom));
+  padding: calc(22px + env(safe-area-inset-top)) 16px calc(18px + env(safe-area-inset-bottom));
   text-align: center;
+}
+
+/* The title on a paper sign, a little crooked. */
+.home-title {
+  padding: 8px 22px 10px;
+  border: var(--dd-stroke-fat) solid var(--dd-ink);
+  border-radius: var(--dd-round);
+  background: var(--dd-paper);
+  box-shadow: var(--dd-pop);
+  transform: rotate(-1.5deg);
 }
 
 .home-title h1 {
   margin: 0;
-  color: #ffe3b0;
-  font-family: 'Gowun Batang', 'Noto Serif KR', 'Nanum Myeongjo', 'AppleMyungjo', serif;
-  font-size: clamp(2rem, 9vw, 2.6rem);
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-shadow:
-    0 2px 0 #1a0e06,
-    0 0 18px rgba(255, 160, 70, 0.55),
-    0 0 42px rgba(255, 120, 40, 0.3);
+  color: var(--dd-ink);
+  font-family: var(--dd-font-round);
+  font-size: clamp(1.9rem, 9vw, 2.4rem);
+  font-weight: 400;
+  line-height: 1.15;
+  letter-spacing: 0.02em;
 }
 
 .home-title p {
-  margin: 6px 0 0;
-  color: #d8c0a0;
-  font-family: 'Gowun Batang', 'Noto Serif KR', serif;
-  font-size: 1rem;
-  text-shadow: 0 1px 2px #000;
+  margin: 2px 0 0;
+  color: var(--dd-ink-soft);
+  font-family: var(--dd-font-body);
+  font-size: 0.95rem;
 }
 
 /* The dwarf stands a step behind his anvil, as on the craft screen. */
@@ -190,15 +212,15 @@ button {
   margin: 8px 0;
 }
 
+/* His shadow on the floor: a flat oval. */
 .home-glow {
   position: absolute;
-  right: 6%;
-  bottom: 2%;
+  right: 10%;
+  bottom: 1%;
   left: 6%;
-  height: 34%;
+  height: 9%;
   border-radius: 50%;
-  background: radial-gradient(ellipse, rgba(255, 150, 60, 0.38), transparent 70%);
-  animation: home-breathe 3.4s ease-in-out infinite alternate;
+  background: color-mix(in srgb, var(--dd-ink) 28%, transparent);
 }
 
 .home-dwarf,
@@ -206,87 +228,100 @@ button {
   position: absolute;
   bottom: 4%;
   object-fit: contain;
-  filter: drop-shadow(0 8px 12px rgba(0, 0, 0, 0.6));
 }
 
 .home-dwarf {
-  left: 4%;
-  height: 92%;
+  left: 2%;
+  height: 84%;
+  animation: home-breathe 3.2s ease-in-out infinite alternate;
+  transform-origin: 50% 100%;
 }
 
 .home-anvil {
-  right: 4%;
-  bottom: 0;
-  width: 46%;
+  right: 8%;
+  bottom: 2%;
+  width: 36%;
 }
 
 .home-menu {
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 12px;
+  gap: 14px;
   width: min(100%, 320px);
 }
 
-.app-home .home-entry {
-  margin: 0;
+/* The doodle button: flat colour, fat line, a hard shadow it sinks into when pressed. */
+.home-entry {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   min-height: 58px;
-  padding: 10px 20px;
-  border: 1px solid #2a1208;
-  border-radius: 12px;
-  background: linear-gradient(180deg, #e0913f, #b05a1e 55%, #7e3812);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 232, 190, 0.6),
-    inset 0 -2px 0 rgba(0, 0, 0, 0.28),
-    0 0 0 2px #1a0e08,
-    0 0 0 3.5px #a07a4a,
-    0 8px 18px rgba(0, 0, 0, 0.55);
-  color: #fff6e4;
-  font-family: 'Gowun Batang', 'Noto Serif KR', serif;
-  font-size: 1.15rem;
-  letter-spacing: 0.06em;
-  text-shadow: 0 1px 0 #3a1806;
+  margin: 0;
+  padding: 8px 20px;
+  border: var(--dd-stroke-fat) solid var(--dd-ink);
+  border-radius: var(--dd-round);
+  background: var(--dd-orange);
+  box-shadow: var(--dd-pop);
+  color: var(--dd-ink);
+  font-family: var(--dd-font-round);
+  font-size: 1.25rem;
+  line-height: 1.2;
+  cursor: pointer;
 }
 
-.app-home .home-run {
-  background: linear-gradient(180deg, #4a6a86, #2c4660 55%, #1c2e42);
-  box-shadow:
-    inset 0 1px 0 rgba(210, 230, 255, 0.45),
-    inset 0 -2px 0 rgba(0, 0, 0, 0.28),
-    0 0 0 2px #0c121a,
-    0 0 0 3.5px #7a8aa0,
-    0 8px 18px rgba(0, 0, 0, 0.55);
+.home-entry:active {
+  transform: translateY(3px);
+  box-shadow: none;
 }
 
-.app-home .home-entry small {
-  color: inherit;
-  font-family: system-ui, sans-serif;
-  letter-spacing: 0;
-  opacity: 0.85;
+/* '모루 위에 쇠가 기다린다' under the card craft entry. */
+.home-entry small {
+  display: block;
+  font-family: var(--dd-font-body);
+  font-size: 0.78rem;
 }
 
-.app-home .home-old {
-  margin: 2px auto 0;
-  color: #b8a084;
+/* 시즌 악마의 탑: the tower's cool colour next to the forge's warm one (기획서 1.1). */
+.home-run {
+  background: var(--dd-sky);
+}
+
+/* The v0.6 FF14 prototype, kept small for comparison. */
+.home-old {
+  display: block;
+  margin: 0 auto;
+  min-height: 44px;
+  padding: 8px 14px;
+  border: 0;
+  background: transparent;
+  color: var(--dd-paper);
+  font-family: var(--dd-font-body);
+  font-size: 0.85rem;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
 }
 
 .home-note {
   margin: 0;
-  color: #8a7660;
+  color: var(--dd-paper-2);
   font-size: 0.75rem;
+  opacity: 0.85;
 }
 
 @keyframes home-breathe {
   from {
-    opacity: 0.7;
+    transform: scaleY(1);
   }
   to {
-    opacity: 1;
+    transform: scaleY(1.012);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .home-glow {
+  .home-dwarf {
     animation: none;
   }
 }
