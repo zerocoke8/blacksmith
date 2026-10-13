@@ -441,3 +441,15 @@ export async function hasCardSession(saves: CardSaves = cardStore): Promise<bool
   const { session } = await saves.loadAll();
   return session !== null;
 }
+
+/**
+ * What waits at the forge (the home screen's marks, 9.2): 'active' a craft still on the anvil,
+ * 'done' a finished one whose result screen was left open (its slots can still be filled), 'none'.
+ */
+export type CardSessionState = 'none' | 'active' | 'done';
+
+export async function cardSessionState(saves: CardSaves = cardStore): Promise<CardSessionState> {
+  const { session } = await saves.loadAll();
+  if (session === null) return 'none';
+  return session.craft.status === 'active' ? 'active' : 'done';
+}

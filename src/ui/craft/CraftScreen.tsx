@@ -104,7 +104,7 @@ export function CraftScreen({ onExit }: Props) {
     <div className="craft">
       <div className="craft-bar">
         <button type="button" className="btn ghost small" onClick={onExit}>
-          ← 가게로
+          ← 마을로
         </button>
         <span className="craft-bar-title">
           {phase === 'recipe' ? '레시피' : phase === 'craft' ? '제작' : '완성'}

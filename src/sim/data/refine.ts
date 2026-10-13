@@ -149,3 +149,8 @@ export const REFINE_LINE_GAP_MS = { rare: 20_000 } as const;
 export function refineReturnLine(gained: number): string {
   return `자리를 비운 사이 광석 덩어리 ${gained}개가 쌓였다.`;
 }
+
+/** The very first visit: nobody was away yet, the pile the prototype starts with was simply sent ahead. */
+export function refineFirstPileLine(lumps: number): string {
+  return `광산에서 광석 덩어리 ${lumps}개를 먼저 보내 왔다.`;
+}

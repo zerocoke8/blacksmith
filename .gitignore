@@ -3,3 +3,8 @@ dist/
 *.local
 .DS_Store
 tools/balance/out/
+
+# API keys (Seedance, ElevenLabs, etc.) — never commit
+.env
+.env.*
+!.env.example

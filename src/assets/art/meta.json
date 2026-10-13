@@ -128,5 +128,17 @@
     "prop_bench": {"w":320,"h":283,"scale":0.403,"alpha":true,"trim":{"x":227,"y":297,"w":794,"h":703,"ow":1254,"oh":1254}},
     "prop_planter": {"w":320,"h":291,"scale":0.452,"alpha":true,"trim":{"x":281,"y":357,"w":708,"h":643,"ow":1254,"oh":1254}},
     "prop_stall": {"w":308,"h":320,"scale":0.3779,"alpha":true,"trim":{"x":282,"y":232,"w":815,"h":848,"ow":1254,"oh":1254}}
+  },
+  "heroes": {
+    "hero_vail": {"w":283,"h":400,"scale":0.3903,"alpha":true,"trim":{"x":101,"y":261,"w":725,"h":1025,"ow":1024,"oh":1536}},
+    "hero_nea": {"w":359,"h":400,"scale":0.3763,"alpha":true,"trim":{"x":61,"y":241,"w":954,"h":1063,"ow":1024,"oh":1536}},
+    "hero_odel": {"w":349,"h":400,"scale":0.3511,"alpha":true,"trim":{"x":13,"y":208,"w":994,"h":1140,"ow":1024,"oh":1536}},
+    "hero_aren": {"w":270,"h":400,"scale":0.3309,"alpha":true,"trim":{"x":101,"y":168,"w":816,"h":1210,"ow":1024,"oh":1536}},
+    "hero_isol": {"w":329,"h":400,"scale":0.4072,"alpha":true,"trim":{"x":98,"y":321,"w":808,"h":982,"ow":1024,"oh":1536}},
+    "hero_toma": {"w":346,"h":400,"scale":0.4037,"alpha":true,"trim":{"x":88,"y":272,"w":857,"h":991,"ow":1024,"oh":1536}},
+    "hero_yuna": {"w":309,"h":400,"scale":0.382,"alpha":true,"trim":{"x":86,"y":251,"w":809,"h":1047,"ow":1024,"oh":1536}},
+    "hero_rookie": {"w":312,"h":400,"scale":0.3741,"alpha":true,"trim":{"x":107,"y":296,"w":834,"h":1068,"ow":1024,"oh":1536}},
+    "hero_ace": {"w":308,"h":400,"scale":0.3305,"alpha":true,"trim":{"x":59,"y":184,"w":932,"h":1210,"ow":1024,"oh":1536}},
+    "hero_veteran": {"w":212,"h":400,"scale":0.3387,"alpha":true,"trim":{"x":216,"y":179,"w":626,"h":1181,"ow":1024,"oh":1536}}
   }
 }

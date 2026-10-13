@@ -7,7 +7,7 @@
 
 import { type SaveStore, webStore } from '../../platform/storage.ts';
 import { REFINE_LUMPS, REFINE_MULTS, type RefineMult } from '../../sim/data/refine.ts';
-import { accrue, isRefineMult, newRefineState, type RefineState, restoreRefine } from '../../sim/refine/index.ts';
+import { accrue, bagTotals, isRefineMult, newRefineState, type RefineState, restoreRefine } from '../../sim/refine/index.ts';
 
 export const REFINE_SAVE_KEY = 'refine.save';
 
@@ -200,15 +200,34 @@ export function refineSaves(store: SaveStore): RefineSaves {
 /** The app's refine saves (localStorage today, the native store after Capacitor). */
 export const refineStore: RefineSaves = refineSaves(webStore);
 
+/** The pile as the home screen sees it (peekRefine). */
+export interface RefinePeek {
+  lumps: number;
+  /** How many of them came in since the refine screen last took the pile in. */
+  gained: number;
+  full: boolean;
+  /** The bag's gold, as the top band shows it (nothing is spent yet). */
+  gold: number;
+  /** Where that counting began (the save's accruedAt minute), or null: no save yet, the prototype's first pile. */
+  since: number | null;
+}
+
 /**
- * For the home screen's hammer button: the pile as it stands now and how much of it came in
- * since the last visit, without writing anything (counting is the same done now or later).
+ * For the home screen: the pile as it stands now and how much of it came in since the last visit,
+ * without writing anything (counting is the same done now or later).
  */
-export async function peekRefine(nowMs: number, saves: RefineSaves = refineStore): Promise<{ lumps: number; gained: number; full: boolean }> {
+export async function peekRefine(nowMs: number, saves: RefineSaves = refineStore): Promise<RefinePeek> {
   const now = worldMinute(nowMs);
-  const save = (await saves.load()) ?? newRefineSave(now, 1);
+  const loaded = await saves.load();
+  const save = loaded ?? newRefineSave(now, 1);
   const r = accrue(save.state, now);
-  return { lumps: r.state.lumps, gained: r.gained, full: r.state.lumps >= REFINE_LUMPS.cap };
+  return {
+    lumps: r.state.lumps,
+    gained: r.gained,
+    full: r.state.lumps >= REFINE_LUMPS.cap,
+    gold: bagTotals(r.state.bag).gold,
+    since: loaded === null ? null : save.state.accruedAt,
+  };
 }
 
 /** Play log totals (the 실험 panel). */

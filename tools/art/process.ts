@@ -1,10 +1,10 @@
 // 원본 PNG를 게임에 넣을 WebP로 다듬는다.
 //   node tools/art/process.ts --raw <원본 폴더> [--only key1,scene/key2] [--out <폴더>]
-// 읽는 곳: <raw>/<그룹>/<key>.png  (그룹: tools/art/assets.ts ART_GROUPS — scene, ui, cards, refine, town. 키도 거기에)
+// 읽는 곳: <raw>/<그룹>/<key>.png  (그룹: tools/art/assets.ts ART_GROUPS — scene, ui, cards, refine, town, heroes. 키도 거기에)
 // 쓰는 곳: <out>/<그룹>/<key>.webp 와 <out>/meta.json  (기본 out: src/assets/art)
-//   town(마을 지도 시안)의 WebP는 아직 아무 코드도 import하지 않아 번들에 들어가지 않는다. 그림을 찾는 glob은
-//   그룹을 골라 읽는다 (render/forge/assets.ts는 scene·ui·cards, render/refine/assets.ts는 refine). meta.json의
-//   town 항목만 그 JSON과 함께 장면 청크에 실린다. 시안 합성(tools/art/town/compose.ts)이 원본 대신 이 WebP를 쓸 수 있다.
+//   그림을 찾는 glob은 그룹을 골라 읽는다 (render/forge/assets.ts는 scene·ui·cards, render/refine/assets.ts는 refine,
+//   render/town/assets.ts는 town·heroes: 홈 화면 마을 지도와 걷는 손님 용사). 그림은 보일 때만 받는다 (URL만 번들에).
+//   시안 합성(tools/art/town/compose.ts)이 원본 대신 town·heroes의 WebP를 쓸 수 있다.
 //   - 투명 에셋: 알파 가장자리를 다듬고(알파 레벨, 아래), 투명 여백을 잘라 내고(PAD px 여유),
 //     긴 변을 max에 맞춰 줄인다.
 //     알파 레벨: ALPHA_CUT 미만은 0, ALPHA_SOLID 이상은 255, 그 사이는 0~255로 고르게 편다.

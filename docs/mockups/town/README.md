@@ -1,6 +1,7 @@
 # 마을 지도 시안 (기획서 3.8)
 
-홈 화면 마을 지도의 그림 시안이다 (2026-10-13). 바닥과 건물을 따로 뽑아 합쳤다. 게임 코드는 아직 이 그림을 쓰지 않는다.
+홈 화면 마을 지도의 그림 시안이다 (2026-10-13). 바닥과 건물을 따로 뽑아 합쳤다.
+게임의 홈 화면(마을 지도, `src/render/town`·`src/ui/town`)은 이 폴더의 `layout.json`을 그대로 읽어, 같은 그림(`src/assets/art/town`)으로 같은 순서·같은 그림자로 PixiJS에 그린다 (아래 '게임에서').
 
 ## 파일
 
@@ -18,7 +19,7 @@ WebP는 품질 0.85로 헤드리스 크롬 canvas에서 만들었다. 원본 PNG
 
 - 바닥, 구름 띠, 건물 10, 탑 4, 소품 13. 모두 29키다. 키마다 프롬프트·크기·참조·메모가 `tools/art/assets.ts`의 그룹 `town`에 있다. 처리본은 `src/assets/art/town/*.webp`와 `src/assets/art/meta.json`의 `town`에 있다.
 - 쓰지 않은 바닥 후보 `ground_a`(강과 다리, 십자 길)는 `assets.ts`에 메모로만 남겼다.
-- 걷는 사람은 영웅 예제 그림 10장(이 저장소 밖)과 드워프 기준 그림 `tools/art/ref/d_dwarf_idle.png`를 줄여 놓았다.
+- 걷는 사람은 영웅 예제 그림 10장과 드워프 기준 그림 `tools/art/ref/d_dwarf_idle.png`를 줄여 놓았다. 영웅 예제는 `tools/art/assets.ts`의 그룹 `heroes`(프롬프트)와 `src/assets/art/heroes/*.webp`(긴 변 400px)에 보존했다.
 - UI 목업의 아이콘은 `src/assets/art/refine`의 골드, 덩어리, 가방이다. 메뉴의 대장간과 길드 아이콘은 그 건물 그림이다.
 
 ## 합성
@@ -76,7 +77,10 @@ WebP는 품질 0.85로 헤드리스 크롬 canvas에서 만들었다. 원본 PNG
   - `flip`
   - `box`: 그린 몸통 상자(지도 px)
   - `anchor`: 잘라 낸 그림 안의 기준점 비율
-- `paths`, `towers.stack`, `clouds`(지평선, 고리, 띠), `views`(폰 화면 자리)는 위 '합성'의 수치다.
+  - `ell`: 접지 타원의 크기 비 (울타리처럼 낮은 소품), `spots`: 접지 타원 대신 직접 적은 그림자 (마을 문의 기둥과 울타리마다, 기준점에 대한 지도 px)
+- `map.thin`: 바닥 잉크 선을 양쪽으로 깎은 폭(지도 px).
+- `paths`, `towers.stack`, `clouds`(지평선, 고리, 띠), `smoke`(대장간 굴뚝 연기의 구름 무리와 색), `outlines`(작은 소품과 사람에 덧그린 바깥 잉크, 원본 px. 사람의 배율), `views`(폰 화면 자리)는 위 '합성'의 수치다.
+- `ell`, `spots`, `map.thin`, `smoke`, `outlines`는 게임이 같은 그림자와 선을 그리려고 2026-10-13에 더했다 (합성기 `page.js`가 쓰고, 지금 파일에는 `tools/art/town/layout.ts`의 같은 값을 옮겨 적었다). 나머지 값은 그대로다.
 - `views[].file`은 합성할 때의 이름(`town_view_forge.png`)이다. 여기 있는 파일은 `view_forge.webp`다.
 - 원본 px 좌표는 생성된 PNG 기준이다. 처리본 WebP(`src/assets/art/town`)는 잘라 줄인 그림이다. 원본 px로 되돌리려면 `meta.json`의 `trim`(원본 안의 사각형)과 `scale`을 쓴다.
 
@@ -94,10 +98,28 @@ node tools/art/process.ts --raw <원본 폴더> --only town/bld_forge
 다시 합성한다:
 
 ```
-node tools/art/town/compose.ts --out docs/mockups/town [--raw <원본 폴더>] [--heroes <영웅 예제 폴더>]
+node tools/art/town/compose.ts --out docs/mockups/town [--raw <원본 폴더>] [--heroes <영웅 예제 원본 폴더>]
+```
+
+게임의 지도 그림을 다시 굽는다 (`layout.json`, `src/assets/art/{town,heroes}`의 그림이나 `meta.json`, 손님 키 `GUESTS.height`를 바꾼 뒤. 안 구우면 `tools/art/town/bake.test.ts`가 실패한다):
+
+```
+node tools/art/town/bake.ts
 ```
 
 - `--raw`가 없으면 `src/assets/art/town`의 처리본을 원본 캔버스로 되돌려 쓴다. 결과는 조금 흐리다. 원본으로 합성한 지금 파일과 비교하면 픽셀 평균 차이가 약 1/255이고, 상자 차이는 3px 안이다.
 - 원본 폴더로 합성하면 지금 파일과 픽셀까지 같다 (확인함).
-- `--heroes`가 없으면 사람 없이 그린다.
+- `--heroes`가 없으면 영웅 예제의 처리본(`src/assets/art/heroes`)을 원본 캔버스로 되돌려 쓴다. 그것도 없으면 사람 없이 그린다.
 - `--png`를 주면 1:1 PNG로, `--debug`를 주면 상자를 그린 지도도 쓴다.
+
+## 게임에서 (홈 = 마을 지도)
+
+`src/render/town/`이 이 `layout.json`과 미리 구운 그림(`src/assets/art/town-map/`)으로 지도를 그린다. 굽기는 `tools/art/town/bake.ts`가 처리본 WebP에 합성기(`page.js`)의 단계를 그대로 해서 만든다. 게임은 지도를 열 때 픽셀을 가공하지 않고 읽어서 GPU로 올리기만 한다 (예전에는 열 때마다 브라우저에서 구워 폰 속도로 수 초가 걸렸다).
+
+- 바닥: 하늘, 바닥 그림(잉크 선 `map.thin`만큼 깎음), 흙 오솔길, 모든 그림자를 바닥 그림의 원래 해상도(1024 px 폭) 캔버스 하나에 그리고, GPU에서 2.4배로 키워 깐다. 가장 큰 텍스처가 바닥 원본 폭이다.
+- 그림: 구운 그림자를 떼어 그림자 층으로 보내고, 탑은 층을 쌓고(지도 위 끝 밖은 잘라 낸다), 작은 소품·사람에는 바깥 잉크를 덧그린 뒤 지도 해상도(텍스처 1 px = 지도 1 px)로 줄인다. 배치는 `x, y`(땅에 닿는 점)과 `scale`, 몸통은 다시 재서 맞춘다 (`box`와 3 px 안). 어디에 서는지(기준점, 배율, 접지 그림자의 폭)는 `town-map/map.json`에 적는다.
+- 지평선 구름처럼 2048 px보다 넓은 그림은 세로 띠 여러 장으로 나눈다 (오래된 폰 GPU의 텍스처 한계).
+- 그리는 순서도 같다: 하늘·바닥·오솔길·그림자 층(바닥 캔버스에 곱하기로 한 번), 지평선 구름(그림자와 겹치는 곳이 없어 순서만 바뀌었다), 땅에 닿는 y 순서의 그림, 굴뚝 연기, 탑의 구름 고리, 구름 띠.
+- 시안의 서 있는 영웅들은 그리지 않고, 마을 문 → 상점 → 마을 문을 오가는 손님 용사(기획서 9.3)로 바꿨다. 대장간 문 앞의 드워프는 둔다.
+- 손님 길(`src/render/town/layout.ts` GUEST_ROAD): 바닥 그림의 상점 오솔길 입구가 마을 문 오른쪽 기둥 바로 뒤에 있어서, 오솔길 위를 걸으면 기둥에 가려 머리만 보인다. 그래서 손님은 아치를 지나 아치 위쪽으로 나와 기둥 꼭대기 북쪽을 지나 상점 문으로 내려간다.
+- 움직임: 굴뚝 연기, 분수 물방울, 구름 띠가 천천히 흐른다. 움직임 줄이기 설정이면 멈춘다.

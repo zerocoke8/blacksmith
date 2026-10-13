@@ -1,0 +1,588 @@
+/* 홈 = 마을 지도 (기획서 3.2, 9장): the map fills the screen; the top band and the five quick entries
+   float over it as doodle stickers (cream paper, fat brown line, a hard shadow, app.css --dd-*).
+   The notch and the home bar stay clear (safe-area). Nothing needs a mouse hover. */
+
+.th-root {
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+  height: 100dvh;
+  margin: 0 auto;
+  overflow: hidden;
+  background: #cfe3ea; /* the map's sky (layout.json map.skyColor), before the map is up */
+  touch-action: manipulation; /* the map box itself takes every finger (.tm-host) */
+}
+
+/* ---------- The map box (TownMap) ---------- */
+
+.tm-host {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.tm-canvas {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+}
+
+.tm-host.ready .tm-canvas {
+  opacity: 1;
+}
+
+/* The first map of the session fades in, its tags with it; coming back to it, it is just there. */
+.tm-host.fade .tm-canvas,
+.tm-host.fade .tm-layer {
+  animation: tm-fade 0.35s ease-out both;
+}
+
+@keyframes tm-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.tm-loading {
+  position: absolute;
+  top: 45%;
+  left: 0;
+  right: 0;
+  margin: 0;
+  color: var(--dd-ink-soft);
+  font-family: var(--dd-font-body);
+  font-size: 0.95rem;
+  text-align: center;
+}
+
+/* Moves with the camera (one transform a frame, set by TownMap); its children are placed in map px × zoom. */
+.tm-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  will-change: transform;
+}
+
+/* A building's name tag: a small paper sticker, always shown (9.1). */
+.tm-tag {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 28px;
+  margin: 0;
+  padding: 1px 10px 2px;
+  border: 2px solid var(--dd-ink);
+  border-radius: 999px;
+  background: var(--dd-paper);
+  box-shadow: var(--dd-pop-s);
+  color: var(--dd-ink);
+  font-family: var(--dd-font-round);
+  font-size: 0.8rem;
+  line-height: 1.25;
+  white-space: nowrap;
+  transform: translate(-50%, -50%);
+  transition: opacity 0.15s;
+  touch-action: none;
+  cursor: pointer;
+}
+
+/* A finger's worth round the sticker (44 px tall) without making it look bigger. */
+.tm-tag::before {
+  position: absolute;
+  inset: -8px -4px;
+  content: '';
+}
+
+/* Under the top band or the quick entries (TownMap): hidden; the building itself still takes the tap. */
+.tm-tag[data-under] {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.tm-tag-forge {
+  background: var(--dd-butter-paper);
+  font-size: 0.9rem;
+}
+
+.tm-tag-tower {
+  background: #e3eef3;
+}
+
+/* Locked (9.2): greyed, with the floor it opens at. */
+.tm-tag.locked {
+  background: var(--dd-paper-2);
+  color: var(--dd-ink-soft);
+}
+
+.tm-tag-lock {
+  font-family: var(--dd-font-body);
+  font-size: 0.75rem;
+}
+
+/* To-do marks (9.2): the mine's lumps, a craft waiting at the forge. */
+.tm-tag-badge {
+  min-width: 18px;
+  margin-right: -4px;
+  padding: 0 5px;
+  border: 1.5px solid var(--dd-ink);
+  border-radius: 999px;
+  background: var(--dd-butter);
+  font-family: var(--dd-font-round);
+  font-size: 0.72rem;
+  font-weight: 400;
+  line-height: 1.3;
+  text-align: center;
+}
+
+.tm-tag-wait {
+  background: var(--dd-orange);
+}
+
+/* One line from a building or a guest: a speech bubble over it. TownMap keeps it on screen:
+   margin-left pulls it in from a side, --tail-dx keeps the tail on what spoke, .below hangs it
+   under its point when the top band is in the way. */
+.tm-bubble {
+  position: absolute;
+  width: max-content;
+  max-width: 210px;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+  padding: 6px 11px 7px;
+  border: 2.5px solid var(--dd-ink);
+  border-radius: 14px;
+  background: var(--dd-paper-3);
+  box-shadow: var(--dd-pop-s);
+  color: var(--dd-ink);
+  font-family: var(--dd-font-body);
+  font-size: 0.86rem;
+  line-height: 1.35;
+  transform: translate(-50%, calc(-100% - 12px));
+  pointer-events: none;
+  animation: tm-pop 0.18s ease-out;
+}
+
+.tm-bubble::after {
+  position: absolute;
+  bottom: -9px;
+  left: calc(50% + var(--tail-dx, 0px));
+  width: 12px;
+  height: 12px;
+  border-right: 2.5px solid var(--dd-ink);
+  border-bottom: 2.5px solid var(--dd-ink);
+  background: var(--dd-paper-3);
+  transform: translateX(-50%) rotate(45deg);
+  content: '';
+}
+
+@keyframes tm-pop {
+  from {
+    opacity: 0;
+    transform: translate(-50%, calc(-100% - 4px)) scale(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, calc(-100% - 12px)) scale(1);
+  }
+}
+
+.tm-bubble.below {
+  transform: translate(-50%, 12px);
+  animation-name: tm-pop-below;
+}
+
+.tm-bubble.below::after {
+  top: -9px;
+  bottom: auto;
+  transform: translateX(-50%) rotate(225deg);
+}
+
+@keyframes tm-pop-below {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 4px) scale(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 12px) scale(1);
+  }
+}
+
+/* ---------- Top band: lumps, gold, settings ---------- */
+
+.th-top {
+  position: absolute;
+  top: calc(8px + env(safe-area-inset-top));
+  left: 10px;
+  right: 10px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.th-top > * {
+  pointer-events: auto;
+}
+
+.th-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  height: 36px;
+  padding: 0 12px 0 6px;
+  border: var(--dd-stroke) solid var(--dd-ink);
+  border-radius: 999px;
+  background: var(--dd-paper);
+  box-shadow: var(--dd-pop-s);
+  font-family: var(--dd-font-round);
+  font-size: 1.02rem;
+}
+
+.th-chip img {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+}
+
+.th-chip b {
+  font-weight: 400;
+}
+
+.th-chip small {
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--dd-butter);
+  font-size: 0.7rem;
+}
+
+.th-gear {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin: 0 0 0 auto;
+  padding: 0;
+  border: var(--dd-stroke) solid var(--dd-ink);
+  border-radius: 50%;
+  background: var(--dd-paper);
+  box-shadow: var(--dd-pop-s);
+  cursor: pointer;
+}
+
+.th-gear:active {
+  transform: translateY(2px);
+  box-shadow: none;
+}
+
+.th-gear svg {
+  width: 24px;
+  height: 24px;
+  fill: var(--dd-paper-2);
+  stroke: var(--dd-ink);
+  stroke-width: 1.8;
+  stroke-linejoin: round;
+}
+
+/* '자리를 비운 사이 …' as the map opens (tap to close). */
+.th-notice {
+  position: absolute;
+  top: calc(56px + env(safe-area-inset-top));
+  left: 50%;
+  z-index: 5;
+  width: max-content;
+  max-width: calc(100% - 32px);
+  margin: 0;
+  padding: 6px 14px;
+  border: var(--dd-stroke) solid var(--dd-ink);
+  border-radius: var(--dd-round-s);
+  background: var(--dd-butter-paper);
+  box-shadow: var(--dd-pop-s);
+  font-family: var(--dd-font-body);
+  font-size: 0.86rem;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+  transform: translateX(-50%);
+  animation: th-drop 0.25s ease-out;
+  cursor: pointer;
+}
+
+@keyframes th-drop {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -8px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+/* ---------- The five quick entries (3.2, 9.4) ---------- */
+
+.th-quick {
+  position: absolute;
+  right: 8px;
+  bottom: calc(8px + env(safe-area-inset-bottom));
+  left: 8px;
+  z-index: 5;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+}
+
+.th-q {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 0;
+  height: 74px;
+  margin: 0;
+  padding: 4px 2px 5px;
+  border: var(--dd-stroke-fat) solid var(--dd-ink);
+  border-radius: var(--dd-round);
+  background: var(--dd-paper);
+  box-shadow: var(--dd-pop);
+  color: var(--dd-ink);
+  cursor: pointer;
+}
+
+.th-q:active {
+  transform: translateY(3px);
+  box-shadow: none;
+}
+
+.th-q-forge {
+  background: var(--dd-butter-paper);
+}
+
+.th-q.soon {
+  background: var(--dd-paper-2);
+  color: var(--dd-ink-soft);
+}
+
+.th-q-pic {
+  display: block;
+  width: 44px;
+  height: 40px;
+  overflow: hidden;
+}
+
+.th-q-pic img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* A tower is tall: show its base and door. A hero: his face. */
+.th-q-pic.fit-tower img {
+  object-fit: cover;
+  object-position: 50% 92%;
+}
+
+.th-q-pic.fit-face img {
+  object-fit: cover;
+  object-position: 50% 0%;
+}
+
+/* The gate is wide and low: its arch from pillar to pillar fills the box's width, the fences cut off
+   (a stand-in until 16장의 4번's icon). */
+.th-q-pic.fit-gate {
+  position: relative;
+}
+
+.th-q-pic.fit-gate img {
+  position: absolute;
+  bottom: 3px;
+  left: -30%;
+  width: 150%;
+  height: auto;
+}
+
+.th-q.soon .th-q-pic img {
+  opacity: 0.6;
+}
+
+.th-q-label {
+  margin-top: 2px;
+  font-family: var(--dd-font-round);
+  font-size: 0.86rem;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+/* '곧' on what is not open yet. */
+.th-q-soon {
+  position: absolute;
+  top: -8px;
+  left: -5px;
+  padding: 0 6px;
+  border: 1.5px solid var(--dd-ink);
+  border-radius: 999px;
+  background: var(--dd-paper-3);
+  color: var(--dd-ink-soft);
+  font-family: var(--dd-font-round);
+  font-size: 0.75rem;
+  line-height: 1.35;
+  transform: rotate(-6deg);
+}
+
+.th-q-badge {
+  position: absolute;
+  top: -10px;
+  right: -6px;
+  min-width: 26px;
+  padding: 1px 6px;
+  border: var(--dd-stroke) solid var(--dd-ink);
+  border-radius: 999px;
+  background: var(--dd-butter);
+  box-shadow: var(--dd-pop-s);
+  font-family: var(--dd-font-round);
+  font-size: 0.78rem;
+  font-weight: 400;
+  line-height: 1.15;
+  transform: rotate(4deg);
+}
+
+.th-q-wait {
+  background: var(--dd-orange);
+}
+
+/* '곧 열린다' one line over the quick entries. */
+.th-toast {
+  position: absolute;
+  bottom: calc(96px + env(safe-area-inset-bottom));
+  left: 50%;
+  z-index: 6;
+  width: max-content;
+  max-width: calc(100% - 32px);
+  margin: 0;
+  padding: 7px 14px;
+  border: var(--dd-stroke) solid var(--dd-ink);
+  border-radius: var(--dd-round-s);
+  background: var(--dd-paper-3);
+  box-shadow: var(--dd-pop-s);
+  font-family: var(--dd-font-body);
+  font-size: 0.86rem;
+  text-align: center;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+  transform: translateX(-50%);
+  pointer-events: none;
+  animation: th-rise 0.2s ease-out;
+}
+
+@keyframes th-rise {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 6px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+/* ---------- Sheets ---------- */
+
+.th-sheet-line {
+  color: var(--dd-ink-soft);
+  font-size: 0.92rem;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.th-sheet-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 12px 0 4px;
+}
+
+.th-act {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+.th-act small {
+  display: block;
+  font-family: var(--dd-font-body);
+  font-size: 0.78rem;
+}
+
+.kc-skin .kc-btn.th-act-refine:not(.primary) {
+  background: var(--dd-butter);
+}
+
+.th-soon-tag {
+  display: inline-block;
+  margin: 2px 0 4px;
+  padding: 2px 10px;
+  border: 2px solid var(--dd-ink);
+  border-radius: 999px;
+  background: var(--dd-paper-2);
+  font-family: var(--dd-font-round);
+  font-size: 0.9rem;
+}
+
+.th-settings section {
+  margin: 4px 0 14px;
+}
+
+.th-settings h4 {
+  margin: 0 0 6px;
+  font-family: var(--dd-font-round);
+  font-size: 1rem;
+  font-weight: 400;
+}
+
+.th-settings .kc-toggle {
+  margin-bottom: 6px;
+}
+
+.th-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.th-log {
+  margin: 10px 0 0;
+  padding: 8px 12px;
+  border: 2px solid var(--dd-ink);
+  border-radius: var(--dd-round-s);
+  background: var(--dd-paper-3);
+  list-style: none;
+  font-size: 0.82rem;
+  line-height: 1.6;
+}
+
+.th-log b {
+  font-family: var(--dd-font-round);
+  font-weight: 400;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tm-bubble,
+  .th-notice,
+  .th-toast,
+  .tm-host.fade .tm-canvas,
+  .tm-host.fade .tm-layer {
+    animation: none;
+  }
+}

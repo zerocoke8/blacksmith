@@ -414,7 +414,7 @@ async function buildMap(cfg) {
     const left = Math.min(...xs), top = Math.min(...ys);
     out.push({ key: p.key, kind: p.kind, x: Math.round(p.x), y: Math.round(p.y), scale: +p.s.toFixed(4), flip: !!p.flip, shear: p.shear ?? 0,
       box: { x: Math.round(left), y: Math.round(top), w: Math.round(Math.max(...xs) - left), h: Math.round(Math.max(...ys) - top) },
-      anchor: { cx: +(a.cx / a.W).toFixed(4), gy: +(a.gy / a.H).toFixed(4) }, note: p.note });
+      anchor: { cx: +(a.cx / a.W).toFixed(4), gy: +(a.gy / a.H).toFixed(4) }, ell: p.ell, spots: p.spots, note: p.note });
   }
   // the forge's chimney smoke (the new forge art has none, by request)
   if (cfg.smoke) drawPuffs(g, cfg.smoke, cfg.smokeStyle);
@@ -561,13 +561,15 @@ async function run(cfg) {
   await post('assets', sheet);
 
   const layout = {
-    map: { width: W, height: H, ground: cfg.ground, groundScale: cfg.groundScale, groundY: cfg.sky, skyColor: cfg.skyColor, sharpen: cfg.sharpen,
+    map: { width: W, height: H, ground: cfg.ground, groundScale: cfg.groundScale, groundY: cfg.sky, skyColor: cfg.skyColor, sharpen: cfg.sharpen, thin: cfg.thin,
       note: 'Map px. The ground picture is scaled by groundScale and drawn at y = groundY; above it is flat sky. x,y = ground anchor (the middle of the body, at the lowest point it touches the ground). scale = map px per source px. Draw order: sky, ground, paths, horizon puffs, shadow layer (multiply), sprites back to front by y, tower cloud rings, cloud band.' },
     baseScale: cfg.F,
     shadow: cfg.shadow,
     paths: { style: cfg.pathStyle, list: cfg.paths, note: 'dirt paths: fill = road sand, ink outline only over grass; round caps, pts are a quadratic-smoothed polyline' },
     towers: { stack: cfg.stack, note: 'stack: source rows [top,bot) = one storey band, repeated n times, each one shrink x smaller than the one below; head and base unchanged' },
     clouds: { style: cfg.cloudStyle, horizon: cfg.horizon, rings: cfg.rings, band: cfg.band, note: 'band = cloud_band.png rows [0,srcH) scaled to h, tiled across, every other tile mirrored' },
+    smoke: { puffs: cfg.smoke, style: cfg.smokeStyle, note: "the forge's chimney smoke: puffs (map px) drawn like the clouds, after the sprites" },
+    outlines: { props: cfg.lines, people: cfg.people, note: 'extra outer ink added to small props and people (source px), so their lines match the buildings; people.scale / dwarfScale = map px per source px' },
     views: cfg.views.map((v) => ({ file: v.file + OUT.ext, x: v.x, y: v.y, w: 780, h: 1688, label: v.label })),
     items: placed,
   };

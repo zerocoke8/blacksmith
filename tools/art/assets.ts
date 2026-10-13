@@ -24,9 +24,10 @@
 // 처리(process.ts)에서 키마다 더 하는 일은 process에 적는다: 카드 일러스트의 가장자리 메움(edge)과
 // 양옆으로 넓히기(widen), 단색 배경 색 바꾸기(recolor), 다른 그림과 같은 자리에 맞추기(alignTo).
 //
-// 그룹 town(마을 지도 시안)은 아직 게임에 쓰지 않는다. 화면에 넣기 전까지 어떤 코드도 import하지 않는다 (아래 town 머리말).
+// 그룹 town(마을 지도)은 홈 화면의 마을 지도(src/render/town)가 쓴다 (아래 town 머리말).
+// 그룹 heroes(영웅 예제 10명)는 마을 지도의 걷는 손님 용사가 쓰고, 나중에 용사 목록에도 쓴다 (아래 heroes 머리말).
 
-export const ART_GROUPS = ['scene', 'ui', 'cards', 'refine', 'town'] as const;
+export const ART_GROUPS = ['scene', 'ui', 'cards', 'refine', 'town', 'heroes'] as const;
 export type ArtGroup = (typeof ART_GROUPS)[number];
 
 /** 'WxH' (px). */
@@ -806,10 +807,10 @@ const REFINE: readonly Entry[] = [
   },
 ];
 
-// ── town: 마을 지도 시안 (기획서 3.8) ─────────────────────────────────────
-// 홈 화면 마을 지도 시안의 바닥, 구름 띠, 건물, 탑, 소품. 바닥과 건물을 따로 뽑아 합친다(3.8).
-// 아직 어떤 코드도 이 그림들을 import하지 않는다 (번들에 들어가지 않는다). 합친 시안과 합성 방법은
-// docs/mockups/town (README.md), 다시 합성하는 스크립트는 tools/art/town/compose.ts.
+// ── town: 마을 지도 (기획서 9장) ──────────────────────────────────────────
+// 홈 화면 마을 지도의 바닥, 구름 띠, 건물, 탑, 소품. 바닥과 건물을 따로 뽑아 합친다(9.1).
+// 게임에서는 src/render/town이 docs/mockups/town/layout.json 그대로 PixiJS로 그린다 (지도 청크에서만 import).
+// 합친 시안과 합성 방법은 docs/mockups/town (README.md), 다시 합성하는 스크립트는 tools/art/town/compose.ts.
 // 모두 아늑한 타이쿤 지도의 3/4 위에서 본 시점(약 40°), 빛은 왼쪽 위, 그림자는 오른쪽 아래에 평면 한 덩이.
 //
 // 프롬프트 = STYLE + 아래 조각들. buildPrompt는 이 그룹에 STYLE만 붙이고(scene처럼), 참조 안내(STYLE_REF_ONLY 또는
@@ -1193,19 +1194,128 @@ const TOWN: readonly Entry[] = [
   ),
 ];
 
+// ── heroes: 영웅 예제 10명 (기획서 5장, 9.3) ─────────────────────────────────
+// 용사 그림의 예제다 (2026-10-13). 마을 지도의 걷는 손님 용사(9.3, src/render/town)가 작게 쓰고, 나중에 용사
+// 목록(5.9)에도 쓴다. 이름과 성격은 v0.8 가문 예시(src/sim/data/families.ts)에서 왔다. 토마와 유나는 기획서에 이름만
+// 예로 있어 성별·나이는 그림을 뽑은 쪽이 정했다 (남 5, 여 5). 모두 왼쪽을 본다 (오른쪽을 보는 드워프와 마주 본다).
+// 처리: 투명 여백을 자르고 긴 변 400px (HERO_MAX).
+//
+// 프롬프트 = 화풍 머리말(HERO_STYLE) + 참조 안내(HERO_REF_NOTE) + 공통 문단(HERO_COMMON) + 영웅마다의 문단. 그림 생성
+// 기록(Codex 출력)의 그림 프롬프트와 글자까지 같다 (대조했다). 화풍 머리말은 STYLE과 조금 다르다 (팔레트 괄호와
+// 'no signature'가 없다). 그래서 ownStyle로 전체를 prompt에 적었다.
+// 기록과 다른 점:
+//   - 네아와 오델은 공통 문단의 첫 판(HERO_COMMON_V1: 덩어리 머리·튜브 팔다리 줄을 더하기 전)으로 뽑았다.
+//   - 그때의 Codex 지시문은 크기 줄이 "use this size"였고 끝 줄이 "Save the generated image as <key>.png in the current
+//     directory. Reply with only the saved file path."였다. gen.ts로 다시 뽑으면 낱말이 조금 다르다 (뜻은 같다).
+//   - 다시 뽑은 셋(바일, 아렌, S급 마법사)의 버린 판은 원본 폴더의 hero_<이름>.rejected1.png다.
+
+/** 영웅 예제의 화풍 머리말 (STYLE에서 팔레트 괄호와 'no signature'를 뺀 판). */
+const HERO_STYLE =
+  'Super simple flat doodle cartoon in EXACTLY the same style as the attached dwarf character image: thick, slightly uneven hand-drawn dark brown outlines, flat colors, NO shading, NO gradients, NO texture, NO highlights, very few details, simple round chunky shapes, cute and silly (the Korean "hachanhan" meme vibe), warm cozy palette (a little muted). No text, no letters, no numbers, no watermark.';
+/** 드워프는 화풍 참조일 뿐이라는 안내. */
+const HERO_REF_NOTE =
+  'The attached image is our dwarf blacksmith and is a STYLE REFERENCE ONLY: copy its drawing style exactly (same thick dark brown outline weight, same flat fills, same tiny amount of detail, same two dot eyes, same simple stick-like arms and legs and little boots), but do NOT draw the dwarf. Draw only the new character described below.';
+/** 공통 문단 (여덟 명). */
+const HERO_COMMON =
+  "Draw ONE human adventurer hero, full body from head to boots, standing, front three-quarter view: body and face turned slightly toward the LEFT edge of the image (the character looks toward the viewer's left). Chibi proportions about 2.3 to 2.5 heads tall (a little less squat than the dwarf: a big round head that is about 40% of the total height, small body). Very simple face: two dot eyes (or very simple line eyes) and a tiny mouth, the personality shown by the silhouette and ONE clear expression. Keep details minimal like the dwarf: hair is one or two big simple blob shapes with at most two inner lines, arms and legs are simple tubes, hands are simple mitten shapes, plain clothes made of a few flat color blocks, no patterns, no stitching, no ornaments beyond what is described. The whole character fits inside the frame with empty margin on all sides, nothing cropped. Transparent background with a real alpha channel: no backdrop, no ground, no floor shadow.";
+/** 공통 문단의 첫 판 (네아, 오델). */
+const HERO_COMMON_V1 =
+  'Draw ONE human adventurer hero, full body from head to boots, standing, front three-quarter view with the body turned slightly toward the LEFT side of the image. Chibi proportions about 2.3 to 2.5 heads tall (a little less squat than the dwarf: big round head, small body). Very simple face: two dot eyes (or very simple line eyes) and a tiny mouth, the personality shown by the silhouette and ONE clear expression. Keep details minimal: plain clothes made of a few flat color blocks, no patterns, no ornaments beyond what is described. The whole character fits inside the frame with empty margin on all sides, nothing cropped. Transparent background with a real alpha channel: no backdrop, no ground, no floor shadow.';
+
+/** 처리 크기 (긴 변, px). 지도에서는 키 약 80px로 작게, 용사 목록에서는 카드 그림으로 쓴다. */
+const HERO_MAX = 400;
+
+function hero(key: string, label: string, body: string, more: { v1?: boolean; note?: string } = {}): Entry {
+  return {
+    key,
+    size: '1024x1536',
+    transparent: true,
+    max: HERO_MAX,
+    label,
+    refs: ['d_dwarf_idle'],
+    ownStyle: true,
+    ...(more.note !== undefined ? { note: more.note } : {}),
+    prompt: para(HERO_STYLE, HERO_REF_NOTE, more.v1 === true ? HERO_COMMON_V1 : HERO_COMMON, body),
+  };
+}
+
+const HEROES: readonly Entry[] = [
+  hero(
+    'hero_vail',
+    '바일 (처음 대장간에 온 용사, 한손검)',
+    'The hero: Vail, a young man, the first hero who ever came to the forge. Broad square shoulders and a sturdy build, chibi 2.4 heads tall. Short dark brown hair as one simple tufty blob. Blunt but honest: a straight flat serious mouth and steady dot eyes, slight frown. Rust-red tunic (#b5523b), brown belt, brown trousers, little brown boots. A small worn brown ledger book tucked into the front of his tunic, its top corner sticking out. One old burn scar shown as a simple pale pink patch on the back of his right hand. He holds a plain one-handed sword (simple grey blade, brown grip) pointing down at his side.',
+    { note: '둘째 판. 첫 판(hero_vail.rejected1.png)은 혼자 오른쪽을 보고 약 2.8등신에 머리카락 가닥이 많았다. 새 판은 왼쪽을 보고 약 2.3등신, 드워프처럼 덩어리 머리다.' },
+  ),
+  hero(
+    'hero_nea',
+    '네아 (먼저 보고 먼저 말하는 궁수)',
+    'The hero: Nea, a slim young woman archer who always sees first and speaks first. Narrow eyes drawn as two short flat lines, wind-tousled hair blowing to one side in a few big simple tufts (dark teal-brown). Her mouth is open mid-sentence, eager, and her free hand points ahead with one finger as if saying "over there!". Short teal-blue hooded cloak (#4f8a9e) over a cream shirt, brown boots, a small quiver with three arrows on her back. She holds a simple wooden longbow, and a single white feather is tied to the top tip of the bow with a tiny string.',
+    { v1: true, note: '첫 판 채택. 화살통, 머리 가닥이 조금 많지만 화풍 안이다. 활 끝 깃털이 오른쪽 끝에서 12px 떨어져 있다.' },
+  ),
+  hero(
+    'hero_odel',
+    '오델 (남의 짐까지 지는 큰 사람, 대검)',
+    "The hero: Odel, a very big, broad, gentle man, the heaviest and roundest of all the heroes, slow and calm. Huge round body, short buzzed hair, small calm sleepy dot eyes, tiny closed mouth, a slight nodding tilt of the head. Earthy khaki-brown clothes (#7a6a4f) and a simple leather strap across his chest. On his back an oversized bulging backpack, with one EXTRA bundle tied on top of it (someone else's luggage he is carrying for them). He rests a big plain greatsword (wide grey blade, brown grip) on his shoulder with one hand.",
+    { v1: true, note: '첫 판 채택. 드워프의 둥근 덩어리 화풍에 가장 가깝다. 좌우 여백이 16~20px로 빠듯하지만 잘리지 않았다.' },
+  ),
+  hero(
+    'hero_aren',
+    '아렌 (가볍고 겁 없는, 단검 둘)',
+    'The hero: Aren, a skinny wiry young man, light and carefree but brave. A thin narrow body and thin arms and legs, but still the same chibi 2.5-heads-tall proportions (big head, short legs). Messy light-brown hair as one big tufty blob, a relaxed grin, and he is whistling (lips puckered in a small round "o", NO music notes, no symbols). Amber-ochre short jacket (#a8743a), cream shirt, dark brown trousers, little boots. TWO daggers at his belt: he spins one dagger casually in his raised hand, while the second dagger stays sheathed at his hip, its handle wrapped in a faded cloth strip because he never uses it (it was his older brother\'s). One hand on his hip, a cocky relaxed stance.',
+    { note: '둘째 판. 첫 판(hero_aren.rejected1.png)은 오른쪽을 보고 다리가 길어 약 3.2등신이었다. 휘파람 부는 입이 숫자 3처럼 보이는 만화 기호다.' },
+  ),
+  hero(
+    'hero_isol',
+    '이솔 (지붕을 걷는 아이, 석궁)',
+    'The hero: Isol, a small, light young girl (about 12), quiet and careful, light on her feet like a child who walks on rooftops. She stands on tiptoe on one foot, arms slightly out for balance, and looks UP with a quiet curious face (two dot eyes looking upward, tiny mouth). Short grey-black hair. A long grey scarf (#8a8a8f) wrapped around her neck with long ends fluttering, smudged with a few small darker grey ash spots. Simple grey-brown tunic, little boots. A small crossbow is slung on her back by a strap, its bow limbs clearly visible sticking out behind her shoulders.',
+    { note: '첫 판 채택. 한 발로 서서 위를 본다 (탑을 오래 올려다보는 아이).' },
+  ),
+  hero(
+    'hero_toma',
+    '토마 (한 발을 오래 겨누는, 석궁)',
+    'The hero: Toma, a stocky calm middle-aged man, an unhurried patient sniper who aims one shot for a long time. Half-closed relaxed sleepy eyes, one eye shut as if quietly aiming, a short stalk of grass in the corner of his mouth, a small stubble chin drawn as a flat darker patch. A wide-brimmed soft hat, olive and mud-brown earthy clothes, a sturdy brown vest. He holds a big heavy wooden crossbow low at his hip with both hands, pointing it slightly forward, perfectly still and unbothered.',
+    { note: '첫 판 채택. 모자와 석궁이 조금 자세하지만 화풍 안이다.' },
+  ),
+  hero(
+    'hero_yuna',
+    '유나 (원소 결정을 모으는 마법사)',
+    'The hero: Yuna, a small cheerful young woman mage who collects elemental crystals. A soft blue hooded robe (water color), short dark hair peeking out, a proud happy smile with closed happy eyes (two upward arcs). LOTS of tiny round pouches hang all over her: from her belt, her shoulder strap and her staff, each pouch with a small crystal peeking out in different colors (red, blue, green, yellow). She holds a simple wooden staff topped with one blue crystal. Her pose shows off her collection a little.',
+    { note: '첫 판 채택.' },
+  ),
+  hero(
+    'hero_rookie',
+    '신참 (가장 낮은 등급의 이름 없는 용사)',
+    'The hero: a nameless rookie adventurer, the lowest rank, a nervous teenage boy. A way-too-big dented iron helmet slides down over his eyes so his eyes are hidden; only his small wobbly worried mouth shows. Three big sweat drops flying off his head (nervous cold sweat). Thin body, a cheap padded cream vest, patched brown trousers, knock-kneed trembling stance. He grips a rusty one-handed sword with both hands, held up stiffly in front of him; the blade is grey with a few orange-brown rust spots and a small chip in the edge.',
+    { note: "첫 판 채택. '하찮은' 결에 가장 가깝다. 투구 눈구멍이 조금 눈처럼 읽힌다." },
+  ),
+  hero(
+    'hero_ace',
+    'S급 마법사',
+    "The hero: a top-rank (S rank) mage, a tall slim woman, a bit taller and slimmer than the other chibi heroes but STILL a chibi: about 3 heads tall and NOT more, with a big round head. Draw her with outlines exactly as thick and bold as the dwarf's and the same chunky simple rounded shapes (not a thin elegant illustration). Short chestnut-brown bob haircut as one simple blob, round human ears (NOT an elf, NOT white or silver hair, no twin tails, no hair ornaments). Calm, composed, expressionless face: two dot eyes and a small straight mouth. A plain cream robe and a long deep-forest-green cape billowing far out to one side in the wind. She holds a tall plain wooden staff, taller than her, topped with a small round amber stone drawn as one flat amber circle (no shine, no highlight dot). Quiet confident stance, not posing. She must NOT resemble any famous anime or game character.",
+    { note: '둘째 판. 첫 판(hero_ace.rejected1.png)은 선이 얇고 4등신이 넘는 보통 일러스트 같았고 구슬에 광택이 있었다. 새 판은 선이 드워프만큼 굵고 약 3등신이다.' },
+  ),
+  hero(
+    'hero_veteran',
+    '노장 (은퇴를 앞둔 할머니 전사)',
+    'The hero: an old grandmother warrior about to retire, still strong. Short stocky body, grey hair in a round bun, kind gentle eyes drawn as two soft smiling crescents, a warm small smile, ONE scar as a single short line across her cheek. Worn simple armor: a dull steel breastplate over a faded maroon tunic, a short faded cape. Instead of a walking cane she leans on her sheathed greatsword: the big greatsword in its long brown leather scabbard is planted point-down on the ground in front of her and she rests both hands on its crossguard and pommel like an old lady leaning on a cane.',
+    { note: '첫 판 채택. 칼집째 세운 대검에 두 손을 얹고 지팡이처럼 기댄다.' },
+  ),
+];
+
 // ── 전체 목록 ───────────────────────────────────────────────────────────
 
 const inGroup =
   (group: ArtGroup) =>
   (e: Entry): ArtAsset => ({ ...e, group });
 
-/** 모든 에셋. 그룹 순서(scene, ui, cards, refine, town), 그룹 안에서는 위에 적은 순서. */
+/** 모든 에셋. 그룹 순서(scene, ui, cards, refine, town, heroes), 그룹 안에서는 위에 적은 순서. */
 export const ART_ASSETS: readonly ArtAsset[] = [
   ...SCENE.map(inGroup('scene')),
   ...UI.map(inGroup('ui')),
   ...[...CARDS_A, ...CARDS_B].map(inGroup('cards')),
   ...REFINE.map(inGroup('refine')),
   ...TOWN.map(inGroup('town')),
+  ...HEROES.map(inGroup('heroes')),
 ];
 
 /** '그룹/키'. 키는 그룹 안에서만 겹치지 않는다 (bellows, quench는 scene과 cards에 다 있다). */

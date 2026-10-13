@@ -14,7 +14,8 @@
 //              캔버스로 되돌려 쓴다 (원본 px 수치가 그대로 맞는다). 처리된 그림은 줄이고 압축한 것이라 조금 흐리고,
 //              그림자 떼기·층 쌓기 결과도 조금 다르다.
 //   이전 판    그림 목록의 '이전 → 새' 칸 (layout.ts OLD_VERSIONS): --raw 폴더의 버린 판. 없으면 그 칸을 뺀다.
-//   사람       --heroes 폴더의 hero_<이름>.png (영웅 예제 그림, 이 저장소 밖). 없으면 사람 없이 그린다.
+//   사람       --heroes 폴더의 hero_<이름>.png (영웅 예제 원본). 없으면 처리본 src/assets/art/heroes/hero_<이름>.webp를
+//              meta.json heroes의 trim 자리에 놓아 원본 캔버스로 되돌려 쓴다 (town 그림과 같은 법). 둘 다 없으면 사람 없이.
 //              드워프는 tools/art/ref/d_dwarf_idle.png.
 //   UI 목업    src/assets/art/refine의 골드·덩어리·가방 아이콘.
 // 같은 원본과 같은 크롬이면 같은 그림이 나온다 (구름·오솔길의 흔들림은 씨앗 고정 난수).
@@ -22,7 +23,7 @@
 // Options:
 //   --out DIR     결과 폴더 (기본: OS 임시 폴더/blacksmith-art/town-mockup). 보존한 시안을 바꾸려면 docs/mockups/town.
 //   --raw DIR     원본 PNG 폴더 (위 '그림 찾기')
-//   --heroes DIR  영웅 예제 그림 폴더
+//   --heroes DIR  영웅 예제 원본 PNG 폴더 (없으면 src/assets/art/heroes의 처리본)
 //   --png         WebP(품질 0.85) 대신 PNG로, full도 줄이지 않는다 (1:1로 살펴볼 때)
 //   --debug       <out>/debug/에 상자와 기준점을 그린 지도(debug_boxes)와 그림마다 잰 값(diag.json)도 쓴다
 //   --grid        지도 대신 바닥에 좌표 격자만 그려 <out>/debug/debug_grid로 (자리를 잡을 때)
@@ -99,9 +100,10 @@ async function main(): Promise<void> {
   const files: Record<string, string> = {};
   const rebuild: Record<string, Rebuild> = {};
   const metaFile = join(ASSETS_OUT_DIR, 'meta.json');
-  const meta = existsSync(metaFile)
-    ? ((JSON.parse(readFileSync(metaFile, 'utf8')) as { town?: Record<string, TownMetaEntry> }).town ?? {})
+  const metaAll = existsSync(metaFile)
+    ? (JSON.parse(readFileSync(metaFile, 'utf8')) as { town?: Record<string, TownMetaEntry>; heroes?: Record<string, TownMetaEntry> })
     : {};
+  const meta = metaAll.town ?? {};
   let fromRaw = 0;
   let fromWebp = 0;
   const missing: string[] = [];
@@ -130,13 +132,23 @@ async function main(): Promise<void> {
     if (p !== null) files[name] = p;
   }
   let heroCount = 0;
-  if (heroes !== null) {
-    for (const h of HERO_NAMES) {
-      const p = join(heroes, `hero_${h}.png`);
-      if (existsSync(p)) {
-        files[`hero_${h}`] = p;
-        heroCount++;
-      }
+  let heroFromWebp = 0;
+  for (const h of HERO_NAMES) {
+    const key = `hero_${h}`;
+    const p = heroes !== null ? join(heroes, `${key}.png`) : null;
+    if (p !== null && existsSync(p)) {
+      files[key] = p;
+      heroCount++;
+      continue;
+    }
+    // The processed example heroes (tools/art/assets.ts 'heroes'), put back on their source canvas.
+    const webp = join(ASSETS_OUT_DIR, 'heroes', `${key}.webp`);
+    const m = metaAll.heroes?.[key];
+    if (existsSync(webp) && m !== undefined) {
+      files[key] = webp;
+      rebuild[key] = { ow: m.trim.ow, oh: m.trim.oh, x: m.trim.x, y: m.trim.y, w: m.trim.w, h: m.trim.h };
+      heroCount++;
+      heroFromWebp++;
     }
   }
   files.dwarf = join(REPO_ROOT, 'tools', 'art', 'ref', 'd_dwarf_idle.png');
@@ -146,7 +158,7 @@ async function main(): Promise<void> {
   for (const [name, p] of Object.entries(files)) if (!existsSync(p)) delete files[name];
 
   console.log(`town 그림: 원본 ${fromRaw}, 처리된 WebP ${fromWebp}${missing.length > 0 ? `, 없음 ${missing.length} (${missing.join(', ')})` : ''}`);
-  console.log(`사람: 영웅 예제 ${heroCount}/${HERO_NAMES.length}${heroes === null ? ' (--heroes 없음: 사람 없이 그린다)' : ''}, 드워프 ${files.dwarf !== undefined ? '있음' : '없음'}`);
+  console.log(`사람: 영웅 예제 ${heroCount}/${HERO_NAMES.length}${heroFromWebp > 0 ? ` (처리된 WebP ${heroFromWebp})` : ''}, 드워프 ${files.dwarf !== undefined ? '있음' : '없음'}`);
   console.log(`출력 ${shown(out)} (${png ? 'PNG' : `WebP ${QUALITY}`})\n`);
 
   mkdirSync(out, { recursive: true });

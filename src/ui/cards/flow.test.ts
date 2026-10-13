@@ -18,6 +18,7 @@ import {
   type CardProfile,
   type CardSession,
   cardSaves,
+  cardSessionState,
   defaultProfile,
   hasCardSession,
   PROFILE_KEY,
@@ -210,6 +211,16 @@ describe('saves', () => {
     // '다시 만들기' clears it.
     await saves.saveSession(null);
     expect(await hasCardSession(saves)).toBe(false);
+  });
+
+  it('tells a craft still on the anvil from a finished one (the map’s forge mark, 9.2)', async () => {
+    const saves = cardSaves(memoryStore());
+    expect(await cardSessionState(saves)).toBe('none');
+    const start = beginSession(allNormal(defaultProfile()), iron, 0);
+    await saves.saveSession(start.session);
+    expect(await cardSessionState(saves)).toBe('active');
+    await saves.saveSession(autoplay(start.session));
+    expect(await cardSessionState(saves)).toBe('done');
   });
 
   it('the 레시피 내구도 switch is read back in range', () => {

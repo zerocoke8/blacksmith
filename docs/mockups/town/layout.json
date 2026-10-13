@@ -7,6 +7,9 @@
   "groundY": 760,
   "skyColor": "#CFE3EA",
   "sharpen": null,
+  "thin": {
+   "r": 3
+  },
   "note": "Map px. The ground picture is scaled by groundScale and drawn at y = groundY; above it is flat sky. x,y = ground anchor (the middle of the body, at the lowest point it touches the ground). scale = map px per source px. Draw order: sky, ground, paths, horizon puffs, shadow layer (multiply), sprites back to front by y, tower cloud rings, cloud band."
  },
  "baseScale": 0.5,
@@ -221,6 +224,90 @@
    "x0": -140
   },
   "note": "band = cloud_band.png rows [0,srcH) scaled to h, tiled across, every other tile mirrored"
+ },
+ "smoke": {
+  "puffs": [
+   {
+    "x": 1786,
+    "y": 2912,
+    "r": 22
+   },
+   {
+    "x": 1800,
+    "y": 2900,
+    "r": 20
+   },
+   {
+    "x": 1796,
+    "y": 2866,
+    "r": 26
+   },
+   {
+    "x": 1818,
+    "y": 2856,
+    "r": 28
+   },
+   {
+    "x": 1808,
+    "y": 2840,
+    "r": 22
+   },
+   {
+    "x": 1822,
+    "y": 2808,
+    "r": 32
+   },
+   {
+    "x": 1852,
+    "y": 2800,
+    "r": 33
+   },
+   {
+    "x": 1838,
+    "y": 2780,
+    "r": 28
+   },
+   {
+    "x": 1860,
+    "y": 2740,
+    "r": 38
+   },
+   {
+    "x": 1898,
+    "y": 2734,
+    "r": 36
+   },
+   {
+    "x": 1880,
+    "y": 2708,
+    "r": 32
+   }
+  ],
+  "style": {
+   "top": "#FBF9F5",
+   "under": "#E2DFD9",
+   "line": 7
+  },
+  "note": "the forge's chimney smoke: puffs (map px) drawn like the clouds, after the sprites"
+ },
+ "outlines": {
+  "props": {
+   "prop_crates": 18,
+   "prop_flowers": 16,
+   "prop_lamp": 8,
+   "prop_fence": 12,
+   "prop_bush": 6,
+   "prop_bench": 14,
+   "prop_planter": 14,
+   "prop_stall": 8
+  },
+  "people": {
+   "scale": 0.094,
+   "line": 24,
+   "dwarfScale": 0.1025,
+   "dwarfLine": 20
+  },
+  "note": "extra outer ink added to small props and people (source px), so their lines match the buildings; people.scale / dwarfScale = map px per source px"
  },
  "views": [
   {
@@ -1368,7 +1455,8 @@
    "anchor": {
     "cx": 0.4996,
     "gy": 0.9946
-   }
+   },
+   "ell": 0.5
   },
   {
    "key": "prop_fence",
@@ -1387,7 +1475,8 @@
    "anchor": {
     "cx": 0.4996,
     "gy": 0.9946
-   }
+   },
+   "ell": 0.5
   },
   {
    "key": "prop_crates",
@@ -1559,6 +1648,32 @@
     "cx": 0.4997,
     "gy": 1
    },
+   "spots": [
+    {
+     "dx": -222,
+     "dy": -3,
+     "rx": 58,
+     "ry": 16
+    },
+    {
+     "dx": 246,
+     "dy": -3,
+     "rx": 58,
+     "ry": 16
+    },
+    {
+     "dx": -318,
+     "dy": -3,
+     "rx": 62,
+     "ry": 11
+    },
+    {
+     "dx": 337,
+     "dy": -3,
+     "rx": 62,
+     "ry": 11
+    }
+   ],
    "note": "seen straight-on; one contact shadow per pillar and fence"
   },
   {

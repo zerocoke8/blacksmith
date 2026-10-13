@@ -25,7 +25,7 @@ describe('refine save', () => {
     const now = 1_000_000 * MIN;
     expect(await saves.load()).toBeNull();
     const peek = await peekRefine(now, saves);
-    expect(peek).toEqual({ lumps: PROTOTYPE_FIRST_AWAY_MIN, gained: PROTOTYPE_FIRST_AWAY_MIN, full: false });
+    expect(peek).toEqual({ lumps: PROTOTYPE_FIRST_AWAY_MIN, gained: PROTOTYPE_FIRST_AWAY_MIN, full: false, gold: 0, since: null });
   });
 
   it('round-trips through the store, and peeking writes nothing', async () => {
@@ -42,6 +42,8 @@ describe('refine save', () => {
     const peek = await peekRefine((now + 30) * MIN, saves);
     // The first visit's three hours, and the half hour since.
     expect(peek.gained).toBe(PROTOTYPE_FIRST_AWAY_MIN + 30);
+    // Known by where its counting began, so the map and the refine screen tell this batch once.
+    expect(peek.since).toBe(save.state.accruedAt);
     expect(await store.load(REFINE_SAVE_KEY)).toBe(before);
     await saves.clear();
     expect(await saves.load()).toBeNull();

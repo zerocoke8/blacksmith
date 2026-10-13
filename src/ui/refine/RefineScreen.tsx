@@ -21,6 +21,7 @@ import {
   REFINE_LUMPS,
   REFINE_SOUND,
   REFINE_TEMPO,
+  refineFirstPileLine,
   type RefineItemId,
   refineReturnLine,
   refineRow,
@@ -38,6 +39,7 @@ import {
   refineView,
 } from '../../sim/refine/index.ts';
 import { reducedMotion, Sheet } from '../cards/parts.tsx';
+import { arrivalKey, markArrivalTold, shouldTellArrival } from './arrival.ts';
 import { makeCollector } from './collector.ts';
 import { type BlowResult, makeHammer } from './hammer.ts';
 import { RefineLab } from './RefineLab.tsx';
@@ -173,7 +175,12 @@ export default function RefineScreen(props: { onExit(): void }) {
       const visit = { ...newVisit(ms, r.state, r.gained, full), ...feel() };
       put({ ...base, state: r.state, firstSeen: true, visits: [...base.visits, visit].slice(-VISIT_LIMIT) });
       if (r.gained > 0) {
-        showNotice(refineReturnLine(r.gained));
+        // Said once per batch: the map may have said it already as it opened (arrival.ts).
+        const key = arrivalKey(loaded === null ? null : base.state.accruedAt);
+        if (shouldTellArrival(key, r.gained)) {
+          markArrivalTold(key, r.gained);
+          showNotice(loaded === null ? refineFirstPileLine(r.gained) : refineReturnLine(r.gained));
+        }
         // The pile grows in front of him once the workshop is up: it shows what was there first.
         if (!reduced) {
           setLumpsShown(base.state.lumps);
@@ -503,7 +510,7 @@ export default function RefineScreen(props: { onExit(): void }) {
       style={chunkUrl !== null ? ({ '--rf-chunk': `url("${chunkUrl}")` } as CSSProperties) : undefined}
     >
       <header className="rf-top">
-        <button type="button" className="rf-iconbtn" onClick={props.onExit} aria-label="가게로">
+        <button type="button" className="rf-iconbtn" onClick={props.onExit} aria-label="마을로">
           ←
         </button>
         <b className="rf-title">광석 정제</b>

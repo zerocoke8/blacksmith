@@ -1,0 +1,508 @@
+{
+ "version": 1,
+ "guestHeight": 80,
+ "ground": {
+  "file": "ground",
+  "x": 0,
+  "y": -0.8,
+  "w": 1024,
+  "h": 1853,
+  "scale": 2.4
+ },
+ "horizon": [
+  {
+   "file": "horizon_0",
+   "x": 0,
+   "y": 647,
+   "w": 1229,
+   "h": 233,
+   "scale": 1
+  },
+  {
+   "file": "horizon_1",
+   "x": 1229,
+   "y": 647,
+   "w": 1229,
+   "h": 233,
+   "scale": 1
+  }
+ ],
+ "rings": [
+  {
+   "file": "rings_0",
+   "x": 301,
+   "y": 253,
+   "w": 1871,
+   "h": 187,
+   "scale": 1
+  }
+ ],
+ "band": {
+  "file": "band",
+  "w": 1043.3208,
+  "h": 357.5974,
+  "x0": -140,
+  "y": 0
+ },
+ "pictures": {
+  "prop_tree_pine": {
+   "file": "prop_tree_pine",
+   "w": 178,
+   "h": 255,
+   "ax": 88.5,
+   "ay": 251,
+   "scale": 0.9983,
+   "foot": {
+    "off": -0.4991,
+    "bw": 96.6327
+   }
+  },
+  "tower_water": {
+   "file": "tower_water",
+   "w": 313,
+   "h": 1192,
+   "ax": 139.5,
+   "ay": 1191,
+   "scale": 1.0009,
+   "foot": {
+    "off": 0,
+    "bw": 278.2586
+   }
+  },
+  "tower_wind": {
+   "file": "tower_wind",
+   "w": 324,
+   "h": 1193,
+   "ax": 139.5,
+   "ay": 1192,
+   "scale": 1,
+   "foot": {
+    "off": 0,
+    "bw": 278.0121
+   }
+  },
+  "prop_tree_round": {
+   "file": "prop_tree_round",
+   "w": 219,
+   "h": 242,
+   "ax": 108.5,
+   "ay": 241,
+   "scale": 1.0001,
+   "foot": {
+    "off": 2.0002,
+    "bw": 119.9132
+   }
+  },
+  "tower_fire": {
+   "file": "tower_fire",
+   "w": 319,
+   "h": 1259,
+   "ax": 146,
+   "ay": 1257,
+   "scale": 1.0001,
+   "foot": {
+    "off": 0,
+    "bw": 293.0201
+   }
+  },
+  "tower_earth": {
+   "file": "tower_earth",
+   "w": 331,
+   "h": 1259,
+   "ax": 151.5,
+   "ay": 1259,
+   "scale": 0.999,
+   "foot": {
+    "off": 0,
+    "bw": 301.7092
+   }
+  },
+  "prop_rocks": {
+   "file": "prop_rocks",
+   "w": 114,
+   "h": 92,
+   "ax": 54,
+   "ay": 90,
+   "scale": 1.0008,
+   "foot": {
+    "off": 4.5036,
+    "bw": 84.0667
+   }
+  },
+  "bld_house_a": {
+   "file": "bld_house_a",
+   "w": 248,
+   "h": 266,
+   "ax": 123,
+   "ay": 265,
+   "scale": 0.9981,
+   "foot": {
+    "off": -0.9981,
+    "bw": 212.5879
+   }
+  },
+  "bld_mine": {
+   "file": "bld_mine",
+   "w": 386,
+   "h": 324,
+   "ax": 192.5,
+   "ay": 324,
+   "scale": 1.0003,
+   "foot": {
+    "off": -1.5005,
+    "bw": 269.0831
+   }
+  },
+  "bld_house_b": {
+   "file": "bld_house_b",
+   "w": 270,
+   "h": 329,
+   "ax": 130.5,
+   "ay": 329,
+   "scale": 0.9982,
+   "foot": {
+    "off": 6.4883,
+    "bw": 216.6088
+   }
+  },
+  "prop_bush": {
+   "file": "prop_bush",
+   "w": 130,
+   "h": 119,
+   "ax": 64,
+   "ay": 115,
+   "scale": 1.0015,
+   "foot": {
+    "off": 6.0089,
+    "bw": 79.1174
+   }
+  },
+  "prop_lamp": {
+   "file": "prop_lamp",
+   "w": 79,
+   "h": 166,
+   "ax": 38.5,
+   "ay": 164,
+   "scale": 0.9953,
+   "foot": {
+    "off": 0.4977,
+    "bw": 54.7434
+   }
+  },
+  "bld_guild": {
+   "file": "bld_guild",
+   "w": 611,
+   "h": 540,
+   "ax": 298.5,
+   "ay": 539,
+   "scale": 1,
+   "foot": {
+    "off": -27.0007,
+    "bw": 522.0141
+   }
+  },
+  "prop_flowers": {
+   "file": "prop_flowers",
+   "w": 110,
+   "h": 85,
+   "ax": 54.5,
+   "ay": 83,
+   "scale": 0.9979,
+   "foot": {
+    "off": 1.9959,
+    "bw": 77.839
+   }
+  },
+  "prop_planter": {
+   "file": "prop_planter",
+   "w": 99,
+   "h": 91,
+   "ax": 49,
+   "ay": 89,
+   "scale": 0.9997,
+   "foot": {
+    "off": 3.9987,
+    "bw": 32.9897
+   }
+  },
+  "bld_inn": {
+   "file": "bld_inn",
+   "w": 440,
+   "h": 375,
+   "ax": 214,
+   "ay": 374,
+   "scale": 1.0008,
+   "foot": {
+    "off": 49.037,
+    "bw": 225.1697
+   }
+  },
+  "prop_signpost": {
+   "file": "prop_signpost",
+   "w": 117,
+   "h": 151,
+   "ax": 58,
+   "ay": 150,
+   "scale": 0.9963,
+   "foot": {
+    "off": 0.4981,
+    "bw": 34.9691
+   }
+  },
+  "prop_bench": {
+   "file": "prop_bench",
+   "w": 89,
+   "h": 80,
+   "ax": 44,
+   "ay": 78,
+   "scale": 0.9989,
+   "foot": {
+    "off": 19.4791,
+    "bw": 25.4727
+   }
+  },
+  "bld_fountain": {
+   "file": "bld_fountain",
+   "w": 389,
+   "h": 294,
+   "ax": 194,
+   "ay": 293,
+   "scale": 0.9994,
+   "foot": {
+    "off": -4.9971,
+    "bw": 300.8266
+   }
+  },
+  "prop_stall": {
+   "file": "prop_stall",
+   "w": 150,
+   "h": 156,
+   "ax": 74.5,
+   "ay": 154,
+   "scale": 1.0021,
+   "foot": {
+    "off": 10.5225,
+    "bw": 51.1093
+   }
+  },
+  "bld_market": {
+   "file": "bld_market",
+   "w": 412,
+   "h": 322,
+   "ax": 206,
+   "ay": 321,
+   "scale": 1.0011,
+   "foot": {
+    "off": 105.1157,
+    "bw": 123.4359
+   }
+  },
+  "bld_forge": {
+   "file": "bld_forge",
+   "w": 698,
+   "h": 521,
+   "ax": 348,
+   "ay": 520,
+   "scale": 0.9995,
+   "foot": {
+    "off": 65.4673,
+    "bw": 309.8454
+   }
+  },
+  "dwarf": {
+   "file": "dwarf",
+   "w": 83,
+   "h": 93,
+   "ax": 41,
+   "ay": 90,
+   "scale": 0.9955,
+   "foot": {
+    "off": 4.4798,
+    "bw": 35.8385
+   }
+  },
+  "prop_cart": {
+   "file": "prop_cart",
+   "w": 171,
+   "h": 127,
+   "ax": 83.5,
+   "ay": 125,
+   "scale": 1.0018,
+   "foot": {
+    "off": -4.508,
+    "bw": 81.1449
+   }
+  },
+  "prop_crates": {
+   "file": "prop_crates",
+   "w": 106,
+   "h": 114,
+   "ax": 52,
+   "ay": 109,
+   "scale": 1.0006,
+   "foot": {
+    "off": 8.505,
+    "bw": 76.0445
+   }
+  },
+  "prop_fence": {
+   "file": "prop_fence",
+   "w": 227,
+   "h": 65,
+   "ax": 113,
+   "ay": 63,
+   "scale": 1.0008,
+   "foot": {
+    "off": 0.5004,
+    "bw": 222.1768
+   }
+  },
+  "bld_shop": {
+   "file": "bld_shop",
+   "w": 378,
+   "h": 335,
+   "ax": 187,
+   "ay": 334,
+   "scale": 1.0004,
+   "foot": {
+    "off": 56.0213,
+    "bw": 187.071
+   }
+  },
+  "bld_gate": {
+   "file": "bld_gate",
+   "w": 718,
+   "h": 217,
+   "ax": 358.5,
+   "ay": 217,
+   "scale": 1.0543,
+   "foot": {
+    "off": 0,
+    "bw": 742.2547
+   }
+  }
+ },
+ "heroes": {
+  "hero_ace": {
+   "file": "hero_ace",
+   "w": 80,
+   "h": 101,
+   "ax": 39,
+   "ay": 99,
+   "scale": 0.9972,
+   "foot": {
+    "off": -4.9862,
+    "bw": 38.8924
+   }
+  },
+  "hero_aren": {
+   "file": "hero_aren",
+   "w": 71,
+   "h": 101,
+   "ax": 34.5,
+   "ay": 99,
+   "scale": 1.002,
+   "foot": {
+    "off": 3.5069,
+    "bw": 35.069
+   }
+  },
+  "hero_isol": {
+   "file": "hero_isol",
+   "w": 71,
+   "h": 84,
+   "ax": 34.5,
+   "ay": 82,
+   "scale": 0.9921,
+   "foot": {
+    "off": 5.4568,
+    "bw": 19.6446
+   }
+  },
+  "hero_nea": {
+   "file": "hero_nea",
+   "w": 81,
+   "h": 90,
+   "ax": 40,
+   "ay": 88,
+   "scale": 1.0065,
+   "foot": {
+    "off": -3.0195,
+    "bw": 37.2411
+   }
+  },
+  "hero_odel": {
+   "file": "hero_odel",
+   "w": 84,
+   "h": 95,
+   "ax": 42,
+   "ay": 92,
+   "scale": 1.0062,
+   "foot": {
+    "off": -1.5093,
+    "bw": 44.2725
+   }
+  },
+  "hero_rookie": {
+   "file": "hero_rookie",
+   "w": 72,
+   "h": 90,
+   "ax": 35.5,
+   "ay": 87,
+   "scale": 1.0076,
+   "foot": {
+    "off": 0.5038,
+    "bw": 27.2056
+   }
+  },
+  "hero_toma": {
+   "file": "hero_toma",
+   "w": 74,
+   "h": 84,
+   "ax": 36.5,
+   "ay": 81,
+   "scale": 1.0031,
+   "foot": {
+    "off": 6.0188,
+    "bw": 40.1251
+   }
+  },
+  "hero_vail": {
+   "file": "hero_vail",
+   "w": 64,
+   "h": 87,
+   "ax": 31.5,
+   "ay": 84,
+   "scale": 1.0058,
+   "foot": {
+    "off": -1.5087,
+    "bw": 55.3192
+   }
+  },
+  "hero_veteran": {
+   "file": "hero_veteran",
+   "w": 57,
+   "h": 98,
+   "ax": 28,
+   "ay": 95,
+   "scale": 0.9976,
+   "foot": {
+    "off": -2.4939,
+    "bw": 39.9026
+   }
+  },
+  "hero_yuna": {
+   "file": "hero_yuna",
+   "w": 71,
+   "h": 88,
+   "ax": 35.5,
+   "ay": 86,
+   "scale": 0.9933,
+   "foot": {
+    "off": 0.4967,
+    "bw": 38.739
+   }
+  }
+ },
+ "sources": "89a3a0a7c94da1832c1d"
+}

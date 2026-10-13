@@ -279,8 +279,8 @@ export function CardCraft({ onExit }: Props) {
             ← {phase === 'craft' ? '제작으로' : '돌아가기'}
           </button>
         ) : (
-          <button type="button" className="kc-btn ghost small" onClick={onExit} aria-label="가게로">
-            {phase === 'craft' ? '←' : '← 가게로'}
+          <button type="button" className="kc-btn ghost small" onClick={onExit} aria-label="마을로">
+            {phase === 'craft' ? '←' : '← 마을로'}
           </button>
         )}
         {overlay === null && phase === 'craft' && session !== null ? (
@@ -364,7 +364,7 @@ export function CardCraft({ onExit }: Props) {
           onSeen={markSeen}
           onFinished={() => setHolding(false)}
           onExit={onExit}
-          exitLabel="가게로"
+          exitLabel="마을로"
           notice={saveFailed ? saveWarning : undefined}
           onScreen={noteScreen}
           menu={[

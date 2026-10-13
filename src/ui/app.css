@@ -1,9 +1,9 @@
 /* Portrait, touch-first base (CLAUDE.md). Shop = warm forge colors (기획서 1.1).
    Two looks share this file: the old dark forge tokens (--bg, --panel …) that the v0.6 comparison
-   screen (옛 방식) still uses, and the doodle look (--dd-*) of the home screen and the card craft:
-   cream paper with a fat dark-brown line, flat colours, round fonts, stickers that sit a little
-   off their shadow. The doodle screens (.app-home, .kc-skin, .ft-root) point the old tokens at the
-   doodle ones, so shared pieces (sheets, buttons) follow whichever screen they are on. */
+   screen (옛 방식) still uses, and the doodle look (--dd-*) of the town map home (ui/town), the card
+   craft and the refine screen: cream paper with a fat dark-brown line, flat colours, round fonts,
+   stickers that sit a little off their shadow. The doodle screens (.kc-skin, .ft-root) point the
+   old tokens at the doodle ones, so shared pieces (sheets, buttons) follow whichever screen they are on. */
 
 :root {
   --bg: #1c1612;
@@ -80,7 +80,6 @@
 }
 
 /* The doodle screens: the old tokens point at paper and ink there. */
-.app-home,
 .kc-skin,
 .ft-root {
   --bg: var(--dd-wood);
@@ -158,153 +157,6 @@ button {
   color: var(--muted);
 }
 
-/* ---------- Home: the workshop wall, the dwarf at his anvil, three stickers to tap ---------- */
-
-.app-home {
-  min-height: 100dvh;
-  /* The workshop picture over the top, its floor running on into the screen's own floor colour. */
-  background: var(--home-bg, none) center top / auto max(58%, 420px) no-repeat, var(--dd-wood);
-}
-
-.home {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  min-height: 100dvh;
-  padding: calc(22px + env(safe-area-inset-top)) 16px calc(18px + env(safe-area-inset-bottom));
-  text-align: center;
-}
-
-/* The title on a paper sign, a little crooked. */
-.home-title {
-  padding: 8px 22px 10px;
-  border: var(--dd-stroke-fat) solid var(--dd-ink);
-  border-radius: var(--dd-round);
-  background: var(--dd-paper);
-  box-shadow: var(--dd-pop);
-  transform: rotate(-1.5deg);
-}
-
-.home-title h1 {
-  margin: 0;
-  color: var(--dd-ink);
-  font-family: var(--dd-font-round);
-  font-size: clamp(1.9rem, 9vw, 2.4rem);
-  font-weight: 400;
-  line-height: 1.15;
-  letter-spacing: 0.02em;
-}
-
-.home-title p {
-  margin: 2px 0 0;
-  color: var(--dd-ink-soft);
-  font-family: var(--dd-font-body);
-  font-size: 0.95rem;
-}
-
-/* The dwarf stands a step behind his anvil, as on the craft screen. */
-.home-scene {
-  position: relative;
-  flex: 1 1 auto;
-  width: min(100%, 360px);
-  min-height: 200px;
-  max-height: 46vh;
-  margin: 8px 0;
-}
-
-/* His shadow on the floor: a flat oval. */
-.home-glow {
-  position: absolute;
-  right: 10%;
-  bottom: 1%;
-  left: 6%;
-  height: 9%;
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--dd-ink) 28%, transparent);
-}
-
-.home-dwarf,
-.home-anvil {
-  position: absolute;
-  bottom: 4%;
-  object-fit: contain;
-}
-
-.home-dwarf {
-  left: 2%;
-  height: 84%;
-  animation: home-breathe 3.2s ease-in-out infinite alternate;
-  transform-origin: 50% 100%;
-}
-
-.home-anvil {
-  right: 8%;
-  bottom: 2%;
-  width: 36%;
-}
-
-.home-menu {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 14px;
-  width: min(100%, 320px);
-}
-
-/* The doodle button: flat colour, fat line, a hard shadow it sinks into when pressed. */
-.home-entry {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 58px;
-  margin: 0;
-  padding: 8px 20px;
-  border: var(--dd-stroke-fat) solid var(--dd-ink);
-  border-radius: var(--dd-round);
-  background: var(--dd-orange);
-  box-shadow: var(--dd-pop);
-  color: var(--dd-ink);
-  font-family: var(--dd-font-round);
-  font-size: 1.25rem;
-  line-height: 1.2;
-  cursor: pointer;
-}
-
-.home-entry:active {
-  transform: translateY(3px);
-  box-shadow: none;
-}
-
-/* '모루 위에 쇠가 기다린다' under the card craft entry. */
-.home-entry small {
-  display: block;
-  font-family: var(--dd-font-body);
-  font-size: 0.78rem;
-}
-
-/* 광석 정제 (10.1): the second sticker, butter yellow, with the pile's count on a round tag. */
-.home-entry.home-refine {
-  position: relative;
-  background: var(--dd-butter);
-}
-
-.home-badge {
-  position: absolute;
-  top: -12px;
-  right: -8px;
-  min-width: 34px;
-  padding: 3px 8px;
-  border: var(--dd-stroke) solid var(--dd-ink);
-  border-radius: 999px;
-  background: var(--dd-paper-3);
-  box-shadow: var(--dd-pop-s);
-  font-family: var(--dd-font-round);
-  font-size: 0.95rem;
-  line-height: 1.1;
-  transform: rotate(4deg);
-}
-
 /* A screen loading on demand (the refine screen's chunk). */
 .app-loading {
   display: flex;
@@ -315,42 +167,4 @@ button {
   background: var(--dd-wood);
   color: var(--dd-paper);
   font-family: var(--dd-font-body);
-}
-
-/* The v0.6 FF14 prototype, kept small for comparison. */
-.home-old {
-  display: block;
-  margin: 0 auto;
-  min-height: 44px;
-  padding: 8px 14px;
-  border: 0;
-  background: transparent;
-  color: var(--dd-paper);
-  font-family: var(--dd-font-body);
-  font-size: 0.85rem;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  cursor: pointer;
-}
-
-.home-note {
-  margin: 0;
-  color: var(--dd-paper-2);
-  font-size: 0.75rem;
-  opacity: 0.85;
-}
-
-@keyframes home-breathe {
-  from {
-    transform: scaleY(1);
-  }
-  to {
-    transform: scaleY(1.012);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .home-dwarf {
-    animation: none;
-  }
 }
