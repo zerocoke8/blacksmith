@@ -1,0 +1,1076 @@
+/* 용사 화면 (hs-), 용사 카드 (hc-), 자세히 (hd-), 편성 (fe-): the doodle look (app.css --dd-*): cream
+   paper stickers with a fat dark-brown line and a hard shadow on the workshop's wood, Jua for names
+   and numbers, Gowun Dodum for reading. Touch first: no hover, targets at least 44 px. The notch and
+   the home bar stay clear. */
+
+:root {
+  /* 진화 색 (5.6) as card backgrounds [튜닝]. */
+  --hc-purple: #c9b3ee;
+  --hc-purple-2: #a98bdc;
+  --hc-gold: #f6d36a;
+  --hc-gold-2: #e5b638;
+  --hc-red: #ef8f7a;
+  --hc-red-2: #d9644d;
+  --hc-white: #fbf7ef;
+  --hc-white-2: #ddd5c6;
+  --hc-special: #f3c845;
+}
+
+.hs-root {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  max-width: 480px;
+  margin: 0 auto;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  overflow: hidden;
+  background: var(--dd-wood);
+  box-shadow: 0 0 0 100vmax var(--dd-wood-3);
+  color: var(--dd-ink);
+  font-family: var(--dd-font-body);
+}
+
+.hs-top,
+.hd-top {
+  position: relative;
+  z-index: 6;
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  min-height: 52px;
+  padding: 4px 6px;
+  border-bottom: var(--dd-stroke-fat) solid var(--dd-ink);
+  background: var(--dd-paper);
+}
+
+.hs-iconbtn {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 40px;
+  padding: 0;
+  border: var(--dd-stroke) solid var(--dd-ink);
+  border-radius: var(--dd-round-s);
+  background: var(--dd-paper-3);
+  box-shadow: var(--dd-pop-s);
+  color: var(--dd-ink);
+  font-family: var(--dd-font-round);
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.hs-iconbtn:active {
+  transform: translateY(2px);
+  box-shadow: none;
+}
+
+.hs-title,
+.hd-title {
+  font-family: var(--dd-font-round);
+  font-size: 1.15rem;
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.hs-pages {
+  display: flex;
+  margin-left: auto;
+  border: var(--dd-stroke) solid var(--dd-ink);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: var(--dd-pop-s);
+}
+
+.hs-page {
+  min-width: 52px;
+  height: 44px;
+  padding: 0 10px;
+  border: none;
+  background: var(--dd-paper-3);
+  font-family: var(--dd-font-round);
+  font-size: 0.92rem;
+  cursor: pointer;
+}
+
+.hs-page + .hs-page {
+  border-left: var(--dd-stroke) solid var(--dd-ink);
+}
+
+.hs-page.on {
+  background: var(--dd-butter);
+}
+
+/* ---------- The grid: four cards a row ---------- */
+
+.hs-grid {
+  display: grid;
+  flex: 1;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-content: start;
+  gap: 10px 7px;
+  padding: 12px 10px 18px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.hs-empty {
+  grid-column: 1 / -1;
+  color: var(--dd-paper-muted);
+  text-align: center;
+}
+
+.hs-count {
+  position: absolute;
+  right: 12px;
+  bottom: calc(66px + env(safe-area-inset-bottom));
+  margin: 0;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--dd-wood-3) 80%, transparent);
+  color: var(--dd-paper-muted);
+  font-family: var(--dd-font-round);
+  font-size: 0.75rem;
+  pointer-events: none;
+}
+
+.hs-foot {
+  display: flex;
+  flex: none;
+  align-items: stretch;
+  gap: 6px;
+  padding: 8px 8px 8px;
+  border-top: var(--dd-stroke-fat) solid var(--dd-ink);
+  background: var(--dd-paper);
+}
+
+.hs-tabs {
+  display: flex;
+  flex: 1.6;
+  /* Three tabs of at least 44 px each (touch targets). */
+  min-width: 142px;
+  border: var(--dd-stroke) solid var(--dd-ink);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: var(--dd-pop-s);
+}
+
+.hs-tab {
+  flex: 1;
+  min-width: 44px;
+  height: 44px;
+  padding: 0;
+  border: none;
+  background: var(--dd-paper-3);
+  font-family: var(--dd-font-round);
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.hs-tab + .hs-tab {
+  border-left: 2px solid var(--dd-ink);
+}
+
+.hs-tab.on {
+  background: var(--dd-butter);
+}
+
+.hs-tool {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 4px;
+  border: var(--dd-stroke) solid var(--dd-ink);
+  border-radius: 12px;
+  background: var(--dd-paper-3);
+  box-shadow: var(--dd-pop-s);
+  font-family: var(--dd-font-round);
+  font-size: 0.85rem;
+  line-height: 1.1;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.hs-tool small {
+  color: var(--dd-ink-soft);
+  font-family: var(--dd-font-body);
+  font-size: 0.7rem;
+}
+
+.hs-tool.on {
+  background: var(--dd-butter-paper);
+}
+
+.hs-tool.lab {
+  flex: 0.8;
+  background: var(--dd-sky-paper);
+}
+
+.hs-tool:active,
+.hs-tab:active,
+.hs-page:active {
+  filter: brightness(0.94);
+}
+
+.hs-fl {
+  margin: 10px 0 4px;
+  font-family: var(--dd-font-round);
+  font-weight: 400 !important;
+}
+
+.hs-formation {
+  flex: 1;
+  padding: 10px 10px 16px;
+  overflow-y: auto;
+}
+
+/* ---------- A hero card ---------- */
+
+.hc {
+  --hc-bg: var(--hc-purple);
+  --hc-bg-2: var(--hc-purple-2);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  aspect-ratio: 3 / 4.3;
+  margin: 0;
+  padding: 0;
+  overflow: visible;
+  border: var(--dd-stroke) solid var(--dd-ink);
+  border-radius: 12px;
+  background: var(--hc-bg);
+  box-shadow: var(--dd-pop-s);
+  color: var(--dd-ink);
+  cursor: pointer;
+}
+
+.hc:active {
+  transform: translateY(2px);
+  box-shadow: none;
+}
+
+.hc-gold {
+  --hc-bg: var(--hc-gold);
+  --hc-bg-2: var(--hc-gold-2);
+}
+
+.hc-red {
+  --hc-bg: var(--hc-red);
+  --hc-bg-2: var(--hc-red-2);
+}
+
+.hc-white {
+  --hc-bg: var(--hc-white);
+  --hc-bg-2: var(--hc-white-2);
+}
+
+/* 특급: a second line round the card, in gold, and a small gem on top (5.9 특급 표시 [질문] 15장의 9번: 테두리 장식 추천). */
+.hc.special {
+  outline: 2.5px solid var(--hc-special);
+  outline-offset: -6px;
+}
+
+.hc-gem {
+  position: absolute;
+  top: -7px;
+  left: 50%;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--dd-ink);
+  border-radius: 3px;
+  background: var(--hc-special);
+  transform: translateX(-50%) rotate(45deg);
+}
+
+.hc.unowned {
+  filter: grayscale(0.9);
+  opacity: 0.55;
+}
+
+.hc.selected {
+  transform: translateY(-3px);
+  box-shadow: 0 5px 0 var(--dd-ink);
+}
+
+.hc-pic {
+  position: relative;
+  display: block;
+  flex: 1;
+  min-height: 0;
+  margin: 3px 3px 0;
+  overflow: hidden;
+  border-radius: 9px 9px 4px 4px;
+  background: radial-gradient(circle at 50% 80%, color-mix(in srgb, var(--hc-bg) 40%, white) 0 45%, transparent 46%);
+}
+
+.hc-pic img {
+  position: absolute;
+  bottom: -4%;
+  left: 50%;
+  height: 112%;
+  width: auto;
+  max-width: none;
+  transform: translateX(-50%) scaleX(-1);
+}
+
+/* The element and weapon icons down the left side (5.9). */
+.hc-icons {
+  position: absolute;
+  top: 4px;
+  left: 3px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.hc-icon {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border: 1.5px solid var(--dd-ink);
+  border-radius: 50%;
+  background: var(--dd-paper-3);
+  font-family: var(--dd-font-round);
+  font-size: 0.6rem;
+}
+
+.hc-icon img {
+  width: 15px;
+  height: 15px;
+  object-fit: contain;
+}
+
+/* A healer's staff: a little plus on the weapon icon (5.9 [튜닝]). */
+.hc-heal {
+  position: absolute;
+  right: -6px;
+  bottom: -5px;
+  display: grid;
+  place-items: center;
+  width: 15px;
+  height: 15px;
+  border: 1.5px solid var(--dd-ink);
+  border-radius: 50%;
+  background: var(--dd-mint);
+  font-family: var(--dd-font-round);
+  font-size: 0.72rem;
+  font-style: normal;
+  line-height: 1;
+}
+
+.hc-badge {
+  position: absolute;
+  top: -6px;
+  right: -5px;
+  padding: 0 5px;
+  border: 1.5px solid var(--dd-ink);
+  border-radius: 999px;
+  background: var(--dd-butter);
+  font-family: var(--dd-font-round);
+  font-size: 0.7rem;
+  font-weight: 400;
+}
+
+.hc-foot {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 2px 3px 4px;
+  border-top: 2px solid var(--dd-ink);
+  border-radius: 0 0 10px 10px;
+  background: var(--dd-paper);
+}
+
+.hc-name {
+  max-width: 100%;
+  overflow: hidden;
+  font-family: var(--dd-font-round);
+  font-size: 0.72rem;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hc-stars {
+  display: flex;
+  justify-content: center;
+  gap: 0;
+  height: 12px;
+}
+
+.hc-stars img {
+  width: 12px;
+  height: 12px;
+  object-fit: contain;
+}
+
+.hc-stars.m {
+  height: 22px;
+  gap: 2px;
+}
+
+.hc-stars.m img {
+  width: 22px;
+  height: 22px;
+}
+
+.hc-stars.dim {
+  opacity: 0.4;
+}
+
+.hc-bar {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 15px;
+  overflow: hidden;
+  border: 1.5px solid var(--dd-ink);
+  border-radius: 999px;
+  background: var(--dd-paper-2);
+}
+
+.hc-bar i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--dd-mint);
+}
+
+/* Copies toward the next star: the card's most useful number, at least 11 px. */
+.hc-bar small {
+  position: relative;
+  display: block;
+  font-family: var(--dd-font-round);
+  font-size: 0.72rem;
+  line-height: 12px;
+  text-align: center;
+}
+
+.hc-bar.big {
+  height: 18px;
+  flex: 1;
+}
+
+.hc-bar.big small {
+  font-size: 0.78rem;
+  line-height: 15px;
+}
+
+/* ---------- A hero's page ---------- */
+
+.hd-root {
+  position: fixed;
+  inset: 0;
+  z-index: 25;
+  display: flex;
+  flex-direction: column;
+  max-width: 480px;
+  margin: 0 auto;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  background: var(--dd-wood);
+  animation: hd-in 0.18s ease-out;
+}
+
+@keyframes hd-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+}
+
+.hd-tag {
+  margin-left: auto;
+  padding: 2px 10px;
+  border: 2px solid var(--dd-ink);
+  border-radius: 999px;
+  background: var(--hc-bg, var(--hc-purple));
+  font-family: var(--dd-font-round);
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+
+.hd-root.hc-purple {
+  --hc-bg: var(--hc-purple);
+}
+.hd-root.hc-gold {
+  --hc-bg: var(--hc-gold);
+}
+.hd-root.hc-red {
+  --hc-bg: var(--hc-red);
+}
+
+.hd-scroll {
+  flex: 1;
+  padding: 12px 12px 24px;
+  overflow-y: auto;
+}
+
+.hd-hero {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 10px;
+  padding: 8px 8px 10px;
+  border: var(--dd-stroke-fat) solid var(--dd-ink);
+  border-radius: var(--dd-round);
+  background: var(--hc-bg);
+  box-shadow: var(--dd-pop);
+}
+
+.hd-root.special .hd-hero {
+  outline: 3px solid var(--hc-special);
+  outline-offset: -8px;
+}
+
+.hd-pic {
+  display: block;
+  height: min(34vh, 250px);
+}
+
+.hd-pic img {
+  height: 100%;
+  width: auto;
+  transform: scaleX(-1);
+}
+
+.hd-hero .hc-icons {
+  top: 10px;
+  left: 10px;
+  gap: 4px;
+}
+
+.hd-hero .hc-icon {
+  width: 30px;
+  height: 30px;
+}
+
+.hd-hero .hc-icon img {
+  width: 22px;
+  height: 22px;
+}
+
+.hd-line {
+  margin: 4px 0 0;
+  padding: 3px 12px;
+  border: 2px solid var(--dd-ink);
+  border-radius: 12px;
+  background: var(--dd-paper-3);
+  font-size: 0.86rem;
+  text-align: center;
+  word-break: keep-all;
+}
+
+.hd-card {
+  margin-bottom: 10px;
+  padding: 10px 12px 12px;
+  border: var(--dd-stroke) solid var(--dd-ink);
+  border-radius: var(--dd-round);
+  background: var(--dd-paper);
+  box-shadow: var(--dd-pop-s);
+}
+
+.hd-card h4 {
+  margin: 0 0 6px;
+  font-family: var(--dd-font-round);
+  font-size: 1rem;
+  font-weight: 400;
+}
+
+.hd-stars {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hd-sub {
+  margin: 6px 0 8px;
+  color: var(--dd-ink-soft);
+  font-size: 0.8rem;
+  word-break: keep-all;
+}
+
+.hd-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  margin: 0;
+}
+
+.hd-stats div {
+  padding: 4px 2px 5px;
+  border: 2px solid var(--dd-ink);
+  border-radius: 10px;
+  background: var(--dd-paper-3);
+  text-align: center;
+}
+
+.hd-stats dt {
+  color: var(--dd-ink-soft);
+  font-size: 0.72rem;
+}
+
+.hd-stats dd {
+  margin: 0;
+  font-family: var(--dd-font-round);
+  font-size: 1rem;
+}
+
+.hd-stats dd small {
+  font-size: 0.7rem;
+}
+
+.hd-power {
+  margin: 8px 0 0;
+  font-size: 0.8rem;
+}
+
+.hd-power b {
+  font-family: var(--dd-font-round);
+  font-weight: 400;
+}
+
+.hd-note {
+  margin: 4px 0;
+  color: var(--dd-ink-soft);
+  font-size: 0.86rem;
+}
+
+.hd-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.hd-skill {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 6px;
+  padding: 5px 10px 6px;
+  border: 2px solid var(--dd-ink);
+  border-radius: 10px;
+  background: var(--dd-paper-3);
+}
+
+.hd-skill b {
+  font-family: var(--dd-font-round);
+  font-weight: 400;
+}
+
+.hd-skill small {
+  font-size: 0.8rem;
+  word-break: keep-all;
+}
+
+.hd-skill.sig {
+  background: var(--dd-butter-paper);
+}
+
+.hd-skill.locked {
+  border-style: dashed;
+  background: var(--dd-paper-2);
+  color: var(--dd-ink-soft);
+}
+
+.hd-weapon {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 48px;
+  margin: 0 0 6px;
+  padding: 4px 8px;
+  border: 2px solid var(--dd-ink);
+  border-radius: 10px;
+  background: var(--dd-paper-3);
+  color: var(--dd-ink);
+  text-align: left;
+}
+
+.hd-weapon.hd-pick {
+  cursor: pointer;
+  box-shadow: var(--dd-pop-s);
+}
+
+.hd-weapon.hd-pick:active {
+  transform: translateY(2px);
+  box-shadow: none;
+}
+
+.hd-weapon.on {
+  background: var(--dd-butter-paper);
+}
+
+.hd-w-icon img {
+  width: 34px;
+  height: 34px;
+  object-fit: contain;
+}
+
+.hd-w-name {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.hd-w-name b {
+  font-family: var(--dd-font-round);
+  font-weight: 400;
+}
+
+.hd-w-name small {
+  color: var(--dd-ink-soft);
+  font-size: 0.74rem;
+}
+
+.hd-w-el {
+  width: 22px;
+  height: 22px;
+}
+
+.hd-w-res {
+  padding: 0 6px;
+  border: 1.5px solid var(--dd-ink);
+  border-radius: 999px;
+  background: var(--dd-mint);
+  font-family: var(--dd-font-round);
+  font-size: 0.72rem;
+  font-style: normal;
+}
+
+.hd-wlist {
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.hd-lab {
+  background: var(--dd-sky-paper);
+}
+
+/* ---------- 편성 ---------- */
+
+.fe-root {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: var(--dd-ink);
+}
+
+.fe-root .kc-seg {
+  margin: 0;
+}
+
+.fe-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 8px;
+  padding: 6px 10px;
+  border: var(--dd-stroke) solid var(--dd-ink);
+  border-radius: 12px;
+  background: var(--dd-paper);
+  font-size: 0.86rem;
+}
+
+.fe-head b {
+  font-family: var(--dd-font-round);
+  font-weight: 400;
+}
+
+.fe-actions {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.fe-actions .kc-btn {
+  min-height: 44px;
+  white-space: nowrap;
+}
+
+.fe-row {
+  padding: 6px 8px 8px;
+  border: var(--dd-stroke) solid var(--dd-ink);
+  border-radius: 14px;
+  background: var(--dd-paper);
+  box-shadow: var(--dd-pop-s);
+}
+
+.fe-row-label {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.fe-row-label b {
+  font-family: var(--dd-font-round);
+  font-weight: 400;
+}
+
+.fe-row-label small {
+  color: var(--dd-ink-soft);
+  font-size: 0.72rem;
+}
+
+.fe-cells {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.fe-cell {
+  --hc-bg: var(--hc-purple);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+  height: 86px;
+  margin: 0;
+  padding: 0 0 3px;
+  overflow: hidden;
+  border: var(--dd-stroke) solid var(--dd-ink);
+  border-radius: 12px;
+  background: var(--hc-bg);
+  color: var(--dd-ink);
+  touch-action: none;
+  cursor: grab;
+}
+
+.fe-cell.empty {
+  border-style: dashed;
+  background: var(--dd-paper-2);
+  cursor: pointer;
+}
+
+.fe-cell.empty.target {
+  background: var(--dd-butter-paper);
+}
+
+.fe-cell.selected {
+  box-shadow: 0 0 0 3px var(--dd-orange);
+}
+
+.fe-cell.lifted {
+  opacity: 0.35;
+}
+
+.fe-cell.hc-gold,
+.fe-pick-card.hc-gold {
+  --hc-bg: var(--hc-gold);
+}
+
+.fe-cell.hc-red,
+.fe-pick-card.hc-red {
+  --hc-bg: var(--hc-red);
+}
+
+.fe-pic {
+  position: relative;
+  display: block;
+  flex: 1;
+  width: 100%;
+  overflow: hidden;
+}
+
+.fe-pic img {
+  position: absolute;
+  bottom: -6%;
+  left: 50%;
+  height: 118%;
+  transform: translateX(-50%) scaleX(-1);
+  pointer-events: none;
+}
+
+.fe-cell .hc-icons,
+.fe-pick-card .hc-icons {
+  top: 2px;
+  left: 2px;
+}
+
+.fe-cell .hc-icon,
+.fe-pick-card .hc-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.fe-cell .hc-icon img,
+.fe-pick-card .hc-icon img {
+  width: 12px;
+  height: 12px;
+}
+
+.fe-name {
+  max-width: 100%;
+  padding: 0 4px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--dd-paper);
+  font-family: var(--dd-font-round);
+  font-size: 0.7rem;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fe-off {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 12px;
+  height: 12px;
+  border: 1.5px solid var(--dd-ink);
+  border-radius: 50%;
+  background: var(--dd-ash);
+}
+
+.fe-warn,
+.fe-hint {
+  margin: 0;
+  padding: 5px 10px;
+  border-radius: 10px;
+  font-size: 0.8rem;
+  word-break: keep-all;
+}
+
+.fe-warn {
+  border: 2px solid var(--dd-ink);
+  background: #f8d3c9;
+}
+
+/* Fewer than five: it can still fight (6.3), a gentle note. */
+.fe-warn.soft {
+  border-style: dashed;
+  background: var(--dd-butter-paper);
+}
+
+.fe-hint {
+  color: var(--dd-paper-muted);
+}
+
+.kc-sheet .fe-hint {
+  color: var(--dd-ink-soft);
+}
+
+.fe-pick {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.fe-pick-card {
+  --hc-bg: var(--hc-purple);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+  height: 96px;
+  margin: 0;
+  padding: 0 0 3px;
+  overflow: hidden;
+  border: 2px solid var(--dd-ink);
+  border-radius: 11px;
+  background: var(--hc-bg);
+  box-shadow: var(--dd-pop-s);
+  color: var(--dd-ink);
+  cursor: pointer;
+}
+
+.fe-pick-card.special {
+  outline: 2px solid var(--hc-special);
+  outline-offset: -5px;
+}
+
+/* Standing in the formation: not dimmed (they are the ones in use), a butter ring and the row tag. */
+.fe-pick-card.in {
+  box-shadow: 0 0 0 3px var(--dd-butter), var(--dd-pop-s);
+}
+
+.fe-tags {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.fe-bare {
+  padding: 0 4px;
+  border: 1.5px solid var(--dd-ink);
+  border-radius: 999px;
+  background: var(--dd-paper-2);
+  color: var(--dd-ink-soft);
+  font-family: var(--dd-font-round);
+  font-size: 0.68rem;
+  font-weight: 400;
+  line-height: 1.25;
+}
+
+.fe-pick-card .hc-stars {
+  position: absolute;
+  bottom: 38px;
+  left: 0;
+  right: 0;
+}
+
+.fe-power {
+  font-family: var(--dd-font-round);
+  font-size: 0.72rem;
+  line-height: 1.2;
+}
+
+.fe-in {
+  padding: 0 4px;
+  border: 1.5px solid var(--dd-ink);
+  border-radius: 999px;
+  background: var(--dd-butter);
+  font-family: var(--dd-font-round);
+  font-size: 0.68rem;
+  font-weight: 400;
+  line-height: 1.25;
+}
+
+.fe-ghost {
+  position: fixed;
+  z-index: 60;
+  width: 64px;
+  height: 80px;
+  pointer-events: none;
+  transform: translate(-50%, -70%) rotate(-6deg);
+}
+
+.fe-ghost img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  transform: scaleX(-1);
+  filter: drop-shadow(0 3px 0 var(--dd-ink));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hd-root {
+    animation: none;
+  }
+}

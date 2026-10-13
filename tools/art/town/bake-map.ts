@@ -14,6 +14,7 @@
 
 import type { BakedLayer, BakedManifest, BakedPic } from '../../../src/render/town/baked.ts';
 import { GUESTS, groundEllipse, type LayoutItem, MAP_ITEMS, type PuffStyle, TOWER_TOP_CUT, TOWN_LAYOUT } from '../../../src/render/town/layout.ts';
+import { TOWN_GUEST_HEROES } from '../assets.ts';
 import { alphaBox, bodyOf, rowExtent, seeded, shadowMarks, splitByMarks, thinInk } from './pixels.ts';
 
 const INK = '#34231a';
@@ -54,11 +55,15 @@ function picMeta(group: 'town' | 'heroes' | 'scene', key: string): PicMeta | nul
   return { scale: num(raw.scale, 1), trim: { x: num(trim.x, 0), y: num(trim.y, 0), w: num(trim.w, w), h: num(trim.h, h) } };
 }
 
-/** The example heroes with a processed picture, in a fixed order. */
+/**
+ * The heroes who walk the map (tools/art/assets.ts TOWN_GUEST_HEROES: the ten example heroes) with a
+ * processed picture, in a fixed order. The roster's other heroes in src/assets/art/heroes are not baked.
+ */
 function heroKeys(): string[] {
+  const guests = new Set(TOWN_GUEST_HEROES);
   return Object.keys(SOURCES)
     .map((p) => /\/art\/heroes\/(hero_[^/]+)\.webp$/.exec(p)?.[1])
-    .filter((k): k is string => k !== undefined)
+    .filter((k): k is string => k !== undefined && guests.has(k))
     .sort();
 }
 

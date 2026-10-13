@@ -175,25 +175,28 @@ export function Result({ session, onPick, onAgain, onAgainSame, onBench }: Props
   );
 }
 
-/** What the player is about to put in: an enchant (maybe needing a crystal) or a staff element. */
-type Draft = { kind: 'enchant'; enchant: EnchantId } | { kind: 'staffElement' };
+/** What the player is about to put in: an enchant (maybe needing a crystal) or the weapon's 속성 칸 (4.3). */
+type Draft = { kind: 'enchant'; enchant: EnchantId } | { kind: 'elementSlot' };
 
+/**
+ * The 속성 칸 and the 인챈트 슬롯 (4.3): every weapon has one 속성 칸 outside the slots (one 원소 결정
+ * sets its attack element; a hero of that element gets 공명), then its quality's enchant slots.
+ */
 function SlotFiller({ weapon, inventory, onPick }: { weapon: Weapon; inventory: MaterialInventory; onPick(p: SlotPick): void }) {
   const [draft, setDraft] = useState<Draft | null>(null);
   const [element, setElement] = useState<Element | null>(null);
-  const isStaff = weapon.type === 'staff';
   const total = weaponSlotCount(weapon);
   const open = weaponFreeSlots(weapon);
-  const staffOpen = isStaff && weapon.element === null;
+  const elementOpen = weapon.element === null;
 
-  const needsElement = draft !== null && (draft.kind === 'staffElement' || ENCHANTS[draft.enchant].family === 'crystal');
+  const needsElement = draft !== null && (draft.kind === 'elementSlot' || ENCHANTS[draft.enchant].family === 'crystal');
   const pick: SlotPick | null =
     draft === null
       ? null
-      : draft.kind === 'staffElement'
+      : draft.kind === 'elementSlot'
         ? element === null
           ? null
-          : { kind: 'staffElement', element }
+          : { kind: 'elementSlot', element }
         : { kind: 'enchant', enchant: draft.enchant, element: needsElement ? element : null };
   const reason = pick === null ? (needsElement ? '원소 결정을 고른다' : null) : slotBlock(weapon, pick, inventory);
 
@@ -210,39 +213,37 @@ function SlotFiller({ weapon, inventory, onPick }: { weapon: Weapon; inventory: 
   };
 
   const filled: string[] = [];
-  if (!isStaff && weapon.element !== null) filled.push(`${ENCHANTS.element.name} (${ELEMENT_LABEL[weapon.element]})`);
-  for (const e of weapon.enchants) filled.push(ENCHANTS[e].name);
-  const candidates = ENCHANT_IDS.filter((id) => !(isStaff && id === 'element'));
+  for (const e of weapon.enchants) if (e !== 'element') filled.push(ENCHANTS[e].name);
+  // 속성 부여 is the 속성 칸 now, not an enchant (4.5).
+  const candidates = ENCHANT_IDS.filter((id) => id !== 'element');
 
   return (
     <section className="kc-panel">
-      <h3>인챈트 슬롯</h3>
+      <h3>속성 칸과 인챈트 슬롯</h3>
       <div className="kc-slots">
-        {isStaff && (
-          <div className={weapon.element !== null ? 'kc-slot filled' : 'kc-slot'}>
-            <small>속성 칸</small>
-            {weapon.element !== null ? ELEMENT_LABEL[weapon.element] : '비어 있음'}
-          </div>
-        )}
+        <div className={weapon.element !== null ? 'kc-slot filled' : 'kc-slot'}>
+          <small>속성 칸</small>
+          {weapon.element !== null ? ELEMENT_LABEL[weapon.element] : '무속성'}
+        </div>
         {Array.from({ length: total }, (_, i) => (
           <div key={i} className={filled[i] !== undefined ? 'kc-slot filled' : 'kc-slot'}>
             {filled[i] ?? '빈 슬롯'}
           </div>
         ))}
       </div>
-      {total === 0 && <p className="kc-hint">범작에는 인챈트 슬롯이 없다.</p>}
-      {(open > 0 || staffOpen) && (
-        <details className="kc-slotpick">
+      {total === 0 && <p className="kc-hint">범작에는 인챈트 슬롯이 없다. 속성 칸은 있다.</p>}
+      {(open > 0 || elementOpen) && (
+        <details className="kc-slotpick" open={elementOpen}>
           <summary>
-            인챈트를 넣는다 <small>빈 칸 {open + (staffOpen ? 1 : 0)}</small>
+            속성·인챈트를 넣는다 <small>빈 칸 {open + (elementOpen ? 1 : 0)}</small>
           </summary>
-          <p className="kc-hint">재료 하나에 인챈트 하나. 넣으면 바꿀 수 없다. 비워 두면 특별 수리 때 채운다.</p>
+          <p className="kc-hint">원소 결정 하나로 속성 칸을 채우면 그 속성으로 친다. 같은 속성의 용사가 쥐면 공명. 넣으면 바꿀 수 없다.</p>
           <div className="kc-pick-grid three">
-            {staffOpen && (
+            {elementOpen && (
               <button
                 type="button"
-                className={draft?.kind === 'staffElement' ? 'kc-pick on' : 'kc-pick'}
-                onClick={() => choose({ kind: 'staffElement' })}
+                className={draft?.kind === 'elementSlot' ? 'kc-pick on' : 'kc-pick'}
+                onClick={() => choose({ kind: 'elementSlot' })}
               >
                 <b>속성 칸</b>
                 <small>원소 결정</small>
@@ -251,7 +252,7 @@ function SlotFiller({ weapon, inventory, onPick }: { weapon: Weapon; inventory: 
             {open > 0 &&
               candidates.map((id) => {
                 const spec = ENCHANTS[id];
-                const taken = id === 'element' ? weapon.element !== null : weapon.enchants.includes(id);
+                const taken = weapon.enchants.includes(id);
                 const key = spec.family === 'crystal' ? null : slotMaterial({ kind: 'enchant', enchant: id, element: null });
                 const stock = key === null ? null : (inventory[key] ?? 0);
                 const on = draft?.kind === 'enchant' && draft.enchant === id;

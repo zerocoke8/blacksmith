@@ -53,6 +53,8 @@ export const REFINE_ITEM_ART: Record<RefineItemId, RefineArtKey> = {
   shinyPebble: 'gift_pebble',
   knitGloves: 'gift_gloves',
   adamantOre: 'ore_adamant',
+  // 경험치 never reaches the bag (it fills the level bar, 5.3); no picture of its own yet, the lump stands in.
+  exp: 'ore_chunk',
 };
 
 export function itemArtUrl(id: RefineItemId): string | null {

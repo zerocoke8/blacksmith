@@ -6,7 +6,7 @@
 // world save when the idle world comes in (3.6).
 
 import { type SaveStore, webStore } from '../../platform/storage.ts';
-import { REFINE_LUMPS, REFINE_MULTS, type RefineMult } from '../../sim/data/refine.ts';
+import { idleLumpCap, REFINE_MULTS, type RefineMult } from '../../sim/data/refine.ts';
 import { accrue, bagTotals, isRefineMult, newRefineState, type RefineState, restoreRefine } from '../../sim/refine/index.ts';
 
 export const REFINE_SAVE_KEY = 'refine.save';
@@ -67,6 +67,11 @@ export interface RefineSave {
   /** The first visit's line was said ("광석은 두드려 봐야 속을 안다."). */
   firstSeen: boolean;
   visits: RefineVisit[];
+  /**
+   * 경험치 struck in the batch going on, not in the shared level yet (5.3, 7.2: it goes in as the
+   * batch ends). Kept here so an app closed mid-batch adds it on the next visit. 0 or absent: none.
+   */
+  expHeld?: number;
 }
 
 const MS_PER_MINUTE = 60_000;
@@ -153,6 +158,7 @@ export function readRefineSave(data: unknown): RefineSave | null {
     state,
     mult: isRefineMult(data.mult) ? data.mult : 1,
     firstSeen: data.firstSeen === true,
+    ...(n0(data.expHeld) > 0 ? { expHeld: n0(data.expHeld) } : {}),
     visits: Array.isArray(data.visits)
       ? data.visits
           .map(readVisit)
@@ -214,20 +220,45 @@ export interface RefinePeek {
 
 /**
  * For the home screen: the pile as it stands now and how much of it came in since the last visit,
- * without writing anything (counting is the same done now or later).
+ * without writing anything (counting is the same done now or later). The lumps come in at the best
+ * floor's rate, cap and band (6.8, 7.1: sim/refine accrue).
  */
-export async function peekRefine(nowMs: number, saves: RefineSaves = refineStore): Promise<RefinePeek> {
+export async function peekRefine(nowMs: number, saves: RefineSaves = refineStore, bestFloor = 0): Promise<RefinePeek> {
   const now = worldMinute(nowMs);
   const loaded = await saves.load();
   const save = loaded ?? newRefineSave(now, 1);
-  const r = accrue(save.state, now);
+  const r = accrue(save.state, now, bestFloor);
   return {
     lumps: r.state.lumps,
     gained: r.gained,
-    full: r.state.lumps >= REFINE_LUMPS.cap,
+    full: r.state.lumps >= idleLumpCap(bestFloor),
     gold: bagTotals(r.state.bag).gold,
     since: loaded === null ? null : save.state.accruedAt,
   };
+}
+
+/** What settleIdleBefore counted. */
+export interface IdleSettle {
+  /** Lumps that came in up to now, at the old best floor. */
+  gained: number;
+  /** Where that count began (the save's accruedAt before it), for the arrival line (arrival.ts). */
+  since: number;
+}
+
+/**
+ * Counts the pile up to now at the best floor that held until now, and saves it (6.8, 7.1). The
+ * stage calls this just before a win raises the best floor: accrue counts all the time since the
+ * last count at the floor it is given, so without this the hours away would come in at the new
+ * floor's rate and band (경험치·골드 ×1.5 a band). Time already gone by keeps its floor's value.
+ * Writes only when lumps came in (a part-lump left uncounted is too small to matter). null: no save yet.
+ */
+export async function settleIdleBefore(bestFloor: number, nowMs: number, saves: RefineSaves = refineStore): Promise<IdleSettle | null> {
+  const loaded = await saves.load();
+  if (loaded === null) return null;
+  const r = accrue(loaded.state, worldMinute(nowMs), bestFloor);
+  if (r.gained <= 0) return { gained: 0, since: loaded.state.accruedAt };
+  await saves.save({ ...loaded, state: r.state });
+  return { gained: r.gained, since: loaded.state.accruedAt };
 }
 
 /** Play log totals (the 실험 panel). */

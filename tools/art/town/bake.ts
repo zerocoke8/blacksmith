@@ -5,8 +5,9 @@
 // 탑을 쌓고, 작은 소품·사람에 바깥 잉크를 덧그리고, 모두 지도 해상도(지도 1 px = 그림 1 px)로 줄인다.
 // 쓰는 곳: src/assets/art/town-map/<이름>.webp 와 map.json (어디에 서는지, 무엇으로 구웠는지의 해시).
 //
-// 다시 구울 때: docs/mockups/town/layout.json, src/assets/art/{town,heroes}의 그림이나 meta.json,
-// 손님 키(src/render/town/layout.ts GUESTS.height), 굽는 코드(bake-map.ts, pixels.ts)를 바꾼 뒤.
+// 다시 구울 때: docs/mockups/town/layout.json, src/assets/art/town의 그림, 손님 용사(tools/art/assets.ts
+// TOWN_GUEST_HEROES: 예제 10명)의 그림이나 그 목록, meta.json, 손님 키(src/render/town/layout.ts GUESTS.height),
+// 굽는 코드(bake-map.ts, pixels.ts)를 바꾼 뒤. 손님이 아닌 명단 용사의 그림은 굽지 않고 해시에도 들지 않는다.
 // 앞의 셋이 바뀌었는데 굽지 않으면 tools/art/town/bake.test.ts가 실패한다.
 //
 // 굽는 코드는 브라우저 canvas가 필요해서 Vite 개발 서버(이미 쓰는 devDependency)로 bake-page.ts를 열고

@@ -7,7 +7,8 @@
 // outlined shapes (procedural.ts) that pop, fly and shrink away, never soft glows or flashes; the
 // hot bar is painted one flat colour by its heat, the furnace's flame one flat colour by its state.
 
-import { Application, Assets, Container, Rectangle, Sprite, Texture } from 'pixi.js';
+import { Assets, Container, Rectangle, Sprite, Texture } from 'pixi.js';
+import { acquireApp, holdAsset, releaseAssets } from '../app.ts';
 import type { QualityTier, WeaponType } from '../../sim/core/types.ts';
 import type { FireState } from '../../sim/data/cards.ts';
 import { sceneArtUrl } from './assets.ts';
@@ -190,12 +191,11 @@ interface Running {
 
 const SCENE_ESSENTIAL: readonly SceneArtKey[] = SCENE_ART_KEYS.filter((k) => !k.startsWith('weapon_'));
 
-async function loadTexture(url: string): Promise<Texture | null> {
-  try {
-    return await Assets.load<Texture>(url);
-  } catch {
-    return null;
-  }
+/** Loads a picture and notes this screen's hold on it (released on destroy, render/app.ts). */
+async function loadTexture(url: string, holds: Set<string>): Promise<Texture | null> {
+  if (holds.has(url)) return Assets.get<Texture>(url) ?? null;
+  holds.add(url);
+  return holdAsset(url);
 }
 
 export async function createForgeScene(
@@ -204,26 +204,14 @@ export async function createForgeScene(
   height: number,
   opts: ForgeSceneOptions,
 ): Promise<ForgeScene> {
-  const app = new Application();
-  await app.init({
-    width: Math.max(1, width),
-    height: Math.max(1, height),
-    backgroundAlpha: 0,
-    antialias: true,
-    resolution: Math.min(window.devicePixelRatio || 1, 2),
-    autoDensity: true,
-    preference: ['webgl'],
-  });
-  app.stage.eventMode = 'none';
-  app.stage.interactiveChildren = false;
-  const view = app.canvas;
-  view.style.display = 'block';
-  view.style.width = '100%';
-  view.style.height = '100%';
-  view.style.pointerEvents = 'none';
+  // The shared app (render/app.ts): one GL context for every screen; see-through, fingers pass.
+  const lease = await acquireApp(host, width, height, { background: null, passThrough: true });
+  const app = lease.app;
 
   // ---- Textures: pictures where they exist, stand-ins elsewhere ----
   const made: Texture[] = [];
+  /** The pictures this screen holds (render/app.ts holdAsset): given back on destroy. */
+  const holds = new Set<string>();
   const fromCanvas = (c: HTMLCanvasElement): Texture => {
     const t = Texture.from(c, true);
     made.push(t);
@@ -234,7 +222,7 @@ export async function createForgeScene(
     SCENE_ESSENTIAL.map(async (k) => {
       const url = sceneArtUrl(k);
       if (url === null) return;
-      const t = await loadTexture(url);
+      const t = await loadTexture(url, holds);
       if (t !== null) pics[k] = t;
     }),
   );
@@ -361,7 +349,7 @@ export async function createForgeScene(
     // The picture, when there is one, replaces the stand-in once it has loaded.
     const url = sceneArtUrl(`weapon_${type}` as SceneArtKey);
     if (url !== null) {
-      void loadTexture(url).then((pic) => {
+      void loadTexture(url, holds).then((pic) => {
         if (pic === null || destroyed) return;
         weaponTex.set(type, pic);
         weaponPic.add(type);
@@ -1474,7 +1462,6 @@ export async function createForgeScene(
 
   relayout();
   settle();
-  host.appendChild(view);
   app.ticker.add(tick);
 
   return {
@@ -1482,7 +1469,7 @@ export async function createForgeScene(
       if (destroyed) return;
       W = Math.max(1, Math.round(w));
       H = Math.max(1, Math.round(h));
-      app.renderer.resize(W, H);
+      lease.resize(W, H);
       relayout();
       if (running === null) settle();
     },
@@ -1520,8 +1507,13 @@ export async function createForgeScene(
       if (destroyed) return;
       destroyed = true;
       app.ticker.remove(tick);
-      app.destroy({ removeView: true }, { children: true, texture: false, textureSource: false });
+      app.stage.removeChild(world);
+      world.destroy({ children: true });
+      lease.release();
       for (const t of made) t.destroy(true);
+      // The pictures this screen loaded leave memory and the GPU unless another screen still holds them.
+      releaseAssets(holds);
+      holds.clear();
       // The split bar's halves share the loaded picture's source: only the frames go.
       for (const t of subTex) t.destroy(false);
     },

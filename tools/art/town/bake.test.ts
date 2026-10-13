@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { BakedManifest } from '../../../src/render/town/baked.ts';
 import { GUESTS, MAP_ITEMS } from '../../../src/render/town/layout.ts';
+import { TOWN_GUEST_HEROES } from '../assets.ts';
 import { readImageHead } from '../common.ts';
 import { BAKED_DIR, BAKED_MANIFEST, bakeSourcesHash } from './sources.ts';
 
@@ -14,12 +15,15 @@ describe('the baked map (src/assets/art/town-map, tools/art/town/bake.ts)', () =
     expect(manifest.guestHeight).toBe(GUESTS.height);
   });
 
-  it('has a picture for every place in the layout and for every example hero', () => {
+  it('has a picture for every place in the layout and for every town guest hero (TOWN_GUEST_HEROES), and no other hero', () => {
     for (const it of MAP_ITEMS) expect(manifest.pictures[it.key], it.key).toBeDefined();
-    const heroes = readdirSync(join(BAKED_DIR, '..', 'heroes'))
-      .filter((f) => f.endsWith('.webp'))
-      .map((f) => f.replace(/\.webp$/, ''));
-    expect(Object.keys(manifest.heroes).sort()).toEqual(heroes.sort());
+    const processed = new Set(
+      readdirSync(join(BAKED_DIR, '..', 'heroes'))
+        .filter((f) => f.endsWith('.webp'))
+        .map((f) => f.replace(/\.webp$/, '')),
+    );
+    for (const k of TOWN_GUEST_HEROES) expect(processed.has(k), `src/assets/art/heroes/${k}.webp`).toBe(true);
+    expect(Object.keys(manifest.heroes).sort()).toEqual([...TOWN_GUEST_HEROES].sort());
   });
 
   it('every file it names is there, at the size it says, no side over 2048 px (old phones’ GPUs)', () => {

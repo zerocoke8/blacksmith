@@ -199,7 +199,8 @@ describe('one blow', () => {
 
   it('rolls gold in 5~15 per ×1', () => {
     const golds = Array.from({ length: 2000 }, (_, i) => rollRefine(SEED, i + 1, 1)).filter((d) => d.item === 'gold');
-    expect(golds.length).toBeGreaterThan(300);
+    // 골드 is 10% of blows since 경험치 took 15 of its 25 (B.15, 7.3).
+    expect(golds.length).toBeGreaterThan(120);
     for (const g of golds) expect(g.base).toBeGreaterThanOrEqual(5);
     for (const g of golds) expect(g.base).toBeLessThanOrEqual(15);
     expect(new Set(golds.map((g) => g.base)).size).toBe(11);
@@ -267,8 +268,8 @@ describe('multipliers and batches', () => {
     expect(batchFull(b)).toBe(true);
     expect(hitInBatch(s, b, SEED, 1)).toBeNull();
     expect(s.lumps).toBe(100 - REFINE_BATCH_MAX);
-    // The bag already holds all fifteen.
-    const sum = b.drops.reduce((acc, d) => acc + d.amount, 0);
+    // The bag already holds all fifteen, but for 경험치: it went to the level bar (5.3).
+    const sum = b.drops.reduce((acc, d) => acc + (d.item === "exp" ? 0 : d.amount), 0);
     const t = bagTotals(s.bag);
     expect(t.gold + t.items).toBe(sum);
   });

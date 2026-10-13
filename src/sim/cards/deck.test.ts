@@ -178,12 +178,22 @@ describe('완성 화면 (4.3)', () => {
     expect(cardCraftOutcome(s)).toMatchObject({ tier: 3, slots: 2 });
     let weapon = weaponFromCardCraft(s, 'w1');
     expect(weapon).toEqual({ id: 'w1', type: 'greatsword', materialTier: 1, quality: 3, element: null, enchants: [], unique: null });
-    let inventory = { 'emblem:low': 1, 'crystal:fire': 1 } as const as Record<string, number>;
-    expect(slotBlock(weapon, { kind: 'enchant', enchant: 'gale', element: null }, inventory)).toBe('재료가 없다');
+    let inventory = { 'emblem:low': 1, 'feather:low': 1, 'crystal:fire': 1 } as const as Record<string, number>;
+    expect(slotBlock(weapon, { kind: 'enchant', enchant: 'gale', element: null }, {})).toBe('재료가 없다');
     ({ weapon, inventory } = fillSlot(weapon, { kind: 'enchant', enchant: 'combo', element: null }, inventory));
-    ({ weapon, inventory } = fillSlot(weapon, { kind: 'enchant', enchant: 'element', element: 'fire' }, inventory));
+    // 속성 칸 (4.3): every weapon has one outside the enchant slots; 속성 부여 is no longer an enchant.
+    expect(slotBlock(weapon, { kind: 'enchant', enchant: 'element', element: 'fire' }, inventory)).toBe('속성은 속성 칸에 넣는다');
+    ({ weapon, inventory } = fillSlot(weapon, { kind: 'elementSlot', element: 'fire' }, inventory));
     expect(weapon).toMatchObject({ element: 'fire', enchants: ['combo'] });
-    expect(slotBlock(weapon, { kind: 'enchant', enchant: 'keen', element: null }, { 'feather:low': 1 })).toBe('빈 슬롯이 없다');
+    expect(slotBlock(weapon, { kind: 'elementSlot', element: 'water' }, { 'crystal:water': 1 })).toBe('속성은 이미 정해졌다');
+    // The element took no slot: 역작 (2 slots) still has room for one more enchant.
+    ({ weapon, inventory } = fillSlot(weapon, { kind: 'enchant', enchant: 'keen', element: null }, inventory));
+    expect(weapon.enchants).toEqual(['combo', 'keen']);
+    expect(slotBlock(weapon, { kind: 'enchant', enchant: 'gale', element: null }, { 'emblem:low': 1 })).toBe('빈 슬롯이 없다');
+    expect(inventory).toMatchObject({ 'emblem:low': 0, 'feather:low': 0, 'crystal:fire': 0 });
+    // A 범작 (no enchant slots) still has its 속성 칸.
+    const plain = { ...weapon, id: 'w0', quality: 1 as const, element: null, enchants: [] };
+    expect(slotBlock(plain, { kind: 'elementSlot', element: 'wind' }, { 'crystal:wind': 1 })).toBeNull();
     expect(() => weaponFromCardCraft(abandonCardCraft(startCardCraft(makeCardSetup())), 'w2')).toThrow();
   });
 });

@@ -1,0 +1,113 @@
+/* 공유 레벨 칩과 소식 (기획서 5.3, 사용자 결정 2): a paper sticker with the level and a thin bar;
+   the news drops in at the top of the screen. Doodle tokens: app.css --dd-*. */
+
+.lv-chip {
+  display: inline-flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  min-width: 64px;
+  height: 36px;
+  padding: 0 10px;
+  border: var(--dd-stroke) solid var(--dd-ink);
+  border-radius: 12px;
+  background: var(--dd-paper);
+  box-shadow: var(--dd-pop-s);
+  color: var(--dd-ink);
+  font-family: var(--dd-font-round);
+  line-height: 1;
+}
+
+.lv-chip b {
+  font-size: 0.95rem;
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.lv-chip b.lv-bump {
+  animation: lv-bump 0.45s ease-out;
+}
+
+@keyframes lv-bump {
+  30% {
+    transform: scale(1.25);
+    color: var(--dd-orange-ink);
+  }
+}
+
+.lv-bar {
+  position: relative;
+  display: block;
+  height: 6px;
+  overflow: hidden;
+  border: 1.5px solid var(--dd-ink);
+  border-radius: 999px;
+  background: var(--dd-paper-2);
+}
+
+.lv-bar i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--dd-sky);
+  transition: width 0.5s ease-out;
+}
+
+.lv-banner {
+  position: fixed;
+  top: calc(64px + env(safe-area-inset-top));
+  left: 50%;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: max-content;
+  max-width: calc(100% - 32px);
+  margin: 0;
+  padding: 6px 16px 7px;
+  border: var(--dd-stroke-fat) solid var(--dd-ink);
+  border-radius: var(--dd-round-s);
+  background: var(--dd-sky-paper);
+  box-shadow: var(--dd-pop);
+  color: var(--dd-ink);
+  font-family: var(--dd-font-round);
+  transform: translateX(-50%);
+  animation: lv-drop 0.3s ease-out;
+  cursor: pointer;
+}
+
+.lv-banner b {
+  font-size: 1.05rem;
+  font-weight: 400;
+}
+
+.lv-banner small {
+  font-family: var(--dd-font-body);
+  font-size: 0.8rem;
+  word-break: keep-all;
+}
+
+.lv-banner.up {
+  background: var(--dd-butter-paper);
+}
+
+.lv-banner.up b {
+  font-size: 1.3rem;
+}
+
+@keyframes lv-drop {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -14px) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lv-banner,
+  .lv-chip b.lv-bump {
+    animation: none;
+  }
+}

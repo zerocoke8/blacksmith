@@ -1,9 +1,11 @@
-// 완성 화면: the finished weapon and its 인챈트 슬롯 (기획서 4.3, 4.5, 4.6, 4.8).
-// Same rules as the FF14 prototype's craft/enchant.ts, kept here so the card engine stands
-// alone when that prototype goes (16.2의 10번).
+// 완성 화면: the finished weapon, its 속성 칸 and its 인챈트 슬롯 (기획서 4.3, 4.5, 4.6, 4.8).
+// 속성 칸 (4.3, 사용자 결정 '공격 속성은 무기의 것', B.16): every weapon, ★1 included, has one element
+// slot outside the enchant slots; one 원소 결정 fills it and it never changes. '속성 부여' no longer
+// goes into an enchant slot (it moved to the 속성 칸, 4.5). The FF14 prototype (craft/enchant.ts) and
+// the v0.8 world keep their own old rule (data/common.ts usedEnchantSlots); this file does not use it.
 
 import { ELEMENTS, type Element, type EnchantId, type Weapon } from '../core/types.ts';
-import { ELEMENT_LABEL, QUALITY, usedEnchantSlots } from '../data/common.ts';
+import { ELEMENT_LABEL, QUALITY } from '../data/common.ts';
 import { ENCHANT_MATERIAL_GRADE_LABEL } from '../data/cards.ts';
 import { ENCHANTS, type EnchantFamily, FAMILY_LABEL } from '../data/enchants.ts';
 import { type CardCraftState, cardCraftOutcome } from './engine.ts';
@@ -33,24 +35,29 @@ export function enchantMaterialLabel(key: EnchantMaterialKey): string {
 
 /**
  * One thing put into the weapon on the result screen.
- * - enchant: fills one slot. Crystal enchants (속성 부여, 속성 증폭) name the crystal's element.
- * - staffElement: a staff's element slot, outside the enchant slots (4.8).
+ * - enchant: fills one slot. A crystal enchant (속성 증폭) names the crystal's element.
+ * - elementSlot: the weapon's 속성 칸, outside the enchant slots (4.3): one 원소 결정.
  */
 export type SlotPick =
   | { kind: 'enchant'; enchant: EnchantId; element: Element | null }
-  | { kind: 'staffElement'; element: Element };
+  | { kind: 'elementSlot'; element: Element };
 
 export function weaponSlotCount(weapon: Pick<Weapon, 'quality'>): number {
   return QUALITY[weapon.quality].slots;
 }
 
+/** Enchant slots in use: the enchants (the element is in its own 속성 칸, 4.3). */
+export function weaponUsedSlots(weapon: Pick<Weapon, 'enchants'>): number {
+  return weapon.enchants.filter((e) => e !== 'element').length;
+}
+
 export function weaponFreeSlots(weapon: Weapon): number {
-  return weaponSlotCount(weapon) - usedEnchantSlots(weapon);
+  return weaponSlotCount(weapon) - weaponUsedSlots(weapon);
 }
 
 /** The material a pick uses, or null if the pick is malformed. */
 export function slotMaterial(pick: SlotPick): EnchantMaterialKey | null {
-  if (pick.kind === 'staffElement') return `crystal:${pick.element}`;
+  if (pick.kind === 'elementSlot') return `crystal:${pick.element}`;
   const spec = ENCHANTS[pick.enchant];
   if (spec.family === 'crystal') return pick.element === null ? null : `crystal:${pick.element}`;
   return `${spec.family}:${spec.upper ? 'high' : 'low'}`;
@@ -60,16 +67,11 @@ export function slotMaterial(pick: SlotPick): EnchantMaterialKey | null {
 export function slotBlock(weapon: Weapon, pick: SlotPick, inventory: MaterialInventory): string | null {
   const key = slotMaterial(pick);
   if (key === null) return '원소 결정을 골라야 한다';
-  if (pick.kind === 'staffElement') {
-    if (weapon.type !== 'staff') return '지팡이만 속성 칸이 있다';
+  if (pick.kind === 'elementSlot') {
     if (weapon.element !== null) return '속성은 이미 정해졌다';
   } else {
-    if (pick.enchant === 'element') {
-      if (weapon.type === 'staff') return '지팡이는 속성 칸에 넣는다';
-      if (weapon.element !== null) return '속성은 하나만';
-    } else if (weapon.enchants.includes(pick.enchant)) {
-      return '같은 인챈트는 하나만';
-    }
+    if (pick.enchant === 'element') return '속성은 속성 칸에 넣는다';
+    if (weapon.enchants.includes(pick.enchant)) return '같은 인챈트는 하나만';
     if (weaponFreeSlots(weapon) <= 0) return '빈 슬롯이 없다';
   }
   if ((inventory[key] ?? 0) <= 0) return '재료가 없다';
@@ -87,7 +89,7 @@ export function fillSlot(
   const key = slotMaterial(pick) as EnchantMaterialKey;
   const nextInventory: MaterialInventory = { ...inventory, [key]: (inventory[key] ?? 0) - 1 };
   const next: Weapon = { ...weapon, enchants: [...weapon.enchants] };
-  if (pick.kind === 'staffElement' || pick.enchant === 'element') next.element = pick.element;
+  if (pick.kind === 'elementSlot') next.element = pick.element;
   else next.enchants.push(pick.enchant);
   return { weapon: next, inventory: nextInventory };
 }

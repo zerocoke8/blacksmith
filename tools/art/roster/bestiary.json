@@ -1,0 +1,470 @@
+{
+  "version": 1,
+  "date": "2026-10-13",
+  "about": "몬스터 명단 (그림은 다음 단계). 일반 16 = 체형 4 × 속성 4, 층 보스 4 (체형마다), 일일 보스 5. 키의 체형·속성 이름은 src/sim/core/types.ts의 BODY_TYPES·ELEMENTS와 같다.",
+  "prompt": {
+    "style": "Super simple flat doodle cartoon in EXACTLY the same style as the attached dwarf character image: thick, slightly uneven hand-drawn dark brown outlines, flat colors, NO shading, NO gradients, NO texture, NO highlights, very few details, simple round chunky shapes, cute and silly (the Korean \"hachanhan\" meme vibe), warm cozy palette (cream, warm brown, soft grey, soft orange, a little muted). No text, no letters, no numbers, no watermark, no signature.",
+    "refNote": "The first attached image is our dwarf blacksmith and is a STYLE REFERENCE ONLY: copy its drawing style exactly (same thick dark brown outline weight, same flat fills, same tiny amount of detail, same two dot eyes), but do NOT draw the dwarf or any person. Draw only the monster described below.",
+    "common": "Draw ONE monster for a cozy, silly idle RPG, full body, as one character. It faces LEFT: body and face turned three-quarters toward the LEFT edge of the image (it looks at the heroes standing on the left). Cute, silly and harmless, NOT scary: no sharp teeth, no sharp claws, no spikes, no blood, no angry or glowing eyes; round chunky shapes; a very simple face with two dot eyes (or simple line eyes) and a tiny mouth, the personality shown by the silhouette and ONE clear expression. Keep details minimal like the dwarf: a few flat color blocks, at most a few inner lines, no patterns, no texture, no ornaments beyond what is described. The whole monster fits inside the frame with empty margin on all sides, nothing cropped. Transparent background with a real alpha channel: no backdrop, no ground, no floor shadow, no effects around it.",
+    "variantNote": "The second attached image is the BASE design of this monster species. Draw the SAME creature: same silhouette, same pose, same proportions, same face and expression, same size in the frame and the same outline weight. Change ONLY the body color and the one small element mark described below.",
+    "bossNote": "The second attached image is an ordinary member of this monster species. Draw its BOSS: clearly the same species with the same face style and the same colors, but bigger, rounder and heavier, with the one boss mark described below.",
+    "assembly": {
+      "base": "style + refNote + common + look  (-i d_dwarf_idle.png)",
+      "normal": "style + refNote + common + variantNote + look  (-i d_dwarf_idle.png -i mon_<body>_base.png)",
+      "floor_boss": "style + refNote + common + bossNote + look  (-i d_dwarf_idle.png -i mon_<body>_base.png)",
+      "daily_boss": "style + refNote + common + look  (-i d_dwarf_idle.png)"
+    },
+    "joiner": "\n\n"
+  },
+  "drawOrder": [
+    "1. 기준 4장 (bases): mon_humanoid_base, mon_armored_base, mon_flying_base, mon_spirit_base",
+    "2. 일반 16장: 체형마다 기준을 두 번째 참조로 주고 속성 넷",
+    "3. 층 보스 4장: 같은 체형의 기준을 두 번째 참조로",
+    "4. 일일 보스 5장: 드워프 참조만"
+  ],
+  "elements": {
+    "water": {
+      "ko": "물",
+      "prefix": "물방울",
+      "color": "soft sky blue (#8ec8ee)",
+      "mark": "Element mark: one plump water droplet (pale blue #d4ecf9 with the same dark outline) sitting on top of its head."
+    },
+    "fire": {
+      "ko": "불",
+      "prefix": "불씨",
+      "color": "soft red-orange (#e8875a)",
+      "mark": "Element mark: one small flat flame (orange #f2a65a with a small yellow #f3d36a inner flame) flickering on top of its head like a little tuft, no glow."
+    },
+    "earth": {
+      "ko": "땅",
+      "prefix": "조약돌",
+      "color": "warm ochre brown (#c9995f)",
+      "mark": "Element mark: one small round grey pebble (#b3aea8) with a tiny two-leaf moss-green sprout (#8fae6b) on it, sitting on top of its head."
+    },
+    "wind": {
+      "ko": "바람",
+      "prefix": "산들",
+      "color": "pale mint (#bfe6d2)",
+      "mark": "Element mark: one small curly teal wind swirl (#5fa8a0, a spiral line with a little tail) floating just above its head."
+    }
+  },
+  "bodies": {
+    "humanoid": {
+      "ko": "인간형",
+      "species": "고블린",
+      "baseKey": "mon_humanoid_base",
+      "markSpot": "pot helmet"
+    },
+    "armored": {
+      "ko": "갑각",
+      "species": "동글게",
+      "baseKey": "mon_armored_base",
+      "markSpot": "shell, just behind its eye stalks"
+    },
+    "flying": {
+      "ko": "비행",
+      "species": "박쥐",
+      "baseKey": "mon_flying_base",
+      "markSpot": "head, between its ears"
+    },
+    "spirit": {
+      "ko": "영체",
+      "species": "유령",
+      "baseKey": "mon_spirit_base",
+      "markSpot": "head"
+    }
+  },
+  "scaleNote": "scale = 전투에서 용사 키(1.0)에 대한 그림 높이 추천 [튜닝]. 일반 약 0.65, 층 보스 약 1.1, 일일 보스 약 1.7. 비행·영체는 땅에서 조금 띄워 그린다.",
+  "floorBossNote": "층 보스의 element는 any: 무속성(중립색)으로 그리고 그 층의 속성은 화면의 속성 표식으로 보인다. 도는 순서 추천: 10층 인간형 → 20층 갑각 → 30층 비행 → 40층 영체 → 반복 (1~20층 영체 금지와 맞는다).",
+  "dailyBossNote": "일일 보스는 5일 주기로 돈다 (day 1~5) [튜닝]. 속성 넷과 체형 넷을 모두 지나고, 6가지 무기 종류가 모두 한 번은 ◎인 날을 갖는다: 1 연못 거북(물·갑각 → 바람 무기, 대검·석궁), 2 두더지 광부(땅·인간형 → 불, 한손검·단검), 3 딸꾹 드래곤(불·비행 → 물, 활), 4 뭉게 정령(바람·영체 → 땅, 지팡이), 5 가마솥 대감(불·갑각 → 물, 대검·석궁).",
+  "bases": [
+    {
+      "key": "mon_humanoid_base",
+      "name": "냄비 고블린",
+      "body": "humanoid",
+      "element": "none",
+      "canvas": "1024x1024",
+      "note": "기준 그림. 게임에는 쓰지 않는다. 먼저 그려서 같은 체형의 속성 변형 넷과 층 보스의 두 번째 참조로 준다.",
+      "look": "A small chubby goblin monster, a little shorter and much rounder than the heroes (about 2 heads tall): a big round head with two long droopy pointed ears sticking out sideways, two dot eyes, a small wobbly mouth with one tiny square tooth poking up, a round potbelly, short tube arms and legs, small bare round feet. Skin: warm light grey (#cfc8c0). It wears an old dented cooking pot upside down as a helmet (plain grey #8e8984, one short handle sticking out to the side) and a plain cream tunic (#f6ebd5) tied with a brown rope. It holds a wooden spoon up in front of it like a sword, trying very hard to look brave. Turned three-quarters toward the LEFT. No element mark: this is the plain base design."
+    },
+    {
+      "key": "mon_armored_base",
+      "name": "동글게",
+      "body": "armored",
+      "element": "none",
+      "canvas": "1024x1024",
+      "note": "기준 그림. 게임에는 쓰지 않는다. 먼저 그려서 같은 체형의 속성 변형 넷과 층 보스의 두 번째 참조로 준다.",
+      "look": "A small chubby round crab monster, wider than tall: a big smooth dome-shaped shell like an upturned bowl in warm light grey (#cfc8c0), a plain cream rim (#f6ebd5) along the bottom edge of the shell, two short eye stalks on top with dot eyes, a tiny content smile under the shell rim, three short stubby round legs on each side, and two round mitten-like claws (no sharp points): one tiny claw and one comically oversized claw held up proudly toward the left. Turned three-quarters toward the LEFT. No element mark: this is the plain base design."
+    },
+    {
+      "key": "mon_flying_base",
+      "name": "통통박쥐",
+      "body": "flying",
+      "element": "none",
+      "canvas": "1024x1024",
+      "note": "기준 그림. 게임에는 쓰지 않는다. 먼저 그려서 같은 체형의 속성 변형 넷과 층 보스의 두 번째 참조로 준다.",
+      "look": "A small round chubby bat monster that is basically one fluffy ball: the body and head are one round blob of warm grey-brown (#a4968a) fur, two big pointy ears, two dot eyes, a tiny open mouth with ONE small cute fang, a plain cream oval belly (#f6ebd5), comically TINY bat wings in a darker grey-brown (#857769) flapping hard on both sides (clearly too small to carry its round body), two tiny feet dangling below. It hovers in the air with a determined little face. Turned three-quarters toward the LEFT. No element mark: this is the plain base design."
+    },
+    {
+      "key": "mon_spirit_base",
+      "name": "꼬마 유령",
+      "body": "spirit",
+      "element": "none",
+      "canvas": "1024x1024",
+      "note": "기준 그림. 게임에는 쓰지 않는다. 먼저 그려서 같은 체형의 속성 변형 넷과 층 보스의 두 번째 참조로 준다.",
+      "look": "A small floating ghost monster: one soft round blob for the head and body (like an upside-down gumdrop), the bottom tapering into a short wavy tail that curls toward the right instead of legs, two tiny stubby nub arms held up, two dot eyes and a small round \"o\" mouth, shy and a little surprised. Its body is ONE solid flat color, cream white (#f6ebd5), with the dark outline (NOT see-through, no transparency, no glow, no sparkles). It floats in the air above the ground. Turned three-quarters toward the LEFT. No element mark: this is the plain base design."
+    }
+  ],
+  "monsters": [
+    {
+      "key": "mon_humanoid_water",
+      "name": "물방울 고블린",
+      "kind": "normal",
+      "body": "humanoid",
+      "element": "water",
+      "look": "A small chubby goblin monster, a little shorter and much rounder than the heroes (about 2 heads tall): a big round head with two long droopy pointed ears sticking out sideways, two dot eyes, a small wobbly mouth with one tiny square tooth poking up, a round potbelly, short tube arms and legs, small bare round feet. Skin: soft sky blue (#8ec8ee). It wears an old dented cooking pot upside down as a helmet (plain grey #8e8984, one short handle sticking out to the side) and a plain cream tunic (#f6ebd5) tied with a brown rope. It holds a wooden spoon up in front of it like a sword, trying very hard to look brave. Turned three-quarters toward the LEFT. Element mark: one plump water droplet (pale blue #d4ecf9 with the same dark outline) sitting on top of its pot helmet.",
+      "refs": [
+        "d_dwarf_idle",
+        "@mon_humanoid_base"
+      ],
+      "canvas": "1024x1024",
+      "scale": 0.65
+    },
+    {
+      "key": "mon_humanoid_fire",
+      "name": "불씨 고블린",
+      "kind": "normal",
+      "body": "humanoid",
+      "element": "fire",
+      "look": "A small chubby goblin monster, a little shorter and much rounder than the heroes (about 2 heads tall): a big round head with two long droopy pointed ears sticking out sideways, two dot eyes, a small wobbly mouth with one tiny square tooth poking up, a round potbelly, short tube arms and legs, small bare round feet. Skin: soft red-orange (#e8875a). It wears an old dented cooking pot upside down as a helmet (plain grey #8e8984, one short handle sticking out to the side) and a plain cream tunic (#f6ebd5) tied with a brown rope. It holds a wooden spoon up in front of it like a sword, trying very hard to look brave. Turned three-quarters toward the LEFT. Element mark: one small flat flame (orange #f2a65a with a small yellow #f3d36a inner flame) flickering on top of its pot helmet like a little tuft, no glow.",
+      "refs": [
+        "d_dwarf_idle",
+        "@mon_humanoid_base"
+      ],
+      "canvas": "1024x1024",
+      "scale": 0.65
+    },
+    {
+      "key": "mon_humanoid_earth",
+      "name": "조약돌 고블린",
+      "kind": "normal",
+      "body": "humanoid",
+      "element": "earth",
+      "look": "A small chubby goblin monster, a little shorter and much rounder than the heroes (about 2 heads tall): a big round head with two long droopy pointed ears sticking out sideways, two dot eyes, a small wobbly mouth with one tiny square tooth poking up, a round potbelly, short tube arms and legs, small bare round feet. Skin: warm ochre brown (#c9995f). It wears an old dented cooking pot upside down as a helmet (plain grey #8e8984, one short handle sticking out to the side) and a plain cream tunic (#f6ebd5) tied with a brown rope. It holds a wooden spoon up in front of it like a sword, trying very hard to look brave. Turned three-quarters toward the LEFT. Element mark: one small round grey pebble (#b3aea8) with a tiny two-leaf moss-green sprout (#8fae6b) on it, sitting on top of its pot helmet.",
+      "refs": [
+        "d_dwarf_idle",
+        "@mon_humanoid_base"
+      ],
+      "canvas": "1024x1024",
+      "scale": 0.65
+    },
+    {
+      "key": "mon_humanoid_wind",
+      "name": "산들 고블린",
+      "kind": "normal",
+      "body": "humanoid",
+      "element": "wind",
+      "look": "A small chubby goblin monster, a little shorter and much rounder than the heroes (about 2 heads tall): a big round head with two long droopy pointed ears sticking out sideways, two dot eyes, a small wobbly mouth with one tiny square tooth poking up, a round potbelly, short tube arms and legs, small bare round feet. Skin: pale mint (#bfe6d2). It wears an old dented cooking pot upside down as a helmet (plain grey #8e8984, one short handle sticking out to the side) and a plain cream tunic (#f6ebd5) tied with a brown rope. It holds a wooden spoon up in front of it like a sword, trying very hard to look brave. Turned three-quarters toward the LEFT. Element mark: one small curly teal wind swirl (#5fa8a0, a spiral line with a little tail) floating just above its pot helmet.",
+      "refs": [
+        "d_dwarf_idle",
+        "@mon_humanoid_base"
+      ],
+      "canvas": "1024x1024",
+      "scale": 0.65
+    },
+    {
+      "key": "mon_armored_water",
+      "name": "물방울 동글게",
+      "kind": "normal",
+      "body": "armored",
+      "element": "water",
+      "look": "A small chubby round crab monster, wider than tall: a big smooth dome-shaped shell like an upturned bowl in soft sky blue (#8ec8ee), a plain cream rim (#f6ebd5) along the bottom edge of the shell, two short eye stalks on top with dot eyes, a tiny content smile under the shell rim, three short stubby round legs on each side, and two round mitten-like claws (no sharp points): one tiny claw and one comically oversized claw held up proudly toward the left. Turned three-quarters toward the LEFT. Element mark: one plump water droplet (pale blue #d4ecf9 with the same dark outline) sitting on top of its shell, just behind its eye stalks.",
+      "refs": [
+        "d_dwarf_idle",
+        "@mon_armored_base"
+      ],
+      "canvas": "1024x1024",
+      "scale": 0.65
+    },
+    {
+      "key": "mon_armored_fire",
+      "name": "불씨 동글게",
+      "kind": "normal",
+      "body": "armored",
+      "element": "fire",
+      "look": "A small chubby round crab monster, wider than tall: a big smooth dome-shaped shell like an upturned bowl in soft red-orange (#e8875a), a plain cream rim (#f6ebd5) along the bottom edge of the shell, two short eye stalks on top with dot eyes, a tiny content smile under the shell rim, three short stubby round legs on each side, and two round mitten-like claws (no sharp points): one tiny claw and one comically oversized claw held up proudly toward the left. Turned three-quarters toward the LEFT. Element mark: one small flat flame (orange #f2a65a with a small yellow #f3d36a inner flame) flickering on top of its shell, just behind its eye stalks like a little tuft, no glow.",
+      "refs": [
+        "d_dwarf_idle",
+        "@mon_armored_base"
+      ],
+      "canvas": "1024x1024",
+      "scale": 0.65
+    },
+    {
+      "key": "mon_armored_earth",
+      "name": "조약돌 동글게",
+      "kind": "normal",
+      "body": "armored",
+      "element": "earth",
+      "look": "A small chubby round crab monster, wider than tall: a big smooth dome-shaped shell like an upturned bowl in warm ochre brown (#c9995f), a plain cream rim (#f6ebd5) along the bottom edge of the shell, two short eye stalks on top with dot eyes, a tiny content smile under the shell rim, three short stubby round legs on each side, and two round mitten-like claws (no sharp points): one tiny claw and one comically oversized claw held up proudly toward the left. Turned three-quarters toward the LEFT. Element mark: one small round grey pebble (#b3aea8) with a tiny two-leaf moss-green sprout (#8fae6b) on it, sitting on top of its shell, just behind its eye stalks.",
+      "refs": [
+        "d_dwarf_idle",
+        "@mon_armored_base"
+      ],
+      "canvas": "1024x1024",
+      "scale": 0.65
+    },
+    {
+      "key": "mon_armored_wind",
+      "name": "산들 동글게",
+      "kind": "normal",
+      "body": "armored",
+      "element": "wind",
+      "look": "A small chubby round crab monster, wider than tall: a big smooth dome-shaped shell like an upturned bowl in pale mint (#bfe6d2), a plain cream rim (#f6ebd5) along the bottom edge of the shell, two short eye stalks on top with dot eyes, a tiny content smile under the shell rim, three short stubby round legs on each side, and two round mitten-like claws (no sharp points): one tiny claw and one comically oversized claw held up proudly toward the left. Turned three-quarters toward the LEFT. Element mark: one small curly teal wind swirl (#5fa8a0, a spiral line with a little tail) floating just above its shell, just behind its eye stalks.",
+      "refs": [
+        "d_dwarf_idle",
+        "@mon_armored_base"
+      ],
+      "canvas": "1024x1024",
+      "scale": 0.65
+    },
+    {
+      "key": "mon_flying_water",
+      "name": "물방울 박쥐",
+      "kind": "normal",
+      "body": "flying",
+      "element": "water",
+      "look": "A small round chubby bat monster that is basically one fluffy ball: the body and head are one round blob of soft sky blue (#8ec8ee) fur, two big pointy ears, two dot eyes, a tiny open mouth with ONE small cute fang, a plain cream oval belly (#f6ebd5), comically TINY bat wings in a slightly darker blue (#6fa9cf) flapping hard on both sides (clearly too small to carry its round body), two tiny feet dangling below. It hovers in the air with a determined little face. Turned three-quarters toward the LEFT. Element mark: one plump water droplet (pale blue #d4ecf9 with the same dark outline) sitting on top of its head, between its ears.",
+      "refs": [
+        "d_dwarf_idle",
+        "@mon_flying_base"
+      ],
+      "canvas": "1024x1024",
+      "scale": 0.65
+    },
+    {
+      "key": "mon_flying_fire",
+      "name": "불씨 박쥐",
+      "kind": "normal",
+      "body": "flying",
+      "element": "fire",
+      "look": "A small round chubby bat monster that is basically one fluffy ball: the body and head are one round blob of soft red-orange (#e8875a) fur, two big pointy ears, two dot eyes, a tiny open mouth with ONE small cute fang, a plain cream oval belly (#f6ebd5), comically TINY bat wings in a slightly darker red-orange (#c96a43) flapping hard on both sides (clearly too small to carry its round body), two tiny feet dangling below. It hovers in the air with a determined little face. Turned three-quarters toward the LEFT. Element mark: one small flat flame (orange #f2a65a with a small yellow #f3d36a inner flame) flickering on top of its head, between its ears like a little tuft, no glow.",
+      "refs": [
+        "d_dwarf_idle",
+        "@mon_flying_base"
+      ],
+      "canvas": "1024x1024",
+      "scale": 0.65
+    },
+    {
+      "key": "mon_flying_earth",
+      "name": "조약돌 박쥐",
+      "kind": "normal",
+      "body": "flying",
+      "element": "earth",
+      "look": "A small round chubby bat monster that is basically one fluffy ball: the body and head are one round blob of warm ochre brown (#c9995f) fur, two big pointy ears, two dot eyes, a tiny open mouth with ONE small cute fang, a plain cream oval belly (#f6ebd5), comically TINY bat wings in a slightly darker brown (#a8774e) flapping hard on both sides (clearly too small to carry its round body), two tiny feet dangling below. It hovers in the air with a determined little face. Turned three-quarters toward the LEFT. Element mark: one small round grey pebble (#b3aea8) with a tiny two-leaf moss-green sprout (#8fae6b) on it, sitting on top of its head, between its ears.",
+      "refs": [
+        "d_dwarf_idle",
+        "@mon_flying_base"
+      ],
+      "canvas": "1024x1024",
+      "scale": 0.65
+    },
+    {
+      "key": "mon_flying_wind",
+      "name": "산들 박쥐",
+      "kind": "normal",
+      "body": "flying",
+      "element": "wind",
+      "look": "A small round chubby bat monster that is basically one fluffy ball: the body and head are one round blob of pale mint (#bfe6d2) fur, two big pointy ears, two dot eyes, a tiny open mouth with ONE small cute fang, a plain cream oval belly (#f6ebd5), comically TINY bat wings in a slightly darker mint (#8fcab0) flapping hard on both sides (clearly too small to carry its round body), two tiny feet dangling below. It hovers in the air with a determined little face. Turned three-quarters toward the LEFT. Element mark: one small curly teal wind swirl (#5fa8a0, a spiral line with a little tail) floating just above its head, between its ears.",
+      "refs": [
+        "d_dwarf_idle",
+        "@mon_flying_base"
+      ],
+      "canvas": "1024x1024",
+      "scale": 0.65
+    },
+    {
+      "key": "mon_spirit_water",
+      "name": "물방울 유령",
+      "kind": "normal",
+      "body": "spirit",
+      "element": "water",
+      "look": "A small floating ghost monster: one soft round blob for the head and body (like an upside-down gumdrop), the bottom tapering into a short wavy tail that curls toward the right instead of legs, two tiny stubby nub arms held up, two dot eyes and a small round \"o\" mouth, shy and a little surprised. Its body is ONE solid flat color, soft sky blue (#8ec8ee), with the dark outline (NOT see-through, no transparency, no glow, no sparkles). It floats in the air above the ground. Turned three-quarters toward the LEFT. Element mark: one plump water droplet (pale blue #d4ecf9 with the same dark outline) sitting on top of its head.",
+      "refs": [
+        "d_dwarf_idle",
+        "@mon_spirit_base"
+      ],
+      "canvas": "1024x1024",
+      "scale": 0.65
+    },
+    {
+      "key": "mon_spirit_fire",
+      "name": "불씨 유령",
+      "kind": "normal",
+      "body": "spirit",
+      "element": "fire",
+      "look": "A small floating ghost monster: one soft round blob for the head and body (like an upside-down gumdrop), the bottom tapering into a short wavy tail that curls toward the right instead of legs, two tiny stubby nub arms held up, two dot eyes and a small round \"o\" mouth, shy and a little surprised. Its body is ONE solid flat color, soft red-orange (#e8875a), with the dark outline (NOT see-through, no transparency, no glow, no sparkles). It floats in the air above the ground. Turned three-quarters toward the LEFT. Element mark: one small flat flame (orange #f2a65a with a small yellow #f3d36a inner flame) flickering on top of its head like a little tuft, no glow.",
+      "refs": [
+        "d_dwarf_idle",
+        "@mon_spirit_base"
+      ],
+      "canvas": "1024x1024",
+      "scale": 0.65
+    },
+    {
+      "key": "mon_spirit_earth",
+      "name": "조약돌 유령",
+      "kind": "normal",
+      "body": "spirit",
+      "element": "earth",
+      "look": "A small floating ghost monster: one soft round blob for the head and body (like an upside-down gumdrop), the bottom tapering into a short wavy tail that curls toward the right instead of legs, two tiny stubby nub arms held up, two dot eyes and a small round \"o\" mouth, shy and a little surprised. Its body is ONE solid flat color, warm ochre brown (#c9995f), with the dark outline (NOT see-through, no transparency, no glow, no sparkles). It floats in the air above the ground. Turned three-quarters toward the LEFT. Element mark: one small round grey pebble (#b3aea8) with a tiny two-leaf moss-green sprout (#8fae6b) on it, sitting on top of its head.",
+      "refs": [
+        "d_dwarf_idle",
+        "@mon_spirit_base"
+      ],
+      "canvas": "1024x1024",
+      "scale": 0.65
+    },
+    {
+      "key": "mon_spirit_wind",
+      "name": "산들 유령",
+      "kind": "normal",
+      "body": "spirit",
+      "element": "wind",
+      "look": "A small floating ghost monster: one soft round blob for the head and body (like an upside-down gumdrop), the bottom tapering into a short wavy tail that curls toward the right instead of legs, two tiny stubby nub arms held up, two dot eyes and a small round \"o\" mouth, shy and a little surprised. Its body is ONE solid flat color, pale mint (#bfe6d2), with the dark outline (NOT see-through, no transparency, no glow, no sparkles). It floats in the air above the ground. Turned three-quarters toward the LEFT. Element mark: one small curly teal wind swirl (#5fa8a0, a spiral line with a little tail) floating just above its head.",
+      "refs": [
+        "d_dwarf_idle",
+        "@mon_spirit_base"
+      ],
+      "canvas": "1024x1024",
+      "scale": 0.65
+    },
+    {
+      "key": "boss_humanoid",
+      "name": "고블린 두목",
+      "kind": "floor_boss",
+      "body": "humanoid",
+      "element": "any",
+      "look": "The BOSS of the pot goblins: the same chubby goblin species (big round head, two long droopy pointed ears, two dot eyes, one tiny square tooth poking up, warm light grey skin #cfc8c0, a plain cream tunic #f6ebd5 tied with a brown rope, small bare round feet), but about twice as big, much rounder and heavier, with a huge round belly and a proud, grumpy pout. Boss mark: its upside-down cooking-pot helmet (grey #8e8984) has two big curved cream-colored bull horns tied onto it with a rope. It rests a giant wooden soup ladle on its shoulder like a battle club. Turned three-quarters toward the LEFT.",
+      "refs": [
+        "d_dwarf_idle",
+        "@mon_humanoid_base"
+      ],
+      "canvas": "1024x1024",
+      "scale": 1.1
+    },
+    {
+      "key": "boss_armored",
+      "name": "투구게",
+      "kind": "floor_boss",
+      "body": "armored",
+      "element": "any",
+      "look": "The BOSS of the round crabs: the same chubby dome-shelled crab (a smooth dome shell like an upturned bowl in warm light grey #cfc8c0, a plain cream rim #f6ebd5 along the bottom of the shell, short stubby round legs, round mitten-like claws with no sharp points), but about twice as big and heavier, with BOTH claws oversized and raised in a proud guard pose toward the left. Boss mark: a round iron knight's helmet (grey #8e8984) with a short soft red plume (#c9614a) is jammed on top of its shell, and its two eye stalks poke out through two round holes in the helmet, dot eyes looking very serious. Turned three-quarters toward the LEFT.",
+      "refs": [
+        "d_dwarf_idle",
+        "@mon_armored_base"
+      ],
+      "canvas": "1024x1024",
+      "scale": 1.1
+    },
+    {
+      "key": "boss_flying",
+      "name": "박쥐 비행대장",
+      "kind": "floor_boss",
+      "body": "flying",
+      "element": "any",
+      "look": "The BOSS of the chubby bats: the same round fluffy ball of a bat (warm grey-brown fur #a4968a, a plain cream oval belly #f6ebd5, big pointy ears, ONE small cute fang, comically tiny flapping wings in darker grey-brown #857769, two tiny dangling feet), but about twice as big and even rounder, so its tiny wings look even more hopeless; it hovers with a proud, confident face. Boss mark: a brown leather aviator cap (#8a5a3a) with ear flaps and a pair of round goggles pushed up on the forehead; its two pointy ears poke out through holes in the cap. Turned three-quarters toward the LEFT.",
+      "refs": [
+        "d_dwarf_idle",
+        "@mon_flying_base"
+      ],
+      "canvas": "1024x1024",
+      "scale": 1.1
+    },
+    {
+      "key": "boss_spirit",
+      "name": "유령 임금",
+      "kind": "floor_boss",
+      "body": "spirit",
+      "element": "any",
+      "look": "The BOSS of the little ghosts: the same floating gumdrop-shaped ghost (one soft round blob for the head and body, a short wavy tail curling toward the right instead of legs, tiny nub arms, ONE solid flat cream-white body #f6ebd5 that is NOT see-through, no glow), but about twice as big and plumper, with a dignified but sleepy face (half-closed dot eyes, a small calm mouth). Boss mark: a simple golden crown (#f3d36a, three rounded points, no jewels) floating a little above its head, tilted to one side, not touching it. Turned three-quarters toward the LEFT.",
+      "refs": [
+        "d_dwarf_idle",
+        "@mon_spirit_base"
+      ],
+      "canvas": "1024x1024",
+      "scale": 1.1
+    },
+    {
+      "key": "daily_turtle",
+      "name": "연못 거북",
+      "kind": "daily_boss",
+      "body": "armored",
+      "element": "water",
+      "look": "A HUGE chubby old turtle boss, much wider than tall, standing on four short stumpy round legs, its round head stretched forward toward the LEFT with sleepy half-closed eyes and a calm tiny smile. Soft blue-grey skin (#a9c3cc). Its giant dome shell is soft sky blue (#8ec8ee) with only a few big simple plate lines, and the TOP of the shell is a tiny round pond: a flat pale-blue water oval (#d4ecf9) with one round moss-green lily pad (#8fae6b) and one very small green frog sitting on it. Two small water droplets fly off the edge of the shell. Calm, slow, harmless and a little silly. Turned three-quarters toward the LEFT.",
+      "refs": [
+        "d_dwarf_idle"
+      ],
+      "canvas": "1536x1024",
+      "scale": 1.7,
+      "day": 1
+    },
+    {
+      "key": "daily_mole",
+      "name": "두더지 광부",
+      "kind": "daily_boss",
+      "body": "humanoid",
+      "element": "earth",
+      "look": "A HUGE round chubby mole boss standing upright on two short legs like a miner: warm ochre-brown fur (#c9995f), a big round pink nose (#e8a5a0), eyes drawn as two tiny squinting lines (it can barely see), a puzzled little mouth, two big round pink paws like mittens (no claws). It wears a dented yellow miner's helmet (#f3d36a) with a small round headlamp drawn as a flat cream circle (no light beam, no glow) and moss-green overalls (#8fae6b). It carries a big pickaxe (grey head, brown handle) over one shoulder and a bulging brown sack of round grey ore lumps on its back, with one tiny green sprout growing out of the sack. It squints hard toward the LEFT, a little confused. Turned three-quarters toward the LEFT.",
+      "refs": [
+        "d_dwarf_idle"
+      ],
+      "canvas": "1024x1536",
+      "scale": 1.7,
+      "day": 2
+    },
+    {
+      "key": "daily_dragon",
+      "name": "딸꾹 드래곤",
+      "kind": "daily_boss",
+      "body": "flying",
+      "element": "fire",
+      "look": "A HUGE round chubby baby dragon boss hovering in the air: a big round body in soft red-orange (#e8875a), a cream belly (#f6ebd5) with three simple stripe lines, two short round cream horns, a short tail ending in a small flame-shaped tip, round stubby arms and legs (no claws, no teeth). Its bat-like wings in darker red-orange (#c96a43) flap hard but are a bit too small for its round body. It is in the middle of a hiccup: eyes squeezed shut, cheeks puffed, and a small flat flame (orange #f2a65a with a yellow #f3d36a inner flame) plus one round grey smoke puff popping out of its mouth toward the left. Not scary at all, a little embarrassed. Turned three-quarters toward the LEFT.",
+      "refs": [
+        "d_dwarf_idle"
+      ],
+      "canvas": "1536x1024",
+      "scale": 1.7,
+      "day": 3
+    },
+    {
+      "key": "daily_cloud",
+      "name": "뭉게 정령",
+      "kind": "daily_boss",
+      "body": "spirit",
+      "element": "wind",
+      "look": "A HUGE fluffy cumulus cloud spirit boss floating in the air, no legs: one big puffy cloud body made of a few big round bumps, pale mint (#cfeadb) with a few off-white (#f4f7f2) bumps, solid flat fills (NOT see-through, no glow). A face in the middle of the cloud: determined dot eyes and cheeks puffed out hard, lips pushed into a small round \"o\", blowing a gust toward the LEFT: three curly teal wind swirl lines (#5fa8a0) stream out of its mouth to the left. Two small cloud-puff arms, and a smaller cloud tail trailing behind it on the right. Silly and harmless. Turned three-quarters toward the LEFT.",
+      "refs": [
+        "d_dwarf_idle"
+      ],
+      "canvas": "1536x1024",
+      "scale": 1.7,
+      "day": 4
+    },
+    {
+      "key": "daily_gamasot",
+      "name": "가마솥 대감",
+      "kind": "daily_boss",
+      "body": "armored",
+      "element": "fire",
+      "look": "A HUGE Korean cast-iron rice cauldron (gamasot) come alive as a boss, wider than tall: a wide round pot body in flat charcoal grey (#6b6461, clearly lighter than the dark outline), a wide flat rim sticking out all around its middle like a brim, two short stubby legs and two short stick arms. Its face is on the pot belly below the rim: two dot eyes and a long thin droopy mustache, looking like a pompous old nobleman. A heavy dark lid sits on top, its round knob shaped like a little topknot, lifted slightly with two round cream steam puffs escaping. A few small flat flames (orange #f2a65a with yellow #f3d36a inner flames) flicker around its feet, no glow. It holds a big wooden rice paddle up like a royal scepter, pointing toward the left. Turned three-quarters toward the LEFT.",
+      "refs": [
+        "d_dwarf_idle"
+      ],
+      "canvas": "1024x1024",
+      "scale": 1.7,
+      "day": 5
+    }
+  ]
+}

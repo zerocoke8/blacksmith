@@ -1,7 +1,10 @@
 // 홈 = 마을 지도 (기획서 3.2, 9장). The town map fills the screen (TownMap, loaded on demand); over it
 // the top band (the lumps and the gold as they are saved, the settings) and at the bottom the five
 // quick entries in the user's order: 대장간 · 도전 · 스테이지 · 용사 · 정제. A building tapped on the
-// map opens a small sheet or says one line; what is not built yet says '곧 열린다'. Everything shown
+// map opens a small sheet, a screen or says one line (the guild: 용사, the gate: 스테이지, a tower:
+// 스테이지 or 도전). The top band also carries the shared level (5.3); experience gained elsewhere
+// (refining) is told there as the map comes back, and so are the lumps that came in while away, at
+// the best floor's band (6.8, 7.1). Everything shown
 // is a saved state or the screen's own show (CLAUDE.md 규칙 2): the guests walking to the shop give
 // no gold here (the shop's takings come with the economy, 9.3).
 
@@ -12,13 +15,15 @@ import { haptics } from '../../platform/haptics.ts';
 import { HERO_KEYS, townMapUrl } from '../../render/town/assets.ts';
 import type { Insets } from '../../render/town/layout.ts';
 import { refineArtUrl } from '../../render/refine/assets.ts';
-import { refineFirstPileLine, refineReturnLine } from '../../sim/data/refine.ts';
+import { DAILY_BOSSES } from '../../sim/data/monsters.ts';
+import { dailyBossOf } from '../../sim/daily/daily.ts';
+import { refineFirstPileLine } from '../../sim/data/refine.ts';
 import { TOWN_BUILDING, townLocks } from '../../sim/data/town.ts';
 import { type CardSessionState, cardSessionState } from '../cards/store.ts';
 import { copyText } from '../cards/Lab.tsx';
 import { reducedMotion, Sheet, Toggle } from '../cards/parts.tsx';
 import { ARRIVAL_MIN_MAP, arrivalKey, markArrivalTold, shouldTellArrival } from '../refine/arrival.ts';
-import { peekRefine } from '../refine/store.ts';
+import { peekRefine, refineStore } from '../refine/store.ts';
 import { num } from '../refine/text.ts';
 import type { MapApi, MapBubble, MapTap } from './TownMap.tsx';
 import {
@@ -30,10 +35,12 @@ import {
   placeName,
   SCENERY_LINES,
   SOON,
-  TOWER_SOON,
 } from './text.ts';
 import { defaultTownPrefs, newTownVisit, summarizeTown, type TownLog, type TownPrefs, townStore, type TownVisit } from './store.ts';
 import type { HomeExit } from '../nav.ts';
+import { idleReturnLine } from '../battle/text.ts';
+import { LevelChip } from '../game/LevelChip.tsx';
+import { gameStore } from '../game/store.ts';
 import './town.css';
 
 const TownMap = lazy(() => import('./TownMap.tsx'));
@@ -48,21 +55,31 @@ type HomeSheet =
   | { kind: 'forge' }
   | { kind: 'mine' }
   | { kind: 'soon'; what: string; place: string; line: string }
+  | { kind: 'tower'; place: string }
   | { kind: 'settings' };
 
-/** The quick entries (3.2, 9.4), in the user's order. Their icons are stand-ins until 16장의 4번's five are drawn. */
+/**
+ * The quick entries (3.2, 9.4), in the user's order. Their icons are stand-ins until 16장의 4번's five
+ * are drawn: the stage is the tower's floors (6.1), so it has the tower; the challenge has the day's
+ * boss (8.1; the first boss until the day is known).
+ */
+/** The daily bosses' pictures (the 도전 entry's icon), only these five: the map does not load the battle's art list. */
+const DAILY_BOSS_ART = import.meta.glob('/src/assets/art/monsters/daily_*.webp', { query: '?no-inline', import: 'default', eager: true }) as Record<string, string>;
+function monsterArtUrl(key: string): string | null {
+  return DAILY_BOSS_ART[`/src/assets/art/monsters/${key}.webp`] ?? null;
+}
+
 const QUICK: readonly { id: 'forge' | SoonId | 'refine'; label: string; icon: string | null; fit?: string }[] = [
   { id: 'forge', label: '대장간', icon: townMapUrl('bld_forge') },
-  { id: 'challenge', label: '도전', icon: townMapUrl('tower_fire'), fit: 'tower' },
-  { id: 'stage', label: '스테이지', icon: townMapUrl('bld_gate'), fit: 'gate' },
+  { id: 'challenge', label: '도전', icon: monsterArtUrl(DAILY_BOSSES[0]?.key ?? ''), fit: 'boss' },
+  { id: 'stage', label: '스테이지', icon: townMapUrl('tower_fire'), fit: 'tower' },
   { id: 'heroes', label: '용사', icon: HERO_KEYS.includes('hero_vail') ? townMapUrl('hero_vail') : null, fit: 'face' },
   { id: 'refine', label: '정제', icon: refineArtUrl('ore_chunk') },
 ];
 
-/** How long a bubble on the map, the arrival notice and a '곧 열린다' line stay (ms). */
+/** How long a bubble on the map and the arrival notice stay (ms). */
 const BUBBLE_MS = 2800;
 const NOTICE_MS = 4800;
-const TOAST_MS = 2600;
 /** The play log is written this long after its last change (ms), and at once when leaving. */
 const LOG_SAVE_MS = 1200;
 
@@ -76,7 +93,6 @@ export function TownHome({ onOpen }: Props) {
   const [sheet, setSheet] = useState<HomeSheet | null>(null);
   const [bubble, setBubble] = useState<MapBubble | null>(null);
   const [notice, setNotice] = useState<{ key: number; text: string } | null>(null);
-  const [toast, setToast] = useState<{ key: number; text: string } | null>(null);
   const [readyMs, setReadyMs] = useState<Readonly<Record<string, number>> | null>(null);
   /** What the top band and the quick entries cover, measured: the map keeps its first look and its tags and bubbles clear of them. */
   const rootRef = useRef<HTMLDivElement>(null);
@@ -125,16 +141,21 @@ export function TownHome({ onOpen }: Props) {
   // `tell`: as the map opens or the app comes back, say what came in while away (once per batch:
   // the refine screen will not say it again, arrival.ts). A first visit's pile was simply sent ahead.
   const refresh = useCallback((tell: boolean) => {
-    void peekRefine(nowMs()).then((p) => {
+    void gameStore
+      .load()
+      .then((g) => g.stage.progress.best)
+      .catch(() => 0)
+      .then((best) => peekRefine(nowMs(), refineStore, best).then((p) => ({ p, best })))
+      .then(({ p, best }) => {
       setPeek({ lumps: p.lumps, gold: p.gold, full: p.full });
       if (!tell) return;
       const at = arrivalKey(p.since);
       if (!shouldTellArrival(at, p.gained, ARRIVAL_MIN_MAP)) return;
       markArrivalTold(at, p.gained);
       const key = nextKey();
-      setNotice({ key, text: p.since === null ? refineFirstPileLine(p.gained) : refineReturnLine(p.gained) });
+      setNotice({ key, text: p.since === null ? refineFirstPileLine(p.gained) : idleReturnLine(best, p.gained) });
       later(() => setNotice((n) => (n?.key === key ? null : n)), NOTICE_MS);
-    });
+      });
     void cardSessionState().then(setCraft);
   }, [later]);
   useEffect(() => {
@@ -192,7 +213,7 @@ export function TownHome({ onOpen }: Props) {
   }, [flushLog]);
 
   const open = (screen: HomeExit, via: 'map' | 'quick' | null) => {
-    if (screen === 'refine') sound.unlock();
+    if (screen === 'refine' || screen === 'stage' || screen === 'challenge') sound.unlock();
     visit.current = { ...visit.current, went: screen, via };
     flushLog();
     onOpen(screen);
@@ -213,7 +234,6 @@ export function TownHome({ onOpen }: Props) {
     turn.current.set(id, i + 1);
     return lines[i % lines.length] ?? '';
   };
-  const soon = (id: SoonId, place: string) => setSheet({ kind: 'soon', what: SOON[id].what, place, line: SOON[id].line });
 
   const onTap = (t: MapTap) => {
     setBubble(null);
@@ -244,14 +264,14 @@ export function TownHome({ onOpen }: Props) {
         setSheet({ kind: 'mine' });
         return;
       case 'guild':
-        soon('heroes', name);
+        open('heroes', 'map');
         return;
       case 'gate':
-        soon('stage', name);
+        open('stage', 'map');
         return;
       case 'tower':
         // The towers stand for both the stage and the daily boss for now (9.2: 탑 = 도전, 마을 문 = 스테이지).
-        setSheet({ kind: 'soon', what: TOWER_SOON, place: name, line: PLACE_SHEET.tower });
+        setSheet({ kind: 'tower', place: name });
         return;
       default: {
         const lines = SCENERY_LINES[t.building];
@@ -266,13 +286,7 @@ export function TownHome({ onOpen }: Props) {
       open('cards', 'quick');
       return;
     }
-    if (id === 'refine') {
-      open('refine', 'quick');
-      return;
-    }
-    const key = nextKey();
-    setToast({ key, text: `${SOON[id].what} — ${SOON[id].line}` });
-    later(() => setToast((x) => (x?.key === key ? null : x)), TOAST_MS);
+    open(id, 'quick');
   };
 
   const onDrag = useCallback(
@@ -327,6 +341,7 @@ export function TownHome({ onOpen }: Props) {
           {goldUrl !== null && <img src={goldUrl} alt="" draggable={false} />}
           <b>{num(peek?.gold ?? 0)}</b>
         </div>
+        <LevelChip banner className="th-level" />
         <button type="button" className="th-gear" onClick={() => setSheet({ kind: 'settings' })} aria-label="설정">
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M12 2.8l1.6 2.3 2.7-.7.5 2.8 2.6 1.1-1 2.6 1.9 2.1-2.3 1.6.7 2.7-2.8.5-1.1 2.6-2.6-1-2.1 1.9-1.6-2.3-2.7.7-.5-2.8-2.6-1.1 1-2.6-1.9-2.1 2.3-1.6-.7-2.7 2.8-.5 1.1-2.6 2.6 1z" />
@@ -340,19 +355,13 @@ export function TownHome({ onOpen }: Props) {
         </button>
       )}
 
-      {toast !== null && (
-        <p key={toast.key} className="th-toast" role="status">
-          {toast.text}
-        </p>
-      )}
       <nav ref={quickRef} className="th-quick" aria-label="빠른 진입">
         {QUICK.map((q) => {
-          const isSoon = q.id !== 'forge' && q.id !== 'refine';
+          const icon = q.id === 'challenge' ? (monsterArtUrl(dailyBossOf(gameStore.server.today()).monster.key) ?? q.icon) : q.icon;
           return (
-            <button key={q.id} type="button" className={`th-q th-q-${q.id}${isSoon ? ' soon' : ''}`} onClick={() => onQuick(q.id)}>
-              <span className={`th-q-pic${q.fit !== undefined ? ` fit-${q.fit}` : ''}`}>{q.icon !== null && <img src={q.icon} alt="" draggable={false} />}</span>
+            <button key={q.id} type="button" className={`th-q th-q-${q.id}`} onClick={() => onQuick(q.id)}>
+              <span className={`th-q-pic${q.fit !== undefined ? ` fit-${q.fit}` : ''}`}>{icon !== null && <img src={icon} alt="" draggable={false} />}</span>
               <span className="th-q-label">{q.label}</span>
-              {isSoon && <small className="th-q-soon">곧</small>}
               {q.id === 'refine' && lumps > 0 && (
                 <b className="th-q-badge" aria-label={`덩어리 ${lumps}개`}>
                   {num(lumps)}
@@ -391,6 +400,21 @@ export function TownHome({ onOpen }: Props) {
             <button type="button" className="kc-btn primary big th-act th-act-refine" onClick={() => open('refine', 'map')}>
               광석 정제로
               <small>{lumps > 0 ? `덩어리 ${num(lumps)}개가 기다린다` : '덩어리가 아직 없다'}</small>
+            </button>
+          </div>
+        </Sheet>
+      )}
+      {sheet?.kind === 'tower' && (
+        <Sheet title={sheet.place} onClose={() => setSheet(null)}>
+          <p className="th-sheet-line">{PLACE_SHEET.tower}</p>
+          <div className="th-sheet-actions">
+            <button type="button" className="kc-btn primary big th-act" onClick={() => open('stage', 'map')}>
+              스테이지
+              <small>다음 층에 도전하고, 넘은 층에서 사냥한다</small>
+            </button>
+            <button type="button" className="kc-btn big th-act th-act-refine" onClick={() => open('challenge', 'map')}>
+              도전 · 일일 보스
+              <small>하루 다섯 번, 무리 순위</small>
             </button>
           </div>
         </Sheet>

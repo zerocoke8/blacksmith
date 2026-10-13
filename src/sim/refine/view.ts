@@ -3,14 +3,14 @@
 // Plain data from the state; the screen formats it.
 
 import {
-  REFINE_LUMPS,
+  idleLumpCap,
   REFINE_TABLE,
   type RefineItemId,
   type RefineKind,
   type RefineMult,
   type RefineRarity,
 } from '../data/refine.ts';
-import { effectiveMult, hitsLeft, nextLumpAt, type RefineState } from './refine.ts';
+import { effectiveMult, hitsLeft, type LumpLot, lumpsByBand, nextLumpAt, type RefineState } from './refine.ts';
 
 export interface RefineBagLine {
   id: RefineItemId;
@@ -35,6 +35,8 @@ export interface RefineView {
   hits: number;
   /** The world minute the next lump comes in, null while full. */
   nextLumpAt: number | null;
+  /** Lumps by the band they came in at (7.1), lowest band first. */
+  bands: LumpLot[];
   /** The bag in table order, items there are only. */
   bag: RefineBagLine[];
   gold: number;
@@ -43,27 +45,30 @@ export interface RefineView {
   refineNo: number;
 }
 
-export function refineView(state: RefineState, chosen: RefineMult): RefineView {
+/** bestFloor: the best floor the pile's rate and cap follow (6.8); 0 = the v0.8 60 an hour, 720. */
+export function refineView(state: RefineState, chosen: RefineMult, bestFloor = 0): RefineView {
   const mult = effectiveMult(state.lumps, chosen);
+  const cap = idleLumpCap(bestFloor);
   const bag: RefineBagLine[] = [];
   let gold = 0;
   let items = 0;
   for (const row of REFINE_TABLE) {
     const count = state.bag[row.id] ?? 0;
-    if (count <= 0) continue;
+    if (count <= 0 || row.kind === 'exp') continue;
     bag.push({ id: row.id, name: row.name, kind: row.kind, rarity: row.rarity, count });
     if (row.kind === 'gold') gold += count;
     else items += count;
   }
   return {
     lumps: state.lumps,
-    cap: REFINE_LUMPS.cap,
-    full: state.lumps >= REFINE_LUMPS.cap,
+    cap,
+    full: state.lumps >= cap,
     canHit: mult !== null,
     mult,
     lowered: mult !== null && mult < chosen,
     hits: mult === null ? 0 : hitsLeft(state.lumps, mult),
-    nextLumpAt: nextLumpAt(state),
+    nextLumpAt: nextLumpAt(state, bestFloor),
+    bands: lumpsByBand(state),
     bag,
     gold,
     items,
@@ -71,14 +76,14 @@ export function refineView(state: RefineState, chosen: RefineMult): RefineView {
   };
 }
 
-/** Totals by item: gold apart, the rest summed (for counting up as drops fly into the bag). */
+/** Totals by item: gold apart, the rest summed (for counting up as drops fly into the bag). 경험치 is not in the bag. */
 export function bagTotals(bag: Partial<Record<RefineItemId, number>>): { gold: number; items: number } {
   let gold = 0;
   let items = 0;
   for (const row of REFINE_TABLE) {
     const n = bag[row.id] ?? 0;
     if (row.kind === 'gold') gold += n;
-    else items += n;
+    else if (row.kind !== 'exp') items += n;
   }
   return { gold, items };
 }

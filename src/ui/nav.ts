@@ -4,8 +4,11 @@
 // goes from a screen back to the map. The map itself is the address with no hash. Pure: App.tsx
 // hands in location.hash and history.state.
 
-/** The screens the map opens: 카드 제작 (4.2), 광석 정제 (7장), and the v0.6 prototype kept for comparison. */
-export const SCREENS = ['cards', 'refine', 'craft'] as const;
+/**
+ * The screens the map opens: 카드 제작 (4.2), 광석 정제 (7장), 용사 (5.9), 스테이지 (6장), 도전 = 일일 보스
+ * (8장), and the v0.6 prototype kept for comparison.
+ */
+export const SCREENS = ['cards', 'refine', 'heroes', 'stage', 'challenge', 'craft'] as const;
 export type HomeExit = (typeof SCREENS)[number];
 export type Screen = 'home' | HomeExit;
 

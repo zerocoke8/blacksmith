@@ -18,12 +18,11 @@ import {
   REFINE_HAPTIC,
   REFINE_LINE_GAP_MS,
   REFINE_LINES,
-  REFINE_LUMPS,
+  idleLumpCap,
   REFINE_SOUND,
   REFINE_TEMPO,
   refineFirstPileLine,
   type RefineItemId,
-  refineReturnLine,
   refineRow,
 } from '../../sim/data/refine.ts';
 import {
@@ -32,6 +31,7 @@ import {
   bagTotals,
   hitInBatch,
   holdIntervalMs,
+  isExpDrop,
   newBatch,
   nextMult,
   type RefineBatch,
@@ -55,6 +55,9 @@ import {
   worldMinute,
 } from './store.ts';
 import { clock, num } from './text.ts';
+import { idleReturnLine } from '../battle/text.ts';
+import { LevelChip } from '../game/LevelChip.tsx';
+import { gameStore } from '../game/store.ts';
 import './refine.css';
 
 /** How long the '자리를 비운 사이' line stays (ms), how long a dwarf line stays, and a batch's '+n'. */
@@ -84,6 +87,8 @@ function withVisit(s: RefineSave, start: number, f: (v: RefineVisit) => RefineVi
 export default function RefineScreen(props: { onExit(): void }) {
   const reduced = useMemo(() => reducedMotion(), []);
   const [save, setSave] = useState<RefineSave | null>(null);
+  /** 최고 스테이지 (the stage save): the rate, cap and band of the lumps (6.8, 7.1). */
+  const best = useRef(0);
   const saveRef = useRef<RefineSave | null>(null);
   const [saveFailed, setSaveFailed] = useState(false);
   const visitStart = useRef(0);
@@ -165,21 +170,25 @@ export default function RefineScreen(props: { onExit(): void }) {
   // ---- Coming in: count what piled up while away, and say so ----
   useEffect(() => {
     let alive = true;
-    void refineStore.load().then((loaded) => {
+    void Promise.all([refineStore.load(), gameStore.load().catch(() => null)]).then(([loaded, game]) => {
       if (!alive) return;
+      // The lumps come in at the best floor's rate, cap and band (6.8, 7.1).
+      best.current = game?.stage.progress.best ?? 0;
       const ms = nowMs();
       const base = loaded ?? newRefineSave(worldMinute(ms), randomSeed());
-      const r = accrue(base.state, worldMinute(ms));
-      const full = r.state.lumps >= REFINE_LUMPS.cap;
+      const r = accrue(base.state, worldMinute(ms), best.current);
+      const full = r.state.lumps >= idleLumpCap(best.current);
       visitStart.current = ms;
       const visit = { ...newVisit(ms, r.state, r.gained, full), ...feel() };
-      put({ ...base, state: r.state, firstSeen: true, visits: [...base.visits, visit].slice(-VISIT_LIMIT) });
+      // 경험치 struck in a batch the app closed on goes in now.
+      if ((base.expHeld ?? 0) > 0) void gameStore.addExp(base.expHeld ?? 0);
+      put({ ...base, state: r.state, firstSeen: true, expHeld: 0, visits: [...base.visits, visit].slice(-VISIT_LIMIT) });
       if (r.gained > 0) {
         // Said once per batch: the map may have said it already as it opened (arrival.ts).
         const key = arrivalKey(loaded === null ? null : base.state.accruedAt);
         if (shouldTellArrival(key, r.gained)) {
           markArrivalTold(key, r.gained);
-          showNotice(loaded === null ? refineFirstPileLine(r.gained) : refineReturnLine(r.gained));
+          showNotice(loaded === null ? refineFirstPileLine(r.gained) : idleReturnLine(best.current, r.gained));
         }
         // The pile grows in front of him once the workshop is up: it shows what was there first.
         if (!reduced) {
@@ -203,10 +212,10 @@ export default function RefineScreen(props: { onExit(): void }) {
     setNow(ms);
     const s = saveRef.current;
     if (s === null) return;
-    const r = accrue(s.state, worldMinute(ms));
+    const r = accrue(s.state, worldMinute(ms), best.current);
     if (r.state === s.state) return;
     put({ ...s, state: r.state });
-    if (r.gained >= NOTICE_FROM) showNotice(refineReturnLine(r.gained));
+    if (r.gained >= NOTICE_FROM) showNotice(idleReturnLine(best.current, r.gained));
   }, [put, showNotice]);
 
   useEffect(() => {
@@ -224,13 +233,28 @@ export default function RefineScreen(props: { onExit(): void }) {
   // ---- The batch: finds round the anvil fly into the bag ----
   const findsRef = useRef(finds);
   findsRef.current = finds;
+  /**
+   * The batch's 경험치 goes into the shared level as the batch ends (5.3, 7.2: '묶음이 끝날 때 그
+   * 묶음의 경험치를 한 번에'), and the top line says the batch's sum. Until then it waits in the
+   * refine save (expHeld), so a closed app does not lose it.
+   */
+  const releaseExp = useCallback(() => {
+    const s = saveRef.current;
+    const held = s?.expHeld ?? 0;
+    if (s === null || held <= 0) return;
+    void gameStore.addExp(held);
+    put({ ...s, expHeld: 0 });
+  }, [put]);
   const collect = useCallback(() => {
     batchRef.current = newBatch();
+    releaseExp();
     // What this flight carries, for the '+n' when its last find gets there.
     const group = nextKey();
     const tally = { gold: 0, items: 0, goldLeft: 0, itemsLeft: 0 };
     for (const f of findsRef.current) {
       if (f.fly !== null) continue;
+      // 경험치 went into the level bar as it was struck: it is not part of the bag's '+n'.
+      if (isExpDrop(f.drop)) continue;
       if (refineRow(f.drop.item).kind === 'gold') {
         tally.gold += f.drop.amount;
         tally.goldLeft += 1;
@@ -244,7 +268,7 @@ export default function RefineScreen(props: { onExit(): void }) {
       let order = 0;
       return list.map((f) => (f.fly !== null ? f : { ...f, fly: order++, group }));
     });
-  }, []);
+  }, [releaseExp]);
   // The finds wait on the floor until the press is over and they have landed (collector.ts).
   const collector = useMemo(
     () =>
@@ -262,8 +286,10 @@ export default function RefineScreen(props: { onExit(): void }) {
     () => () => {
       for (const id of timers.current) window.clearTimeout(id);
       collector.dispose();
+      // Leaving mid-batch: its 경험치 goes in now (the next screen's top line says it).
+      releaseExp();
     },
-    [collector],
+    [collector, releaseExp],
   );
 
   const popPlus = useCallback(
@@ -285,7 +311,7 @@ export default function RefineScreen(props: { onExit(): void }) {
       if (f !== undefined) {
         const gold = refineRow(f.drop.item).kind === 'gold';
         let last = false;
-        const t = f.group !== undefined ? flights.current.get(f.group) : undefined;
+        const t = f.group !== undefined && !isExpDrop(f.drop) ? flights.current.get(f.group) : undefined;
         if (t !== undefined && f.group !== undefined) {
           if (gold) {
             t.goldLeft -= 1;
@@ -346,7 +372,7 @@ export default function RefineScreen(props: { onExit(): void }) {
     const s = saveRef.current;
     if (s === null) return { struck: false, full: false };
     const ms = nowMs();
-    const state = accrue(s.state, worldMinute(ms)).state;
+    const state = accrue(s.state, worldMinute(ms), best.current).state;
     const r = hitInBatch(state, batchRef.current, s.seed, s.mult);
     if (r === null) {
       if (n === 1 && state.lumps < 1) {
@@ -359,8 +385,10 @@ export default function RefineScreen(props: { onExit(): void }) {
     batchRef.current = r.batch;
     const d = r.drop;
     const m = String(d.mult);
+    // 경험치 waits for the batch's end (releaseExp), kept in the save meanwhile.
+    const expHeld = (s.expHeld ?? 0) + (isExpDrop(d) ? d.amount : 0);
     put(
-      withVisit({ ...s, state: r.state }, visitStart.current, (v) => ({
+      withVisit({ ...s, state: r.state, ...(expHeld > 0 ? { expHeld } : {}) }, visitStart.current, (v) => ({
         ...v,
         blows: v.blows + 1,
         byMult: { ...v.byMult, [m]: (v.byMult[m] ?? 0) + 1 },
@@ -427,7 +455,7 @@ export default function RefineScreen(props: { onExit(): void }) {
   const cycleMult = () => {
     const s = saveRef.current;
     if (s === null) return;
-    const v = refineView(s.state, s.mult);
+    const v = refineView(s.state, s.mult, best.current);
     const next = nextMult(v.mult ?? s.mult, s.state.lumps);
     if (next === s.mult) return;
     put(withVisit({ ...s, mult: next }, visitStart.current, (x) => ({ ...x, multChanges: x.multChanges + 1 })));
@@ -442,16 +470,16 @@ export default function RefineScreen(props: { onExit(): void }) {
     const s = saveRef.current;
     if (s === null) return;
     // As if he had been away that much longer: the counted-up-to minute moves back, then it counts.
-    const r = accrue({ ...s.state, accruedAt: s.state.accruedAt - minutes }, worldMinute(nowMs()));
+    const r = accrue({ ...s.state, accruedAt: s.state.accruedAt - minutes }, worldMinute(nowMs()), best.current);
     put({ ...s, state: r.state });
-    showNotice(r.gained > 0 ? refineReturnLine(r.gained) : '더미가 가득 차 더는 쌓이지 않았다.');
+    showNotice(r.gained > 0 ? idleReturnLine(best.current, r.gained) : '더미가 가득 차 더는 쌓이지 않았다.');
   };
   const labClearLog = () => {
     const s = saveRef.current;
     if (s === null) return;
     const ms = nowMs();
     visitStart.current = ms;
-    put({ ...s, visits: [{ ...newVisit(ms, s.state, 0, s.state.lumps >= REFINE_LUMPS.cap), ...feel() }] });
+    put({ ...s, visits: [{ ...newVisit(ms, s.state, 0, s.state.lumps >= idleLumpCap(best.current)), ...feel() }] });
   };
   const labReset = () => {
     const s = saveRef.current;
@@ -465,11 +493,11 @@ export default function RefineScreen(props: { onExit(): void }) {
   };
 
   // ---- What shows ----
-  const view = save !== null ? refineView(save.state, save.mult) : null;
+  const view = save !== null ? refineView(save.state, save.mult, best.current) : null;
   // Finds still on the floor or on their way are not in the bag's count yet.
   const pending = useMemo(() => {
     const bag: Partial<Record<RefineItemId, number>> = {};
-    for (const f of finds) bag[f.drop.item] = (bag[f.drop.item] ?? 0) + f.drop.amount;
+    for (const f of finds) if (!isExpDrop(f.drop)) bag[f.drop.item] = (bag[f.drop.item] ?? 0) + f.drop.amount;
     return bagTotals(bag);
   }, [finds]);
   // The bag sheet: what has reached the bag (a first find still on its way is not a line of 0 yet).
@@ -514,6 +542,7 @@ export default function RefineScreen(props: { onExit(): void }) {
           ←
         </button>
         <b className="rf-title">광석 정제</b>
+        <LevelChip banner chip={false} />
         <div className={`rf-chip rf-lumps${view?.full === true ? ' full' : ''}`} role="status" aria-label={`광석 덩어리 ${lumps}개`}>
           {chunkUrl !== null && <img src={chunkUrl} alt="" draggable={false} />}
           <b key={lumpsShown === null ? 'n' : 'up'} className={lumpsShown !== null ? 'rising' : undefined}>

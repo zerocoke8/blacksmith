@@ -9,7 +9,8 @@
 // Everything here is the screen's show (CLAUDE.md 규칙 2): nothing is counted or saved, and the map's
 // place is not kept (9.1). Loaded with a dynamic import when the home screen opens.
 
-import { Application, Container, EventsTicker, Graphics, Sprite, Texture, Ticker } from 'pixi.js';
+import { Container, Graphics, Sprite, Texture } from 'pixi.js';
+import { acquireApp } from '../app.ts';
 import type { TownBuildingId, TownLock } from '../../sim/data/town.ts';
 import { HERO_KEYS } from './assets.ts';
 import { alphaOf, type BakedPic, loadTownPictures } from './baked.ts';
@@ -125,27 +126,16 @@ export async function createTownScene(host: HTMLElement, width: number, height: 
   const pics = await loadTownPictures();
   const tPics = performance.now();
   const M = pics.manifest;
-  const app = new Application();
-  await app.init({
-    width: Math.max(1, width),
-    height: Math.max(1, height),
-    background: TOWN_LAYOUT.map.skyColor,
-    antialias: true,
-    resolution: Math.min(window.devicePixelRatio || 1, 2),
-    autoDensity: true,
-    preference: ['webgl'],
-  });
+  // The shared app (render/app.ts): one GL context for every screen. The canvas goes into the map's
+  // box now; the box keeps it hidden until the map is ready (TownMap's .tm-canvas). The map takes
+  // its fingers from the page (input.ts), not through PixiJS (app.ts turns PixiJS's pointer ticker off).
+  const lease = await acquireApp(host, width, height, { background: TOWN_LAYOUT.map.skyColor });
+  const app = lease.app;
   const tInit = performance.now();
-  app.stage.eventMode = 'none';
-  app.stage.interactiveChildren = false;
-  // The map takes its fingers from the page (input.ts), not through PixiJS: PixiJS's own pointer
-  // ticker would keep a frame loop running even while the map is paused under a sheet.
-  EventsTicker.removeTickerListener();
-  const view = app.canvas;
-  view.style.display = 'block';
-  view.style.width = '100%';
-  view.style.height = '100%';
-  view.style.touchAction = 'none';
+  const root = new Container();
+  app.stage.addChild(root);
+  // Nothing of the map shows until its first frame is drawn below.
+  root.visible = false;
 
   const reduced = opts.reducedMotion;
   // One texture per picture, freed with the scene (the images stay in memory for the session).
@@ -163,7 +153,7 @@ export async function createTownScene(host: HTMLElement, width: number, height: 
 
   // ---- The display tree, in the composer's order ----
   const world = new Container();
-  app.stage.addChild(world);
+  root.addChild(world);
   const layerSprite = (l: { file: string; x: number; y: number; scale: number }, into: Container) => {
     const t = texOf(l.file);
     if (t === null) return;
@@ -706,7 +696,7 @@ export async function createTownScene(host: HTMLElement, width: number, height: 
     }
   }
   const tDraw = performance.now();
-  host.appendChild(view);
+  root.visible = true;
   app.ticker.add(tick);
   app.render();
   app.ticker.start();
@@ -727,7 +717,7 @@ export async function createTownScene(host: HTMLElement, width: number, height: 
       if (destroyed) return;
       W = Math.max(1, Math.round(w));
       H = Math.max(1, Math.round(h));
-      app.renderer.resize(W, H);
+      lease.resize(W, H);
       relayout();
       if (paused) app.render();
     },
@@ -747,24 +737,19 @@ export async function createTownScene(host: HTMLElement, width: number, height: 
     pause(on) {
       if (destroyed || on === paused) return;
       paused = on;
-      // Nothing moves under a sheet: no frames at all (PixiJS's system ticker only runs its scheduler,
-      // which has nothing to do while nothing is drawn; it starts again with the map or when it closes).
-      if (on) {
-        app.ticker.stop();
-        Ticker.system.stop();
-      } else {
-        Ticker.system.start();
-        app.ticker.start();
-      }
+      // Nothing moves under a sheet: no frames at all (the lease stops PixiJS's system ticker too; it
+      // starts again with the map or when the sheet closes).
+      lease.pause(on);
     },
     readyMs: { pictures: tPics - t0, decode: pics.loadMs, gl: tInit - tPics, build: tUpload - tInit, upload: tDraw - tUpload, draw: tReady - tDraw },
     destroy() {
       if (destroyed) return;
       destroyed = true;
-      if (paused) Ticker.system.start();
       detach();
       app.ticker.remove(tick);
-      app.destroy({ removeView: true }, { children: true, texture: false, textureSource: false });
+      app.stage.removeChild(root);
+      root.destroy({ children: true });
+      lease.release();
       // The images stay (baked.ts keeps them for the session); their GPU copies go.
       for (const t of textures.values()) t.destroy(true);
       textures.clear();

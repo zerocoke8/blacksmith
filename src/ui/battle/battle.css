@@ -1,0 +1,472 @@
+/* 스테이지·도전 화면 (bt-): the field between a paper top band and a paper bottom band, in the doodle
+   look (app.css --dd-*). Touch first: no hover, targets at least 44 px; the notch and the home bar
+   stay clear. */
+
+.bt-root {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  max-width: 480px;
+  margin: 0 auto;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  overflow: hidden;
+  background: var(--dd-wood);
+  box-shadow: 0 0 0 100vmax var(--dd-wood-3);
+  color: var(--dd-ink);
+  font-family: var(--dd-font-body);
+}
+
+.bt-top {
+  position: relative;
+  z-index: 6;
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  min-height: 54px;
+  padding: 4px 6px;
+  border-bottom: var(--dd-stroke-fat) solid var(--dd-ink);
+  background: var(--dd-paper);
+}
+
+.bt-floor {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+  line-height: 1.05;
+}
+
+.bt-floor b {
+  font-family: var(--dd-font-round);
+  font-size: 1.35rem;
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.bt-floor small {
+  max-width: 120px;
+  overflow: hidden;
+  font-family: var(--dd-font-round);
+  font-size: 0.74rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 10층마다 보스 (사용자 결정 3): the floor in a red sticker. */
+.bt-floor.boss small {
+  padding: 0 6px;
+  border: 1.5px solid var(--dd-ink);
+  border-radius: 999px;
+  background: var(--dd-red);
+  color: var(--dd-paper-3);
+}
+
+.bt-timer {
+  min-width: 52px;
+  height: 34px;
+  margin-left: auto;
+  padding: 0 8px;
+  border: var(--dd-stroke) solid var(--dd-ink);
+  border-radius: 999px;
+  background: var(--dd-paper-3);
+  font-family: var(--dd-font-round);
+  font-size: 1rem;
+  line-height: 30px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.bt-timer.low {
+  background: var(--dd-red);
+  color: var(--dd-paper-3);
+}
+
+.bt-timer.off {
+  color: var(--dd-ink-soft);
+  background: var(--dd-paper-2);
+}
+
+.bt-level {
+  flex: none;
+}
+
+.bt-sub {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 10px;
+  background: var(--dd-wood-2);
+  color: var(--dd-paper);
+  font-size: 0.82rem;
+}
+
+.bt-best {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 다음 층의 속성·체형 (6.1, 6.9): shown ahead, a small paper tag. */
+.bt-ahead {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  min-height: 30px;
+  margin-right: auto;
+  padding: 0 9px 0 7px;
+  border: 2px solid var(--dd-ink);
+  border-radius: 999px;
+  background: var(--dd-paper);
+  color: var(--dd-ink);
+  font-family: var(--dd-font-round);
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+
+.bt-ahead small {
+  color: var(--dd-ink-soft);
+  font-size: 0.74rem;
+}
+
+.bt-ahead img {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+}
+
+.bt-ahead em {
+  padding: 0 6px;
+  border: 1.5px solid var(--dd-ink);
+  border-radius: 999px;
+  background: var(--dd-red);
+  color: var(--dd-paper-3);
+  font-size: 0.72rem;
+  font-style: normal;
+}
+
+.bt-boss-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.bt-boss-line img {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+}
+
+.bt-auto {
+  flex: none;
+  min-height: 44px;
+  padding: 0 12px;
+  border: var(--dd-stroke) solid var(--dd-ink);
+  border-radius: 999px;
+  background: var(--dd-paper-2);
+  box-shadow: var(--dd-pop-s);
+  color: var(--dd-ink-soft);
+  font-family: var(--dd-font-round);
+  font-size: 0.86rem;
+  cursor: pointer;
+}
+
+.bt-auto.on {
+  background: var(--dd-mint);
+  color: var(--dd-ink);
+}
+
+.bt-auto:active {
+  transform: translateY(2px);
+  box-shadow: none;
+}
+
+.bt-tries {
+  flex: none;
+  padding: 2px 10px;
+  border: 2px solid var(--dd-ink);
+  border-radius: 999px;
+  background: var(--dd-butter);
+  color: var(--dd-ink);
+  font-family: var(--dd-font-round);
+}
+
+.bt-tries.none {
+  background: var(--dd-paper-2);
+}
+
+/* ---------- The field ---------- */
+
+.bt-field {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  background: #cfe3ea;
+  touch-action: manipulation;
+}
+
+.bt-canvas {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.bt-field.ready .bt-canvas {
+  opacity: 1;
+}
+
+.bt-loading {
+  position: absolute;
+  top: 45%;
+  left: 0;
+  right: 0;
+  margin: 0;
+  color: var(--dd-ink-soft);
+  text-align: center;
+}
+
+.bt-banner {
+  position: absolute;
+  top: 26%;
+  left: 50%;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: max-content;
+  max-width: calc(100% - 40px);
+  padding: 8px 18px 9px;
+  border: var(--dd-stroke-fat) solid var(--dd-ink);
+  border-radius: 16px;
+  background: var(--dd-paper-3);
+  box-shadow: var(--dd-pop);
+  text-align: center;
+  transform: translateX(-50%) rotate(-2deg);
+  animation: bt-pop 0.28s ease-out;
+  pointer-events: none;
+}
+
+.bt-banner b {
+  font-family: var(--dd-font-round);
+  font-size: 1.35rem;
+  font-weight: 400;
+  word-break: keep-all;
+}
+
+.bt-banner small {
+  font-size: 0.82rem;
+  word-break: keep-all;
+}
+
+.bt-banner.win {
+  background: var(--dd-mint);
+}
+
+.bt-banner.boss {
+  background: var(--dd-butter);
+}
+
+/* A loss: an opaque paper with a heavy line, so the tower behind never runs through the words. */
+.bt-banner.lose {
+  border-width: 3.5px;
+  background: var(--dd-paper-3);
+  box-shadow: 0 4px 0 var(--dd-ink);
+  transform: translateX(-50%) rotate(1.5deg);
+}
+
+.bt-banner.lose b {
+  color: var(--dd-bad);
+}
+
+/* What came in while away (6.8), said on the field. */
+.bt-banner.note {
+  top: auto;
+  bottom: 14px;
+  background: var(--dd-sky-paper);
+  transform: translateX(-50%) rotate(-1deg);
+}
+
+.bt-banner.note b {
+  font-size: 0.98rem;
+}
+
+/* Scale only: the banner is opaque from its first frame (a fade let the tower run through the words). */
+@keyframes bt-pop {
+  from {
+    transform: translateX(-50%) scale(0.7) rotate(-6deg);
+  }
+}
+
+.bt-damage {
+  position: absolute;
+  top: 54px;
+  right: 10px;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  padding: 2px 10px 3px;
+  border: var(--dd-stroke) solid var(--dd-ink);
+  border-radius: 12px;
+  background: var(--dd-paper-3);
+  box-shadow: var(--dd-pop-s);
+  line-height: 1.1;
+  pointer-events: none;
+}
+
+.bt-damage small {
+  color: var(--dd-ink-soft);
+  font-size: 0.7rem;
+}
+
+.bt-damage b {
+  font-family: var(--dd-font-round);
+  font-size: 1.15rem;
+  font-weight: 400;
+}
+
+/* ---------- Bottom band ---------- */
+
+.bt-foot {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 8px 10px;
+  border-top: var(--dd-stroke-fat) solid var(--dd-ink);
+  background: var(--dd-paper);
+}
+
+.bt-status {
+  min-height: 1.3em;
+  margin: 0;
+  color: var(--dd-ink-soft);
+  font-size: 0.82rem;
+  line-height: 1.3;
+  word-break: keep-all;
+}
+
+/* Stuck: where the way on is (6.7). */
+.bt-hint {
+  margin: 0;
+  padding: 3px 8px;
+  border: 1.5px dashed var(--dd-ink);
+  border-radius: 10px;
+  background: var(--dd-butter-paper);
+  color: var(--dd-ink);
+  font-size: 0.8rem;
+  line-height: 1.35;
+  word-break: keep-all;
+}
+
+/* 편성 전투력 · 시간당 덩어리 (6.9). */
+.bt-facts {
+  display: flex;
+  gap: 14px;
+  margin: 0;
+  color: var(--dd-ink-soft);
+  font-size: 0.8rem;
+}
+
+.bt-facts b {
+  color: var(--dd-ink);
+  font-family: var(--dd-font-round);
+  font-weight: 400;
+}
+
+.bt-controls {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.bt-controls .kc-btn {
+  min-height: 46px;
+  padding: 0 10px;
+  white-space: nowrap;
+}
+
+.bt-controls .bt-go {
+  flex: 1;
+  font-size: 1.05rem;
+}
+
+.bt-record {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-height: 44px;
+  padding: 4px 10px;
+  border: 2px solid var(--dd-ink);
+  border-radius: 12px;
+  background: var(--dd-butter-paper);
+  color: var(--dd-ink);
+  font-family: var(--dd-font-round);
+  font-size: 0.92rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.bt-record small {
+  color: var(--dd-ink-soft);
+  font-family: var(--dd-font-body);
+  font-size: 0.76rem;
+}
+
+.bt-rank {
+  max-height: 52vh;
+  margin: 6px 0 10px;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.bt-rank li {
+  display: grid;
+  grid-template-columns: 42px 1fr auto;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 2px 8px;
+  border-bottom: 1px dashed color-mix(in srgb, var(--dd-ink) 30%, transparent);
+}
+
+.bt-rank li b {
+  font-family: var(--dd-font-round);
+  font-weight: 400;
+  text-align: center;
+}
+
+.bt-rank li small {
+  color: var(--dd-ink-soft);
+  font-size: 0.78rem;
+}
+
+.bt-rank li.me {
+  border: 2px solid var(--dd-ink);
+  border-radius: 10px;
+  background: var(--dd-butter);
+}
+
+.bt-rank li.gap {
+  display: block;
+  min-height: 0;
+  color: var(--dd-ink-soft);
+  text-align: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bt-banner {
+    animation: none;
+  }
+}

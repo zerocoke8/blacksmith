@@ -4,7 +4,7 @@
 // render/refine/assets.ts). Weights are relative, so adding a row needs no other change; it only
 // changes what later blows bring, never what is already in the bag.
 
-import { materialName } from './common.ts';
+import { bandOf, materialName, powInt } from './common.ts';
 
 // ---------- Rarity ----------
 
@@ -21,9 +21,10 @@ export const RARITY_LABEL: Record<RefineRarity, string> = {
 
 // ---------- The result table ----------
 
-export type RefineKind = 'ore' | 'gold' | 'gift';
+/** exp: 경험치 (7.3, 5.3) — it never goes into the bag; it fills the shared level's bar. */
+export type RefineKind = 'ore' | 'gold' | 'gift' | 'exp';
 
-export const REFINE_KIND_LABEL: Record<RefineKind, string> = { ore: '광석', gold: '골드', gift: '선물' };
+export const REFINE_KIND_LABEL: Record<RefineKind, string> = { ore: '광석', gold: '골드', gift: '선물', exp: '경험치' };
 
 export interface RefineRow {
   readonly id: string;
@@ -48,7 +49,9 @@ export function oreName(tier: number): string {
 
 export const REFINE_TABLE = [
   { id: 'ironOre', name: oreName(1), kind: 'ore', rarity: 'common', weight: 40, min: 1, max: 1, materialTier: 1 },
-  { id: 'gold', name: '골드', kind: 'gold', rarity: 'common', weight: 25, min: 5, max: 15 },
+  // 골드는 보조 수입 (B.15): 25 → 10, the weight moved to 경험치 (7.3 [튜닝]).
+  { id: 'gold', name: '골드', kind: 'gold', rarity: 'common', weight: 10, min: 5, max: 15 },
+  { id: 'exp', name: '경험치', kind: 'exp', rarity: 'common', weight: 15, min: 8, max: 12 },
   { id: 'steelIngot', name: oreName(2), kind: 'ore', rarity: 'uncommon', weight: 15, min: 1, max: 1, materialTier: 2 },
   { id: 'wildflowers', name: '들꽃 다발', kind: 'gift', rarity: 'uncommon', weight: 3, min: 1, max: 1 },
   { id: 'honeyCake', name: '꿀 과자', kind: 'gift', rarity: 'uncommon', weight: 3, min: 1, max: 1 },
@@ -86,6 +89,44 @@ export const REFINE_LUMPS = { everyMinutes: 1, cap: 720 } as const;
 
 /** Lumps an hour (for the screen): 60 ÷ everyMinutes. */
 export const REFINE_LUMPS_PER_HOUR = 60 / REFINE_LUMPS.everyMinutes;
+
+// ---------- Bands: what a lump is worth (7.1, 7.3) [튜닝] ----------
+
+/**
+ * 덩어리에 받을 때의 단계 (7.1, B.16 결정 10): a lump carries the band (구간, 10 floors) of the best
+ * floor when it came in. 수는 천천히, 값은 크게: the count grows slowly with the floor (IDLE_LUMPS),
+ * the worth by band — each band × REFINE_BAND_VALUE on the amount of the rows that scale (경험치,
+ * 골드). Which ore rows each band opens is [미정] (7.3, 16장의 10번): today every band has the same rows.
+ */
+export const REFINE_BAND_VALUE = 1.5;
+export const REFINE_BAND_SCALED_KINDS: readonly RefineKind[] = ['exp', 'gold'];
+
+/** The ×1 amount of a row at a band: base × 1.5^(band − 1) for 경험치 and 골드, else base. */
+export function bandAmount(kind: RefineKind, base: number, band: number): number {
+  if (!REFINE_BAND_SCALED_KINDS.includes(kind)) return base;
+  return Math.max(1, Math.round(base * powInt(REFINE_BAND_VALUE, Math.max(1, Math.floor(band)) - 1)));
+}
+
+/** The band lumps come in at: the band of the best floor (the idle hunt is on it, 6.8); floor 0 is band 1. */
+export function lumpBandOf(bestFloor: number): number {
+  return bandOf(Math.max(1, Math.floor(Number.isFinite(bestFloor) ? bestFloor : 1)));
+}
+
+/**
+ * 방치 보상 (6.8, 7.1: 서버가 최고 스테이지에 비례해 준다): REFINE_LUMPS_PER_HOUR (60) plus one more an
+ * hour every floorsPerExtra floors, and the pile stops at capHours of that (12 h, a freeze line, 12.5).
+ * At floor 0 this is the v0.8 60 an hour and 720. The exact rule is [미정] (16장의 9번).
+ */
+export const IDLE_LUMPS = { floorsPerExtra: 2, capHours: 12 } as const;
+
+export function idleLumpsPerHour(bestFloor: number): number {
+  const f = Math.max(0, Math.floor(Number.isFinite(bestFloor) ? bestFloor : 0));
+  return REFINE_LUMPS_PER_HOUR + Math.floor(f / IDLE_LUMPS.floorsPerExtra);
+}
+
+export function idleLumpCap(bestFloor: number): number {
+  return idleLumpsPerHour(bestFloor) * IDLE_LUMPS.capHours;
+}
 
 /** 배율 (10.1): lumps one blow uses and what its amount is multiplied by. The odds never change. */
 export const REFINE_MULTS = [1, 2, 5, 10, 20] as const;

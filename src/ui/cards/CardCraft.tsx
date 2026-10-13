@@ -34,6 +34,7 @@ import {
 import { Table } from './Table.tsx';
 import { weaponTitle } from './text.ts';
 import { sceneArtUrl } from '../../render/forge/assets.ts';
+import { gameStore } from '../game/store.ts';
 import './cards.css';
 import './skin.css';
 
@@ -108,7 +109,10 @@ export function CardCraft({ onExit }: Props) {
     return ms;
   };
 
-  /** A craft that is over goes into the profile and the play log, once. */
+  /**
+   * A craft that is over goes into the profile and the play log, once; its weapon goes into the
+   * heroes' weapon list (4.11), where a hero can take it up (사용자 결정 1: its 속성 칸 is filled here).
+   */
   const finish = (next: CardSession) => {
     const p = profileRef.current;
     if (p !== null && next.craft.status !== 'active') {
@@ -117,6 +121,7 @@ export function CardCraft({ onExit }: Props) {
         putProfile(done.profile);
         putRecords(done.records);
         putSession(done.session);
+        if (done.session.weapon !== null) void gameStore.stockWeapon(done.session.weapon);
         return;
       }
     }
@@ -134,6 +139,8 @@ export function CardCraft({ onExit }: Props) {
       setSession(data.session);
       setRecords(data.records);
       if (data.session !== null && data.session.craft.status !== 'active' && !data.session.recorded) finish(data.session);
+      // A weapon finished before the heroes' list took crafts in joins it now (adding is idempotent).
+      else if (data.session?.weapon != null && data.session.recorded) void gameStore.stockWeapon(data.session.weapon);
       resumeClock();
     });
     const onVisible = () => {
@@ -215,7 +222,10 @@ export function CardCraft({ onExit }: Props) {
   const pick = (p: SlotPick) => {
     const s = sessionRef.current;
     const next = s === null ? null : sessionFill(s, p);
-    if (next !== null) putSession(next);
+    if (next === null) return;
+    putSession(next);
+    // The weapon in the heroes' list takes the filled 속성 칸 or slot too.
+    if (next.weapon !== null) void gameStore.stockWeapon(next.weapon);
   };
 
   const again = () => {

@@ -104,3 +104,30 @@ describe('refine save', () => {
     expect(json.방문.length).toBe(1);
   });
 });
+
+describe('the pile is settled before the best floor rises (6.8, 7.1)', () => {
+  it('time already gone by keeps the old floor’s rate and band', async () => {
+    const { settleIdleBefore } = await import('./store.ts');
+    const { pileLots } = await import('../../sim/refine/index.ts');
+    const { idleLumpsPerHour, lumpBandOf } = await import('../../sim/data/refine.ts');
+    const saves = refineSaves(memoryStore());
+    const t0 = worldMinute(9_000_000 * MIN);
+    const fresh = { ...newRefineSave(t0, 5), firstSeen: true };
+    await saves.save(fresh);
+    const since = fresh.state.accruedAt;
+    // Five hours away on floor 9, then the stage climbs to floor 100.
+    const back = (t0 + 5 * 60) * MIN;
+    const s = await settleIdleBefore(9, back, saves);
+    const gained = Math.floor(((t0 + 5 * 60 - since) * idleLumpsPerHour(9)) / 60);
+    expect(s).toEqual({ gained, since });
+    const after = await peekRefine(back, saves, 100);
+    expect(after.gained).toBe(0);
+    const saved = await saves.load();
+    expect(pileLots(saved!.state)).toEqual([{ band: lumpBandOf(9), count: gained }]);
+    // From here on, the new floor's rate and band.
+    const later = await peekRefine(back + 60 * MIN, saves, 100);
+    expect(later.gained).toBe(idleLumpsPerHour(100));
+    // Nothing new: nothing written.
+    expect((await settleIdleBefore(9, back, saves))?.gained).toBe(0);
+  });
+});

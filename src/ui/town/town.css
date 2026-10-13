@@ -392,23 +392,15 @@
   object-position: 50% 92%;
 }
 
+/* The day's boss: the whole of it, a little big in its box. */
+.th-q-pic.fit-boss img {
+  object-fit: contain;
+  transform: scale(1.12);
+}
+
 .th-q-pic.fit-face img {
   object-fit: cover;
   object-position: 50% 0%;
-}
-
-/* The gate is wide and low: its arch from pillar to pillar fills the box's width, the fences cut off
-   (a stand-in until 16장의 4번's icon). */
-.th-q-pic.fit-gate {
-  position: relative;
-}
-
-.th-q-pic.fit-gate img {
-  position: absolute;
-  bottom: 3px;
-  left: -30%;
-  width: 150%;
-  height: auto;
 }
 
 .th-q.soon .th-q-pic img {

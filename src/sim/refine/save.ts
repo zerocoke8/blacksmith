@@ -3,7 +3,7 @@
 // half-written save never reaches the rules. Items no longer in the result table are dropped.
 
 import { isRefineItemId, type RefineItemId } from '../data/refine.ts';
-import type { RefineState } from './refine.ts';
+import type { LumpLot, RefineState } from './refine.ts';
 
 function isObj(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null && !Array.isArray(v);
@@ -30,5 +30,19 @@ export function restoreRefine(data: unknown): RefineState | null {
     const n = whole(v);
     if (isRefineItemId(k) && n !== null && n > 0) bag[k] = n;
   }
-  return { lumps, refineNo, bag, accruedAt };
+  const out: RefineState = { lumps, refineNo, bag, accruedAt };
+  // 덩어리의 구간 (7.1): kept when whole; a save from before lots has none (its lumps are band 1).
+  if (Array.isArray(data.lots)) {
+    const lots: LumpLot[] = [];
+    for (const l of data.lots) {
+      if (!isObj(l)) continue;
+      const band = whole(l.band);
+      const count = whole(l.count);
+      if (band !== null && band >= 1 && count !== null && count > 0) lots.push({ band, count });
+    }
+    out.lots = lots;
+  }
+  const carry = whole(data.carry);
+  if (carry !== null && carry > 0 && carry < 60) out.carry = carry;
+  return out;
 }

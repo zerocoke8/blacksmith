@@ -10,7 +10,7 @@
 
 import { type SaveStore, webStore } from './storage.ts';
 
-export type SoundIntent = 'hit' | 'hitBright' | 'rare' | 'veryRare';
+export type SoundIntent = 'hit' | 'hitBright' | 'rare' | 'veryRare' | 'strike' | 'crit' | 'heal';
 
 export const SOUND_KEY = 'pref.sound';
 
@@ -21,12 +21,17 @@ export const SOUND_KEY = 'pref.sound';
  */
 export const SOUND_RECIPE: Record<
   SoundIntent,
-  { pitch: number; ring: number; thud: number; chime: readonly number[]; gap: number; chimeRing: number }
+  { pitch: number; ring: number; thud: number; chime: readonly number[]; gap: number; chimeRing: number; clank?: number }
 > = {
   hit: { pitch: 540, ring: 0.2, thud: 0.9, chime: [], gap: 0, chimeRing: 0 },
   hitBright: { pitch: 610, ring: 0.24, thud: 0.8, chime: [], gap: 0, chimeRing: 0 },
   rare: { pitch: 610, ring: 0.26, thud: 0.8, chime: [1318.5, 1975.5], gap: 0.07, chimeRing: 0.5 },
   veryRare: { pitch: 660, ring: 0.3, thud: 1, chime: [1046.5, 1318.5, 1568, 2093], gap: 0.09, chimeRing: 0.9 },
+  // The battle (6장, stand-ins until the ElevenLabs sounds of tools/art/README.md): a soft thump for a
+  // blow, a brighter clank with a ping for a crit, a little rising chime with no clank for a heal.
+  strike: { pitch: 260, ring: 0.07, thud: 0.8, chime: [], gap: 0, chimeRing: 0, clank: 0.35 },
+  crit: { pitch: 520, ring: 0.14, thud: 1, chime: [1760], gap: 0.03, chimeRing: 0.18 },
+  heal: { pitch: 0, ring: 0, thud: 0, chime: [880, 1174.7, 1568], gap: 0.06, chimeRing: 0.35, clank: 0 },
 };
 
 /** A struck bar's partials: frequency ratios to the lowest one and their loudness. */
@@ -130,11 +135,12 @@ export function makeSound(store: SaveStore, ctor: () => AudioCtor | undefined, r
     const r = SOUND_RECIPE[intent];
     const t = c.currentTime + 0.005;
     const pitch = r.pitch * (1 + (random() * 2 - 1) * WANDER);
-    PARTIALS.forEach((p, i) => tone(c, to, 'sine', pitch * p.ratio, p.gain, t, r.ring * (1 - i * 0.18)));
+    const loud = r.clank ?? 1;
+    if (loud > 0) PARTIALS.forEach((p, i) => tone(c, to, 'sine', pitch * p.ratio, p.gain * loud, t, r.ring * (1 - i * 0.18)));
     // The weight of the hammer: a low thump that drops.
-    tone(c, to, 'sine', 150, 0.5 * r.thud, t, 0.09, 70);
+    if (r.thud > 0) tone(c, to, 'sine', 150, 0.5 * r.thud, t, 0.09, 70);
     // The click of the face on the lump: a burst of noise through a band.
-    if (noise !== null) {
+    if (noise !== null && loud > 0) {
       const n = c.createBufferSource();
       n.buffer = noise;
       const band = c.createBiquadFilter();

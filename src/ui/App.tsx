@@ -6,11 +6,16 @@ import { type HomeExit, homeStep, openState, type Screen, screenFromHash } from 
 import { TownHome } from './town/TownHome.tsx';
 
 // 'home' = the town map (기획서 3.2, 9장). 'cards' = 카드 제작 (4.2). 'refine' = 광석 정제 (7장).
+// 'heroes' = 용사 목록과 편성 (5.9, 6.3). 'stage' = 스테이지 전투 (6장). 'challenge' = 일일 보스 (8장).
 // 'craft' = the v0.6 FF14 prototype, kept for comparison (the settings sheet's '옛 방식').
 // The screen lives in the address (nav.ts).
 
 /** The refine screen, its pictures and the workshop scene load only when it opens (the first load stays as it was). */
 const RefineScreen = lazy(() => import('./refine/RefineScreen.tsx'));
+/** 용사 (5.9), 스테이지 (6장), 도전 (8장): each loads with its own chunk (the battle with PixiJS). */
+const HeroesScreen = lazy(() => import('./heroes/HeroesScreen.tsx'));
+const StageScreen = lazy(() => import('./battle/StageScreen.tsx'));
+const DailyScreen = lazy(() => import('./battle/DailyScreen.tsx'));
 
 /**
  * Keys nothing reads any more, cleared quietly at start-up so a later key of the same name never
@@ -51,6 +56,18 @@ export function App() {
       <div className="app">
         <Suspense fallback={<div className="app-loading">공방을 살피는 중…</div>}>
           <RefineScreen onExit={home} />
+        </Suspense>
+      </div>
+    );
+  }
+
+  if (screen === 'heroes' || screen === 'stage' || screen === 'challenge') {
+    return (
+      <div className="app">
+        <Suspense fallback={<div className="app-loading">문을 여는 중…</div>}>
+          {screen === 'heroes' && <HeroesScreen onExit={home} />}
+          {screen === 'stage' && <StageScreen onExit={home} />}
+          {screen === 'challenge' && <DailyScreen onExit={home} />}
         </Suspense>
       </div>
     );
