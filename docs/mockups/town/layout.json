@@ -1,0 +1,1679 @@
+{
+ "map": {
+  "width": 2458,
+  "height": 4446,
+  "ground": "ground_b",
+  "groundScale": 2.4,
+  "groundY": 760,
+  "skyColor": "#CFE3EA",
+  "sharpen": null,
+  "note": "Map px. The ground picture is scaled by groundScale and drawn at y = groundY; above it is flat sky. x,y = ground anchor (the middle of the body, at the lowest point it touches the ground). scale = map px per source px. Draw order: sky, ground, paths, horizon puffs, shadow layer (multiply), sprites back to front by y, tower cloud rings, cloud band."
+ },
+ "baseScale": 0.5,
+ "shadow": {
+  "color": "#c3cba6",
+  "mode": "multiply"
+ },
+ "paths": {
+  "style": {
+   "fill": "#e8c291",
+   "ink": "#432b1b",
+   "dot": "#d3a877",
+   "line": 8,
+   "seed": 5
+  },
+  "list": [
+   {
+    "key": "mine",
+    "w": 74,
+    "pts": [
+     [
+      430,
+      1765
+     ],
+     [
+      640,
+      1835
+     ],
+     [
+      880,
+      1872
+     ],
+     [
+      1140,
+      1880
+     ]
+    ]
+   },
+   {
+    "key": "guild",
+    "w": 78,
+    "pts": [
+     [
+      600,
+      2425
+     ],
+     [
+      592,
+      2540
+     ],
+     [
+      605,
+      2700
+     ]
+    ]
+   },
+   {
+    "key": "forge",
+    "w": 84,
+    "pts": [
+     [
+      2040,
+      3400
+     ],
+     [
+      1900,
+      3482
+     ],
+     [
+      1640,
+      3500
+     ],
+     [
+      1330,
+      3490
+     ]
+    ],
+    "dots": 3
+   },
+   {
+    "key": "shop",
+    "w": 72,
+    "pts": [
+     [
+      1760,
+      3975
+     ],
+     [
+      1580,
+      4020
+     ],
+     [
+      1330,
+      4015
+     ]
+    ]
+   },
+   {
+    "key": "inn",
+    "w": 70,
+    "pts": [
+     [
+      2105,
+      2600
+     ],
+     [
+      2110,
+      2720
+     ]
+    ]
+   },
+   {
+    "key": "house_b_left",
+    "w": 56,
+    "pts": [
+     [
+      700,
+      3550
+     ],
+     [
+      880,
+      3600
+     ],
+     [
+      1100,
+      3590
+     ]
+    ],
+    "dots": 1
+   }
+  ],
+  "note": "dirt paths: fill = road sand, ink outline only over grass; round caps, pts are a quadratic-smoothed polyline"
+ },
+ "towers": {
+  "stack": {
+   "tower_water": {
+    "top": 580,
+    "bot": 908,
+    "n": 8,
+    "shrink": 0.95
+   },
+   "tower_fire": {
+    "top": 585,
+    "bot": 904,
+    "n": 9,
+    "shrink": 0.95
+   },
+   "tower_earth": {
+    "top": 580,
+    "bot": 900,
+    "n": 8,
+    "shrink": 0.95
+   },
+   "tower_wind": {
+    "top": 590,
+    "bot": 908,
+    "n": 9,
+    "shrink": 0.95
+   }
+  },
+  "note": "stack: source rows [top,bot) = one storey band, repeated n times, each one shrink x smaller than the one below; head and base unchanged"
+ },
+ "clouds": {
+  "style": {
+   "top": "#F7F9FA",
+   "under": "#DCE4EA",
+   "line": 8,
+   "seed": 3
+  },
+  "horizon": {
+   "y": 766,
+   "r": 78,
+   "step": 112,
+   "jit": 26,
+   "seed": 4
+  },
+  "rings": [
+   {
+    "x": 470,
+    "y": 372,
+    "w": 250,
+    "r": 64,
+    "n": 5
+   },
+   {
+    "x": 1010,
+    "y": 318,
+    "w": 250,
+    "r": 60,
+    "n": 5
+   },
+   {
+    "x": 1440,
+    "y": 352,
+    "w": 250,
+    "r": 62,
+    "n": 5
+   },
+   {
+    "x": 1990,
+    "y": 306,
+    "w": 250,
+    "r": 60,
+    "n": 5
+   }
+  ],
+  "band": {
+   "key": "cloud_band",
+   "srcH": 530,
+   "h": 360,
+   "y": 0,
+   "x0": -140
+  },
+  "note": "band = cloud_band.png rows [0,srcH) scaled to h, tiled across, every other tile mirrored"
+ },
+ "views": [
+  {
+   "file": "town_view_forge.png",
+   "x": 1478,
+   "y": 2640,
+   "w": 780,
+   "h": 1688,
+   "label": "대장간"
+  },
+  {
+   "file": "town_view_plaza.png",
+   "x": 840,
+   "y": 1990,
+   "w": 780,
+   "h": 1688,
+   "label": "광장"
+  },
+  {
+   "file": "town_view_towers.png",
+   "x": 834,
+   "y": 0,
+   "w": 780,
+   "h": 1688,
+   "label": "탑 언덕"
+  }
+ ],
+ "items": [
+  {
+   "key": "prop_tree_pine",
+   "kind": "prop",
+   "x": 215,
+   "y": 1010,
+   "scale": 0.3365,
+   "flip": false,
+   "shear": 0,
+   "box": {
+    "x": 127,
+    "y": 760,
+    "w": 176,
+    "h": 250
+   },
+   "anchor": {
+    "cx": 0.499,
+    "gy": 0.9867
+   }
+  },
+  {
+   "key": "prop_tree_pine",
+   "kind": "prop",
+   "x": 2255,
+   "y": 1010,
+   "scale": 0.3365,
+   "flip": false,
+   "shear": 0,
+   "box": {
+    "x": 2167,
+    "y": 760,
+    "w": 176,
+    "h": 250
+   },
+   "anchor": {
+    "cx": 0.499,
+    "gy": 0.9867
+   }
+  },
+  {
+   "key": "prop_tree_pine",
+   "kind": "prop",
+   "x": 745,
+   "y": 1075,
+   "scale": 0.3096,
+   "flip": false,
+   "shear": 0,
+   "box": {
+    "x": 664,
+    "y": 845,
+    "w": 162,
+    "h": 230
+   },
+   "anchor": {
+    "cx": 0.499,
+    "gy": 0.9867
+   }
+  },
+  {
+   "key": "prop_tree_pine",
+   "kind": "prop",
+   "x": 1725,
+   "y": 1075,
+   "scale": 0.3096,
+   "flip": false,
+   "shear": 0,
+   "box": {
+    "x": 1644,
+    "y": 845,
+    "w": 162,
+    "h": 230
+   },
+   "anchor": {
+    "cx": 0.499,
+    "gy": 0.9867
+   }
+  },
+  {
+   "key": "tower_water",
+   "kind": "building",
+   "x": 470,
+   "y": 1170,
+   "scale": 0.6,
+   "flip": false,
+   "shear": 0,
+   "box": {
+    "x": 331,
+    "y": -739,
+    "w": 279,
+    "h": 1909
+   },
+   "anchor": {
+    "cx": 0.4462,
+    "gy": 1
+   }
+  },
+  {
+   "key": "tower_wind",
+   "kind": "building",
+   "x": 1990,
+   "y": 1170,
+   "scale": 0.6,
+   "flip": false,
+   "shear": 0,
+   "box": {
+    "x": 1851,
+    "y": -833,
+    "w": 278,
+    "h": 2003
+   },
+   "anchor": {
+    "cx": 0.4314,
+    "gy": 0.9997
+   }
+  },
+  {
+   "key": "prop_tree_round",
+   "kind": "prop",
+   "x": 2420,
+   "y": 1180,
+   "scale": 0.3371,
+   "flip": false,
+   "shear": 0,
+   "box": {
+    "x": 2311,
+    "y": 940,
+    "w": 218,
+    "h": 240
+   },
+   "anchor": {
+    "cx": 0.4985,
+    "gy": 0.9986
+   }
+  },
+  {
+   "key": "tower_fire",
+   "kind": "building",
+   "x": 1010,
+   "y": 1235,
+   "scale": 0.6,
+   "flip": false,
+   "shear": 0,
+   "box": {
+    "x": 864,
+    "y": -747,
+    "w": 293,
+    "h": 1982
+   },
+   "anchor": {
+    "cx": 0.4595,
+    "gy": 0.9991
+   }
+  },
+  {
+   "key": "tower_earth",
+   "kind": "building",
+   "x": 1440,
+   "y": 1235,
+   "scale": 0.6,
+   "flip": false,
+   "shear": 0,
+   "box": {
+    "x": 1289,
+    "y": -657,
+    "w": 302,
+    "h": 1892
+   },
+   "anchor": {
+    "cx": 0.4582,
+    "gy": 1
+   }
+  },
+  {
+   "key": "hero_nea",
+   "kind": "person",
+   "x": 1260,
+   "y": 1580,
+   "scale": 0.094,
+   "flip": true,
+   "shear": 0,
+   "box": {
+    "x": 1213,
+    "y": 1476,
+    "w": 94,
+    "h": 104
+   },
+   "anchor": {
+    "cx": 0.4995,
+    "gy": 0.9982
+   }
+  },
+  {
+   "key": "prop_rocks",
+   "kind": "prop",
+   "x": 600,
+   "y": 1650,
+   "scale": 0.1664,
+   "flip": false,
+   "shear": 0,
+   "box": {
+    "x": 545,
+    "y": 1560,
+    "w": 109,
+    "h": 90
+   },
+   "anchor": {
+    "cx": 0.4803,
+    "gy": 0.9783
+   }
+  },
+  {
+   "key": "prop_tree_pine",
+   "kind": "prop",
+   "x": 2385,
+   "y": 1660,
+   "scale": 0.323,
+   "flip": false,
+   "shear": 0,
+   "box": {
+    "x": 2301,
+    "y": 1420,
+    "w": 169,
+    "h": 240
+   },
+   "anchor": {
+    "cx": 0.499,
+    "gy": 0.9867
+   }
+  },
+  {
+   "key": "prop_tree_round",
+   "kind": "prop",
+   "x": 960,
+   "y": 1720,
+   "scale": 0.3371,
+   "flip": false,
+   "shear": 0,
+   "box": {
+    "x": 851,
+    "y": 1480,
+    "w": 218,
+    "h": 240
+   },
+   "anchor": {
+    "cx": 0.4985,
+    "gy": 0.9986
+   }
+  },
+  {
+   "key": "bld_house_a",
+   "kind": "building",
+   "x": 2080,
+   "y": 1725,
+   "scale": 0.325,
+   "flip": true,
+   "shear": 0,
+   "box": {
+    "x": 1957,
+    "y": 1460,
+    "w": 247,
+    "h": 265
+   },
+   "anchor": {
+    "cx": 0.4987,
+    "gy": 0.9963
+   }
+  },
+  {
+   "key": "bld_mine",
+   "kind": "building",
+   "x": 330,
+   "y": 1745,
+   "scale": 0.425,
+   "flip": false,
+   "shear": 0,
+   "box": {
+    "x": 138,
+    "y": 1422,
+    "w": 385,
+    "h": 323
+   },
+   "anchor": {
+    "cx": 0.4994,
+    "gy": 1
+   }
+  },
+  {
+   "key": "bld_house_b",
+   "kind": "building",
+   "x": 1565,
+   "y": 1805,
+   "scale": 0.35,
+   "flip": false,
+   "shear": 0,
+   "box": {
+    "x": 1435,
+    "y": 1476,
+    "w": 261,
+    "h": 329
+   },
+   "anchor": {
+    "cx": 0.4857,
+    "gy": 1
+   }
+  },
+  {
+   "key": "hero_rookie",
+   "kind": "person",
+   "x": 1215,
+   "y": 1920,
+   "scale": 0.094,
+   "flip": false,
+   "shear": 0,
+   "box": {
+    "x": 1174,
+    "y": 1815,
+    "w": 83,
+    "h": 105
+   },
+   "anchor": {
+    "cx": 0.4989,
+    "gy": 0.9982
+   }
+  },
+  {
+   "key": "prop_tree_round",
+   "kind": "prop",
+   "x": 70,
+   "y": 1990,
+   "scale": 0.3652,
+   "flip": false,
+   "shear": 0,
+   "box": {
+    "x": -48,
+    "y": 1730,
+    "w": 236,
+    "h": 260
+   },
+   "anchor": {
+    "cx": 0.4985,
+    "gy": 0.9986
+   }
+  },
+  {
+   "key": "prop_tree_round",
+   "kind": "prop",
+   "x": 1625,
+   "y": 2260,
+   "scale": 0.3511,
+   "flip": false,
+   "shear": 0,
+   "box": {
+    "x": 1512,
+    "y": 2010,
+    "w": 227,
+    "h": 250
+   },
+   "anchor": {
+    "cx": 0.4985,
+    "gy": 0.9986
+   }
+  },
+  {
+   "key": "prop_bush",
+   "kind": "prop",
+   "x": 1800,
+   "y": 2400,
+   "scale": 0.2157,
+   "flip": false,
+   "shear": 0,
+   "box": {
+    "x": 1738,
+    "y": 2290,
+    "w": 123,
+    "h": 110
+   },
+   "anchor": {
+    "cx": 0.494,
+    "gy": 0.9642
+   }
+  },
+  {
+   "key": "prop_tree_pine",
+   "kind": "prop",
+   "x": 90,
+   "y": 2420,
+   "scale": 0.323,
+   "flip": false,
+   "shear": 0,
+   "box": {
+    "x": 6,
+    "y": 2180,
+    "w": 169,
+    "h": 240
+   },
+   "anchor": {
+    "cx": 0.499,
+    "gy": 0.9867
+   }
+  },
+  {
+   "key": "prop_lamp",
+   "kind": "prop",
+   "x": 1040,
+   "y": 2425,
+   "scale": 0.2083,
+   "flip": false,
+   "shear": 0,
+   "box": {
+    "x": 1004,
+    "y": 2265,
+    "w": 73,
+    "h": 160
+   },
+   "anchor": {
+    "cx": 0.493,
+    "gy": 0.9961
+   }
+  },
+  {
+   "key": "prop_lamp",
+   "kind": "prop",
+   "x": 1410,
+   "y": 2425,
+   "scale": 0.2083,
+   "flip": false,
+   "shear": 0,
+   "box": {
+    "x": 1374,
+    "y": 2265,
+    "w": 73,
+    "h": 160
+   },
+   "anchor": {
+    "cx": 0.493,
+    "gy": 0.9961
+   }
+  },
+  {
+   "key": "bld_guild",
+   "kind": "building",
+   "x": 640,
+   "y": 2440,
+   "scale": 0.55,
+   "flip": false,
+   "shear": 0,
+   "box": {
+    "x": 342,
+    "y": 1901,
+    "w": 597,
+    "h": 539
+   },
+   "anchor": {
+    "cx": 0.4892,
+    "gy": 1
+   }
+  },
+  {
+   "key": "prop_tree_pine",
+   "kind": "prop",
+   "x": 1705,
+   "y": 2480,
+   "scale": 0.2961,
+   "flip": false,
+   "shear": 0,
+   "box": {
+    "x": 1628,
+    "y": 2260,
+    "w": 155,
+    "h": 220
+   },
+   "anchor": {
+    "cx": 0.499,
+    "gy": 0.9867
+   }
+  },
+  {
+   "key": "prop_flowers",
+   "kind": "prop",
+   "x": 380,
+   "y": 2490,
+   "scale": 0.149,
+   "flip": false,
+   "shear": 0,
+   "box": {
+    "x": 328,
+    "y": 2410,
+    "w": 105,
+    "h": 80
+   },
+   "anchor": {
+    "cx": 0.4993,
+    "gy": 0.9945
+   }
+  },
+  {
+   "key": "prop_planter",
+   "kind": "prop",
+   "x": 1035,
+   "y": 2560,
+   "scale": 0.1289,
+   "flip": false,
+   "shear": 0,
+   "box": {
+    "x": 988,
+    "y": 2474,
+    "w": 94,
+    "h": 86
+   },
+   "anchor": {
+    "cx": 0.5,
+    "gy": 0.997
+   }
+  },
+  {
+   "key": "prop_planter",
+   "kind": "prop",
+   "x": 1425,
+   "y": 2560,
+   "scale": 0.1289,
+   "flip": true,
+   "shear": 0,
+   "box": {
+    "x": 1378,
+    "y": 2474,
+    "w": 94,
+    "h": 86
+   },
+   "anchor": {
+    "cx": 0.5,
+    "gy": 0.997
+   }
+  },
+  {
+   "key": "prop_flowers",
+   "kind": "prop",
+   "x": 2400,
+   "y": 2600,
+   "scale": 0.149,
+   "flip": false,
+   "shear": 0,
+   "box": {
+    "x": 2348,
+    "y": 2520,
+    "w": 105,
+    "h": 80
+   },
+   "anchor": {
+    "cx": 0.4993,
+    "gy": 0.9945
+   }
+  },
+  {
+   "key": "bld_inn",
+   "kind": "building",
+   "x": 2130,
+   "y": 2612,
+   "scale": 0.425,
+   "flip": false,
+   "shear": 0,
+   "box": {
+    "x": 1916,
+    "y": 2238,
+    "w": 429,
+    "h": 374
+   },
+   "anchor": {
+    "cx": 0.4884,
+    "gy": 0.9989
+   }
+  },
+  {
+   "key": "prop_lamp",
+   "kind": "prop",
+   "x": 720,
+   "y": 2615,
+   "scale": 0.2083,
+   "flip": false,
+   "shear": 0,
+   "box": {
+    "x": 684,
+    "y": 2455,
+    "w": 73,
+    "h": 160
+   },
+   "anchor": {
+    "cx": 0.493,
+    "gy": 0.9961
+   }
+  },
+  {
+   "key": "prop_signpost",
+   "kind": "prop",
+   "x": 1740,
+   "y": 2625,
+   "scale": 0.2209,
+   "flip": false,
+   "shear": 0,
+   "box": {
+    "x": 1682,
+    "y": 2475,
+    "w": 116,
+    "h": 150
+   },
+   "anchor": {
+    "cx": 0.4981,
+    "gy": 0.9927
+   }
+  },
+  {
+   "key": "prop_bench",
+   "kind": "prop",
+   "x": 935,
+   "y": 2655,
+   "scale": 0.1019,
+   "flip": false,
+   "shear": 0,
+   "box": {
+    "x": 894,
+    "y": 2581,
+    "w": 83,
+    "h": 74
+   },
+   "anchor": {
+    "cx": 0.497,
+    "gy": 0.9959
+   }
+  },
+  {
+   "key": "prop_bench",
+   "kind": "prop",
+   "x": 1525,
+   "y": 2655,
+   "scale": 0.1019,
+   "flip": true,
+   "shear": 0,
+   "box": {
+    "x": 1483,
+    "y": 2581,
+    "w": 83,
+    "h": 74
+   },
+   "anchor": {
+    "cx": 0.497,
+    "gy": 0.9959
+   }
+  },
+  {
+   "key": "hero_veteran",
+   "kind": "person",
+   "x": 330,
+   "y": 2770,
+   "scale": 0.094,
+   "flip": true,
+   "shear": 0,
+   "box": {
+    "x": 298,
+    "y": 2655,
+    "w": 63,
+    "h": 115
+   },
+   "anchor": {
+    "cx": 0.4993,
+    "gy": 0.9984
+   }
+  },
+  {
+   "key": "hero_toma",
+   "kind": "person",
+   "x": 2290,
+   "y": 2800,
+   "scale": 0.094,
+   "flip": false,
+   "shear": 0,
+   "box": {
+    "x": 2248,
+    "y": 2703,
+    "w": 85,
+    "h": 97
+   },
+   "anchor": {
+    "cx": 0.4989,
+    "gy": 0.9981
+   }
+  },
+  {
+   "key": "hero_yuna",
+   "kind": "person",
+   "x": 905,
+   "y": 2812,
+   "scale": 0.094,
+   "flip": false,
+   "shear": 0,
+   "box": {
+    "x": 865,
+    "y": 2709,
+    "w": 80,
+    "h": 103
+   },
+   "anchor": {
+    "cx": 0.4994,
+    "gy": 0.9982
+   }
+  },
+  {
+   "key": "hero_isol",
+   "kind": "person",
+   "x": 1470,
+   "y": 2812,
+   "scale": 0.094,
+   "flip": true,
+   "shear": 0,
+   "box": {
+    "x": 1430,
+    "y": 2716,
+    "w": 80,
+    "h": 96
+   },
+   "anchor": {
+    "cx": 0.4994,
+    "gy": 0.9981
+   }
+  },
+  {
+   "key": "hero_aren",
+   "kind": "person",
+   "x": 990,
+   "y": 2818,
+   "scale": 0.094,
+   "flip": true,
+   "shear": 0,
+   "box": {
+    "x": 950,
+    "y": 2700,
+    "w": 81,
+    "h": 118
+   },
+   "anchor": {
+    "cx": 0.4988,
+    "gy": 0.9984
+   }
+  },
+  {
+   "key": "hero_ace",
+   "kind": "person",
+   "x": 1555,
+   "y": 2818,
+   "scale": 0.094,
+   "flip": false,
+   "shear": 0,
+   "box": {
+    "x": 1509,
+    "y": 2700,
+    "w": 92,
+    "h": 118
+   },
+   "anchor": {
+    "cx": 0.4995,
+    "gy": 0.9976
+   }
+  },
+  {
+   "key": "bld_fountain",
+   "kind": "building",
+   "x": 1230,
+   "y": 2835,
+   "scale": 0.4,
+   "flip": false,
+   "shear": 0,
+   "box": {
+    "x": 1036,
+    "y": 2543,
+    "w": 388,
+    "h": 292
+   },
+   "anchor": {
+    "cx": 0.5,
+    "gy": 0.9986
+   }
+  },
+  {
+   "key": "prop_lamp",
+   "kind": "prop",
+   "x": 1705,
+   "y": 2895,
+   "scale": 0.2083,
+   "flip": false,
+   "shear": 0,
+   "box": {
+    "x": 1669,
+    "y": 2735,
+    "w": 73,
+    "h": 160
+   },
+   "anchor": {
+    "cx": 0.493,
+    "gy": 0.9961
+   }
+  },
+  {
+   "key": "prop_tree_pine",
+   "kind": "prop",
+   "x": 2395,
+   "y": 3010,
+   "scale": 0.323,
+   "flip": false,
+   "shear": 0,
+   "box": {
+    "x": 2311,
+    "y": 2770,
+    "w": 169,
+    "h": 240
+   },
+   "anchor": {
+    "cx": 0.499,
+    "gy": 0.9867
+   }
+  },
+  {
+   "key": "prop_stall",
+   "kind": "prop",
+   "x": 1505,
+   "y": 3018,
+   "scale": 0.1746,
+   "flip": false,
+   "shear": 0,
+   "box": {
+    "x": 1433,
+    "y": 2868,
+    "w": 144,
+    "h": 150
+   },
+   "anchor": {
+    "cx": 0.4994,
+    "gy": 0.9977
+   }
+  },
+  {
+   "key": "bld_market",
+   "kind": "building",
+   "x": 885,
+   "y": 3085,
+   "scale": 0.375,
+   "flip": false,
+   "shear": 0,
+   "box": {
+    "x": 679,
+    "y": 2764,
+    "w": 412,
+    "h": 321
+   },
+   "anchor": {
+    "cx": 0.5,
+    "gy": 0.9988
+   }
+  },
+  {
+   "key": "bld_house_a",
+   "kind": "building",
+   "x": 300,
+   "y": 3150,
+   "scale": 0.325,
+   "flip": false,
+   "shear": 0,
+   "box": {
+    "x": 177,
+    "y": 2885,
+    "w": 247,
+    "h": 265
+   },
+   "anchor": {
+    "cx": 0.4987,
+    "gy": 0.9963
+   }
+  },
+  {
+   "key": "prop_lamp",
+   "kind": "prop",
+   "x": 1030,
+   "y": 3175,
+   "scale": 0.2083,
+   "flip": false,
+   "shear": 0,
+   "box": {
+    "x": 994,
+    "y": 3015,
+    "w": 73,
+    "h": 160
+   },
+   "anchor": {
+    "cx": 0.493,
+    "gy": 0.9961
+   }
+  },
+  {
+   "key": "prop_lamp",
+   "kind": "prop",
+   "x": 1418,
+   "y": 3175,
+   "scale": 0.2083,
+   "flip": false,
+   "shear": 0,
+   "box": {
+    "x": 1382,
+    "y": 3015,
+    "w": 73,
+    "h": 160
+   },
+   "anchor": {
+    "cx": 0.493,
+    "gy": 0.9961
+   }
+  },
+  {
+   "key": "prop_flowers",
+   "kind": "prop",
+   "x": 445,
+   "y": 3175,
+   "scale": 0.149,
+   "flip": false,
+   "shear": 0,
+   "box": {
+    "x": 393,
+    "y": 3095,
+    "w": 105,
+    "h": 80
+   },
+   "anchor": {
+    "cx": 0.4993,
+    "gy": 0.9945
+   }
+  },
+  {
+   "key": "prop_tree_round",
+   "kind": "prop",
+   "x": 640,
+   "y": 3335,
+   "scale": 0.3371,
+   "flip": false,
+   "shear": 0,
+   "box": {
+    "x": 531,
+    "y": 3095,
+    "w": 218,
+    "h": 240
+   },
+   "anchor": {
+    "cx": 0.4985,
+    "gy": 0.9986
+   }
+  },
+  {
+   "key": "hero_vail",
+   "kind": "person",
+   "x": 1235,
+   "y": 3380,
+   "scale": 0.094,
+   "flip": false,
+   "shear": 0,
+   "box": {
+    "x": 1199,
+    "y": 3280,
+    "w": 72,
+    "h": 100
+   },
+   "anchor": {
+    "cx": 0.4994,
+    "gy": 0.9981
+   }
+  },
+  {
+   "key": "prop_tree_round",
+   "kind": "prop",
+   "x": 2380,
+   "y": 3420,
+   "scale": 0.3511,
+   "flip": false,
+   "shear": 0,
+   "box": {
+    "x": 2267,
+    "y": 3170,
+    "w": 227,
+    "h": 250
+   },
+   "anchor": {
+    "cx": 0.4985,
+    "gy": 0.9986
+   }
+  },
+  {
+   "key": "prop_tree_round",
+   "kind": "prop",
+   "x": 70,
+   "y": 3420,
+   "scale": 0.3652,
+   "flip": false,
+   "shear": 0,
+   "box": {
+    "x": -48,
+    "y": 3160,
+    "w": 236,
+    "h": 260
+   },
+   "anchor": {
+    "cx": 0.4985,
+    "gy": 0.9986
+   }
+  },
+  {
+   "key": "bld_forge",
+   "kind": "building",
+   "x": 1880,
+   "y": 3440,
+   "scale": 0.6,
+   "flip": false,
+   "shear": 0,
+   "box": {
+    "x": 1532,
+    "y": 2922,
+    "w": 697,
+    "h": 518
+   },
+   "anchor": {
+    "cx": 0.4991,
+    "gy": 1
+   }
+  },
+  {
+   "key": "dwarf",
+   "kind": "person",
+   "x": 2000,
+   "y": 3452,
+   "scale": 0.1025,
+   "flip": false,
+   "shear": 0,
+   "box": {
+    "x": 1962,
+    "y": 3365,
+    "w": 77,
+    "h": 87
+   },
+   "anchor": {
+    "cx": 0.5,
+    "gy": 0.9953
+   }
+  },
+  {
+   "key": "prop_cart",
+   "kind": "prop",
+   "x": 1565,
+   "y": 3472,
+   "scale": 0.2144,
+   "flip": false,
+   "shear": 0,
+   "box": {
+    "x": 1482,
+    "y": 3347,
+    "w": 166,
+    "h": 125
+   },
+   "anchor": {
+    "cx": 0.4887,
+    "gy": 0.9882
+   }
+  },
+  {
+   "key": "prop_crates",
+   "kind": "prop",
+   "x": 2205,
+   "y": 3505,
+   "scale": 0.157,
+   "flip": false,
+   "shear": 0,
+   "box": {
+    "x": 2155,
+    "y": 3400,
+    "w": 100,
+    "h": 105
+   },
+   "anchor": {
+    "cx": 0.4908,
+    "gy": 0.9627
+   }
+  },
+  {
+   "key": "bld_house_b",
+   "kind": "building",
+   "x": 620,
+   "y": 3560,
+   "scale": 0.35,
+   "flip": true,
+   "shear": 0,
+   "box": {
+    "x": 489,
+    "y": 3231,
+    "w": 261,
+    "h": 329
+   },
+   "anchor": {
+    "cx": 0.4857,
+    "gy": 1
+   }
+  },
+  {
+   "key": "prop_fence",
+   "kind": "prop",
+   "x": 500,
+   "y": 3684,
+   "scale": 0.1626,
+   "flip": false,
+   "shear": 0,
+   "box": {
+    "x": 389,
+    "y": 3624,
+    "w": 222,
+    "h": 60
+   },
+   "anchor": {
+    "cx": 0.4996,
+    "gy": 0.9946
+   }
+  },
+  {
+   "key": "prop_fence",
+   "kind": "prop",
+   "x": 730,
+   "y": 3684,
+   "scale": 0.1626,
+   "flip": false,
+   "shear": 0,
+   "box": {
+    "x": 619,
+    "y": 3624,
+    "w": 222,
+    "h": 60
+   },
+   "anchor": {
+    "cx": 0.4996,
+    "gy": 0.9946
+   }
+  },
+  {
+   "key": "prop_crates",
+   "kind": "prop",
+   "x": 880,
+   "y": 3760,
+   "scale": 0.157,
+   "flip": false,
+   "shear": 0,
+   "box": {
+    "x": 830,
+    "y": 3655,
+    "w": 100,
+    "h": 105
+   },
+   "anchor": {
+    "cx": 0.4908,
+    "gy": 0.9627
+   }
+  },
+  {
+   "key": "bld_house_a",
+   "kind": "building",
+   "x": 2330,
+   "y": 3785,
+   "scale": 0.325,
+   "flip": true,
+   "shear": 0,
+   "box": {
+    "x": 2207,
+    "y": 3520,
+    "w": 247,
+    "h": 265
+   },
+   "anchor": {
+    "cx": 0.4987,
+    "gy": 0.9963
+   }
+  },
+  {
+   "key": "prop_lamp",
+   "kind": "prop",
+   "x": 1418,
+   "y": 3800,
+   "scale": 0.2083,
+   "flip": false,
+   "shear": 0,
+   "box": {
+    "x": 1382,
+    "y": 3640,
+    "w": 73,
+    "h": 160
+   },
+   "anchor": {
+    "cx": 0.493,
+    "gy": 0.9961
+   }
+  },
+  {
+   "key": "prop_tree_pine",
+   "kind": "prop",
+   "x": 60,
+   "y": 3800,
+   "scale": 0.3365,
+   "flip": false,
+   "shear": 0,
+   "box": {
+    "x": -28,
+    "y": 3550,
+    "w": 176,
+    "h": 250
+   },
+   "anchor": {
+    "cx": 0.499,
+    "gy": 0.9867
+   }
+  },
+  {
+   "key": "prop_lamp",
+   "kind": "prop",
+   "x": 1032,
+   "y": 3800,
+   "scale": 0.2083,
+   "flip": false,
+   "shear": 0,
+   "box": {
+    "x": 996,
+    "y": 3640,
+    "w": 73,
+    "h": 160
+   },
+   "anchor": {
+    "cx": 0.493,
+    "gy": 0.9961
+   }
+  },
+  {
+   "key": "bld_shop",
+   "kind": "building",
+   "x": 1830,
+   "y": 3985,
+   "scale": 0.4,
+   "flip": false,
+   "shear": 0,
+   "box": {
+    "x": 1644,
+    "y": 3651,
+    "w": 373,
+    "h": 334
+   },
+   "anchor": {
+    "cx": 0.4947,
+    "gy": 0.9988
+   }
+  },
+  {
+   "key": "prop_crates",
+   "kind": "prop",
+   "x": 2050,
+   "y": 3990,
+   "scale": 0.142,
+   "flip": false,
+   "shear": 0,
+   "box": {
+    "x": 2005,
+    "y": 3895,
+    "w": 90,
+    "h": 95
+   },
+   "anchor": {
+    "cx": 0.4908,
+    "gy": 0.9627
+   }
+  },
+  {
+   "key": "bld_house_a",
+   "kind": "building",
+   "x": 300,
+   "y": 3990,
+   "scale": 0.325,
+   "flip": true,
+   "shear": 0,
+   "box": {
+    "x": 177,
+    "y": 3725,
+    "w": 247,
+    "h": 265
+   },
+   "anchor": {
+    "cx": 0.4987,
+    "gy": 0.9963
+   }
+  },
+  {
+   "key": "bld_gate",
+   "kind": "building",
+   "x": 1228,
+   "y": 4150,
+   "scale": 0.52,
+   "flip": false,
+   "shear": 0,
+   "box": {
+    "x": 850,
+    "y": 3922,
+    "w": 756,
+    "h": 228
+   },
+   "anchor": {
+    "cx": 0.4997,
+    "gy": 1
+   },
+   "note": "seen straight-on; one contact shadow per pillar and fence"
+  },
+  {
+   "key": "prop_flowers",
+   "kind": "prop",
+   "x": 2060,
+   "y": 4170,
+   "scale": 0.149,
+   "flip": false,
+   "shear": 0,
+   "box": {
+    "x": 2008,
+    "y": 4090,
+    "w": 105,
+    "h": 80
+   },
+   "anchor": {
+    "cx": 0.4993,
+    "gy": 0.9945
+   }
+  },
+  {
+   "key": "hero_odel",
+   "kind": "person",
+   "x": 1210,
+   "y": 4215,
+   "scale": 0.094,
+   "flip": false,
+   "shear": 0,
+   "box": {
+    "x": 1161,
+    "y": 4104,
+    "w": 97,
+    "h": 111
+   },
+   "anchor": {
+    "cx": 0.4995,
+    "gy": 0.9983
+   }
+  },
+  {
+   "key": "prop_tree_round",
+   "kind": "prop",
+   "x": 720,
+   "y": 4300,
+   "scale": 0.3511,
+   "flip": false,
+   "shear": 0,
+   "box": {
+    "x": 607,
+    "y": 4050,
+    "w": 227,
+    "h": 250
+   },
+   "anchor": {
+    "cx": 0.4985,
+    "gy": 0.9986
+   }
+  },
+  {
+   "key": "bld_house_b",
+   "kind": "building",
+   "x": 2290,
+   "y": 4310,
+   "scale": 0.35,
+   "flip": false,
+   "shear": 0,
+   "box": {
+    "x": 2160,
+    "y": 3981,
+    "w": 261,
+    "h": 329
+   },
+   "anchor": {
+    "cx": 0.4857,
+    "gy": 1
+   }
+  },
+  {
+   "key": "prop_bush",
+   "kind": "prop",
+   "x": 90,
+   "y": 4320,
+   "scale": 0.2157,
+   "flip": false,
+   "shear": 0,
+   "box": {
+    "x": 28,
+    "y": 4210,
+    "w": 123,
+    "h": 110
+   },
+   "anchor": {
+    "cx": 0.494,
+    "gy": 0.9642
+   }
+  },
+  {
+   "key": "prop_bush",
+   "kind": "prop",
+   "x": 1640,
+   "y": 4330,
+   "scale": 0.2157,
+   "flip": false,
+   "shear": 0,
+   "box": {
+    "x": 1578,
+    "y": 4220,
+    "w": 123,
+    "h": 110
+   },
+   "anchor": {
+    "cx": 0.494,
+    "gy": 0.9642
+   }
+  }
+ ]
+}

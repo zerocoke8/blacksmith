@@ -12,6 +12,7 @@
 //   'name'  참조 폴더(gen.ts --ref)의 <name>.png. 무엇인지와 없을 때 대신 쓸 에셋은 REF_IMAGES에 있다.
 //   '@key'  이 매니페스트의 다른 에셋(먼저 뽑아 둔 원본). '@그룹/key'로 그룹을 정할 수 있다.
 //           예: 카드 틀 네 장은 @frame_progress를, 화로 상태 일곱 장은 @fire_normal을 따라 그린다.
+//           자기 키를 적으면 고쳐 그리기다: 다시 뽑기 직전의 지금 원본을 보낸다 (마을 문, 마을 바닥).
 //
 // 최종 프롬프트 = 화풍 머리말(STYLE) + [UI·정제면 참조 안내(STYLE_REF_ONLY)] + [카드면 카드 구도(CARD_FRAMING)]
 // + 에셋 프롬프트. buildPrompt가 붙인다. 드워프 자세(ownStyle)는 화풍을 프롬프트에 직접 적었다.
@@ -22,8 +23,10 @@
 //
 // 처리(process.ts)에서 키마다 더 하는 일은 process에 적는다: 카드 일러스트의 가장자리 메움(edge)과
 // 양옆으로 넓히기(widen), 단색 배경 색 바꾸기(recolor), 다른 그림과 같은 자리에 맞추기(alignTo).
+//
+// 그룹 town(마을 지도 시안)은 아직 게임에 쓰지 않는다. 화면에 넣기 전까지 어떤 코드도 import하지 않는다 (아래 town 머리말).
 
-export const ART_GROUPS = ['scene', 'ui', 'cards', 'refine'] as const;
+export const ART_GROUPS = ['scene', 'ui', 'cards', 'refine', 'town'] as const;
 export type ArtGroup = (typeof ART_GROUPS)[number];
 
 /** 'WxH' (px). */
@@ -803,18 +806,406 @@ const REFINE: readonly Entry[] = [
   },
 ];
 
+// ── town: 마을 지도 시안 (기획서 3.8) ─────────────────────────────────────
+// 홈 화면 마을 지도 시안의 바닥, 구름 띠, 건물, 탑, 소품. 바닥과 건물을 따로 뽑아 합친다(3.8).
+// 아직 어떤 코드도 이 그림들을 import하지 않는다 (번들에 들어가지 않는다). 합친 시안과 합성 방법은
+// docs/mockups/town (README.md), 다시 합성하는 스크립트는 tools/art/town/compose.ts.
+// 모두 아늑한 타이쿤 지도의 3/4 위에서 본 시점(약 40°), 빛은 왼쪽 위, 그림자는 오른쪽 아래에 평면 한 덩이.
+//
+// 프롬프트 = STYLE + 아래 조각들. buildPrompt는 이 그룹에 STYLE만 붙이고(scene처럼), 참조 안내(STYLE_REF_ONLY 또는
+// 소품의 TOWN_PROP_REF_ONLY)·두 번째 참조 안내·시점 문장·본문은 그때 보낸 그대로 prompt에 적었다.
+// 두 회차로 뽑았다: 바닥·건물·탑·소품(첫 회차) → 첫 합성 → 검토 → 대장간, 마을 문, 바닥, 구름 띠, 벤치·화분·노점 수레
+// (둘째 회차). 아래 prompt는 마지막으로 채택한 판의 그림 프롬프트와 글자까지 같다 (기록과 대조했다).
+// 기록과 다른 점:
+//   - gen.ts가 그림 프롬프트를 감싸는 Codex 지시문은 낱말이 조금 다르다. 그때는 참조 목록에 "1) d_dwarf_idle (style
+//     reference), 2) bld_forge (same village map set)"처럼 설명을 붙였고, 첫 회차 소품은 크기·참조 줄이 더 짧았다.
+//   - Codex는 1024x1024를 1254x1254로 냈다 (size는 요청한 크기).
+//   - 첫 회차 건물과 물의 탑의 두 번째 참조 @bld_forge는 그때 첫 판 대장간(bld_forge.rejected1.png)이었다. 대장간을
+//     둘째 회차에 다시 뽑았으므로 지금 다시 뽑으면 둘째 판이 간다.
+//   - 소품의 두 번째 참조 @prop_tree_round는 그때 그 원본을 복사해 둔 것이었다 (같은 그림).
+//   - '@자기 키'(bld_gate, ground_b)는 고쳐 그리기다: 다시 뽑기 직전의 지금 원본을 두 번째 참조로 보낸다 (gen.ts).
+// 처리 크기(max): 바닥 세로 2400(원본 1536이라 키우지 않는다. 지도에서는 2.4배로 키운다), 건물 720, 탑 1000,
+// 소품 320, 구름 띠 1100 (지도에서 한 장을 약 1040px 폭으로 이어 붙인다. 소품 크기로 줄이면 흐려진다).
+//
+// 그림 없이 합성에서 그린 것 (tools/art/town/page.js, 수치는 tools/art/town/layout.ts):
+//   - 바닥: 2.4배로 키우고(부드럽게), 짙은 갈색 잉크 선을 양쪽 3px씩 얇게 깎았다 (thinInk). 그 위로 하늘 760px (#CFE3EA).
+//   - 탑의 층 쌓기: 탑마다 창 하나 위에서 다음 창 위까지 한 층(원본 px 행)을 잘라 위로 8~9번, 층마다 0.95배로 쌓아
+//     지도 위 끝 밖까지 끝없이 오르게 했다. 이음매는 10행씩 겹쳐 흐리게 잇는다.
+//   - 구름: 탑마다 구름 띠로 들어가는 자리를 감싸는 구름 고리, 고원 너머 지평선의 낮은 구름 줄 (원과 잉크 테두리,
+//     구름 띠의 색 #F7F9FA·#DCE4EA). 구름 띠 그림은 그 위에 좌우로 뒤집어 가며 이어 붙인다.
+//   - 대장간 굴뚝 연기 (같은 방식의 작은 구름 무리). 대장간 둘째 판은 연기 없이 뽑았다.
+//   - 흙 오솔길: 문 앞에서 큰길까지 (모래색 채움, 풀 위에서만 잉크 테두리).
+//   - 그림자: 그림에 구운 회색 그림자를 떼어 내고 바닥 접지 타원과 함께 한 층에 모아 #c3cba6로 곱하기(multiply) 한 번.
+//   - 작게 쓰는 소품과 사람은 원본에 바깥 잉크 테두리를 덧그려 건물과 선 굵기를 맞췄다.
+// 걷는 사람은 영웅 예제 그림(이 매니페스트 밖)과 드워프 기준 그림(d_dwarf_idle)을 줄여 놓았다.
+//
+// 시안 후보 ground_a (지도에 쓰지 않았다, 처리하지 않았다): 둘째 판, 1024x1536 불투명, 참조 d_dwarf_idle과
+// scene/bg_workshop. 가운데 둥근 광장에서 네 길이 뻗는 십자, 아래 3분의 1을 가로지르는 강과 나무다리, 길가의 빈
+// 풀밭. 첫 판(ground_a.rejected1.png)은 곧장 내려다본 듯 광장이 동그란 원이고 길이 자로 그은 듯해서 3/4 단서를 더했다.
+// 둘째 판도 평평하게 읽히고 탑을 세울 언덕이 없어 ground_b를 골랐다 (ground_b는 위에 탑 고원이 있고 강 대신 연못).
+// 마지막 프롬프트 = STYLE + 참조 안내(드워프는 화풍만, 공방 벽 그림은 색·선만) + 시점(타이쿤 지도, 완만한 3/4,
+// 빛은 왼쪽 위, 같은 선 굵기, 바닥 그림자 없음) + "A big empty village ground map seen from above at a gentle 3/4
+// top-down angle (NOT straight down: the ground is slightly foreshortened, so the round plaza looks like a wide oval,
+// clearly wider than tall, and the river banks show a thin brown earth side face), portrait, as one flat doodle with
+// hand-drawn slightly wobbly road edges: soft green grass everywhere, light sandy dirt roads with thick outlines: a round
+// open plaza in the middle, one main road going up from the plaza to the top edge (toward a field where towers will
+// stand), one road going down to the bottom edge (to a town gate), and two roads branching left and right from the
+// plaza. A gentle blue river crosses the lower third from left to right with one small flat wooden bridge where the
+// down road crosses it. Along the roads there are many EMPTY flat lots of plain grass (buildings will be placed there
+// later). Only a few tiny grass tufts and flower dots as decoration. NO buildings, NO trees, NO people, NO text. Flat
+// colors, thick outlines on roads and river banks only."
+
+/** 프롬프트 조각을 빈 줄로 잇는다 (buildPrompt가 STYLE을 앞에 붙인다). */
+const para = (...parts: readonly string[]): string => parts.join('\n\n');
+
+/** 첫 회차 건물·물의 탑의 두 번째 참조(대장간) 안내. */
+const TOWN_SAME_FORGE =
+  'The second attached image is the forge building from the same village map set. Match it exactly: the same 3/4 top-down camera angle, the same thick dark brown outline weight, the same flat fills and palette, the same small amount of detail, and the same scale (a door of the same size, so the buildings line up on one map). Do NOT redraw the forge; draw only the new object described below.';
+/** 불·땅·바람의 탑의 두 번째 참조(물의 탑) 안내. */
+const TOWN_SAME_TOWER =
+  'The second attached image is the water tower from the same village map set. Match it exactly: the same 3/4 top-down camera angle, the same thick dark brown outline weight, the same flat fills, the same silhouette and the same size and position in the frame. Do NOT redraw the water theme; change only the theme as described below.';
+/** 둘째 회차 소품의 두 번째 참조 안내. what = 그 그림이 무엇인지. */
+const townSameSet = (what: string): string =>
+  `The second attached image is ${what} from the same village map set. Match it exactly: the same 3/4 top-down camera angle, the same thick dark brown outline weight, the same flat fills and palette, the same small amount of detail. Do NOT redraw it; draw only the new object described below.`;
+
+/** 시점: 대장간(첫 판)처럼 조금 돌려 문 벽이 왼쪽 아래를 본다. 첫 회차 건물과 탑. */
+const TOWN_VIEW_FORGE =
+  'Camera: the same viewpoint as a cozy village tycoon / management game map, a 3/4 top-down view looking down at roughly 40 degrees, exactly like the forge: the building is turned a little, so its front (door) wall faces the viewer toward the lower left, one narrow side wall shows on the right, and a little of the top surface of the roof is visible. Light comes from the upper left, but there is NO shading on the object at all (flat fills only); at most one single flat soft-grey shadow shape on the ground at the lower right. No ground tile, no grass patch, no base platform, no road, no scenery around it: the object stands alone on the transparent background.';
+/** 시점: 두 번째 참조처럼 조금 돌려. 둘째 회차의 대장간과 광장 소품. */
+const TOWN_VIEW_TURNED =
+  'Camera: the same viewpoint as a cozy village tycoon / management game map, a 3/4 top-down view looking down at roughly 40 degrees, exactly like the second attached image: the object is turned a little, so its front faces the viewer toward the lower left, one narrow side shows on the right, and a little of the top surface is visible. Light comes from the upper left, but there is NO shading on the object at all (flat fills only); at most one single flat soft-grey shadow shape on the ground at the lower right. No ground tile, no grass patch, no base platform, no road, no scenery around it: the object stands alone on the transparent background.';
+/** 시점: 정면 대칭 (마을 문만). 길이 문을 곧장 지나 화면 쪽으로 온다. */
+const TOWN_VIEW_FRONT =
+  'Camera: a cozy village tycoon / management game map seen from above at roughly 40 degrees, but this object is seen STRAIGHT-ON FROM THE FRONT: it is perfectly symmetric left to right, its front faces the viewer squarely, and the flat top surfaces are a little visible. Light comes from the upper left, but there is NO shading on the object at all (flat fills only); at most one single flat soft-grey shadow shape on the ground at the lower right. No ground, no road, no grass, no scenery: the object stands alone on the transparent background.';
+/** 시점: 지도 바닥. */
+const TOWN_VIEW_MAP =
+  'View: like a cozy tycoon / management game map, seen from above at a gentle 3/4 top-down angle. Light comes from the upper left. Everything flat-colored; no cast shadows on the ground.';
+/** 투명 배경, 여백, 간판에 글자 없음 (건물·탑과 둘째 회차 소품의 끝). */
+const TOWN_FRAME =
+  'Transparent background with a real alpha channel. The object is centered with a comfortable empty margin on every side; nothing is cut off at the edges. Signs carry only simple picture symbols, never letters or numbers.';
+
+/** 첫 회차 소품의 참조 안내 (STYLE_REF_ONLY와 끝 낱말만 다르다). */
+const TOWN_PROP_REF_ONLY =
+  'The first attached image (a doodle dwarf character) is a STYLE REFERENCE ONLY: copy its drawing style exactly (same thick dark brown outline weight, flat fills, tiny amount of detail), but do NOT draw the dwarf or any person; draw only the object asked below.';
+/** 첫 회차 소품의 두 번째 참조(둥근 나무) 안내. */
+const TOWN_PROP_SAME_TREE =
+  'The second attached image is another prop from the SAME town map set (a round tree): match its outline thickness, its flat muted colors, its viewing angle and its flat shadow exactly, so all props look like one consistent set. Do NOT redraw that tree unless asked.';
+/** 첫 회차 소품의 구도. */
+const TOWN_PROP_FRAMING =
+  'This is a small decoration prop for the town map of a cozy tycoon / management game, seen in a 3/4 top-down view (the camera looks down at about 45 degrees: the front side is visible and a little of the top surface is visible). Light comes from the upper left. It will be placed small, like an icon, on a big map, so use EVEN FEWER details than usual and BOLD, thick outlines; simple chunky readable silhouette. Flat colors only, no shading, no gradient. A single flat darker shadow blob may sit under the object on the ground (one flat color, offset slightly toward the lower right), nothing else on the ground. One object only, centered, the whole object fully inside the frame with generous empty margin on all sides, nothing cropped. No text, no letters, no symbols.';
+
+/** 처리 크기 (긴 변, px). */
+const TOWN_MAX = { ground: 2400, sky: 1100, building: 720, tower: 1000, prop: 320 } as const;
+
+/** 첫 회차 건물 (대장간을 두 번째 참조로). body 뒤에 TOWN_FRAME, 그 뒤에 다시 뽑으며 덧붙인 말(extra). */
+function townBuilding(key: string, label: string, body: string, more: { extra?: string; note?: string } = {}): Entry {
+  return {
+    key,
+    size: '1024x1024',
+    transparent: true,
+    max: TOWN_MAX.building,
+    label,
+    refs: ['d_dwarf_idle', '@bld_forge'],
+    ...(more.note !== undefined ? { note: more.note } : {}),
+    prompt: para(STYLE_REF_ONLY, TOWN_SAME_FORGE, TOWN_VIEW_FORGE, `${body} ${TOWN_FRAME}${more.extra !== undefined ? ` ${more.extra}` : ''}`),
+  };
+}
+
+/** 불·땅·바람의 탑: 물의 탑과 같은 짜임에 색과 주제만 바꾼다. */
+const TOWER_RETHEME =
+  "Keep the same tower structure as the second image (round base with a small arched door, two ring ledges, arched windows, a pointed spire wrapped in flat cloud puffs), only recolor and re-theme it. Just as the water tower's whole wall is blue stone, this tower's whole wall is ";
+function townTower(key: string, label: string, theme: string, wall: string, note: string): Entry {
+  return {
+    key,
+    size: '1024x1536',
+    transparent: true,
+    max: TOWN_MAX.tower,
+    label,
+    refs: ['d_dwarf_idle', '@tower_water'],
+    note,
+    prompt: para(
+      STYLE_REF_ONLY,
+      TOWN_SAME_TOWER,
+      TOWN_VIEW_FORGE,
+      `Same kind of tower as the second attached image (same shape language, size, view and style), but its theme is ${theme}, the top fades into flat cloud puffs. ${TOWN_FRAME} ${TOWER_RETHEME}${wall}`,
+    ),
+  };
+}
+
+/** 첫 회차 소품 (둥근 나무를 두 번째 참조로, 둥근 나무 자신은 빼고). extra = 다시 뽑으며 덧붙인 문단. */
+function townProp(key: string, label: string, body: string, more: { extra?: string; note?: string; size?: ArtSize } = {}): Entry {
+  const first = key === 'prop_tree_round';
+  return {
+    key,
+    size: more.size ?? '1024x1024',
+    transparent: true,
+    max: TOWN_MAX.prop,
+    label,
+    refs: first ? ['d_dwarf_idle'] : ['d_dwarf_idle', '@prop_tree_round'],
+    ...(more.note !== undefined ? { note: more.note } : {}),
+    prompt: para(
+      TOWN_PROP_REF_ONLY,
+      ...(first ? [] : [TOWN_PROP_SAME_TREE]),
+      TOWN_PROP_FRAMING,
+      `${body} Transparent background with a real alpha channel.`,
+      ...(more.extra !== undefined ? [more.extra] : []),
+    ),
+  };
+}
+
+/** 둘째 회차 광장 소품 (시장 노점을 두 번째 참조로). */
+function townPlazaProp(key: string, label: string, body: string): Entry {
+  return {
+    key,
+    size: '1024x1024',
+    transparent: true,
+    max: TOWN_MAX.prop,
+    label,
+    refs: ['d_dwarf_idle', '@bld_market'],
+    note: '둘째 회차. 첫 합성의 광장이 분수와 사람 둘뿐이라 비어 보였다 (검토).',
+    prompt: para(STYLE_REF_ONLY, townSameSet('a pair of market stalls'), TOWN_VIEW_TURNED, `${body} ${TOWN_FRAME}`),
+  };
+}
+
+const TOWN: readonly Entry[] = [
+  // ---- 바닥과 하늘
+  {
+    key: 'ground_b',
+    size: '1024x1536',
+    transparent: false,
+    max: TOWN_MAX.ground,
+    label: '마을 바닥 (위 탑 고원, 광장, 오른쪽 연못, 아래로 이어지는 큰길)',
+    refs: ['d_dwarf_idle', '@ground_b'],
+    note:
+      '둘째 판 (둘째 회차). 첫 판(ground_b.rejected1.png, 참조 d_dwarf_idle과 scene/bg_workshop)은 2배로 키우면 길·절벽 선이 ' +
+      '건물보다 두 배 굵었고, 덤불·바위를 그려 넣었고(배치로 다룰 수 없다), 탑 고원이 얕았다 (검토). 첫 판을 두 번째 참조로 주고 ' +
+      '구성은 그대로, 선은 얇게, 고원은 지도 높이의 약 22%로 깊게, 큰길은 아래 끝 밖으로 이었다. 합성에서는 2.4배로 키워 하늘 아래에 깐다.',
+    prompt: para(
+      STYLE_REF_ONLY,
+      'The second attached image is the old version of this same village ground map. Keep its LAYOUT (the tower plateau at the top with a road climbing up onto it, the oval plaza a little below the middle, the pond on the right, the long main street going down, the side roads going out to the left and right), but change it as described below.',
+      TOWN_VIEW_MAP,
+      'An EMPTY village ground map, portrait, as one flat doodle: plain flat soft green grass and light sandy dirt roads. Use THIN dark brown ink outlines on the road edges and the cliff edges, about 3px at 1024px width, much thinner than the outline of the reference character. Layout from top to bottom: (1) a raised grassy plateau for towers fills the top quarter of the map (about 25% of the image height) and runs off the TOP EDGE and both side edges of the image; its front edge is a low grey-brown cliff face of a few simple blocks; a sandy road climbs from the plaza up through a gap in the cliff onto the plateau. (2) Below the cliff, wide empty grass lots on both sides of the up road, and a small flat blue pond on the right side. (3) An oval sandy plaza a little below the middle of the image, with one road going out to the left edge and one road going out to the right edge. (4) A long straight main street going down from the plaza and running off the BOTTOM EDGE of the image. Big empty grass lots on both sides of every road. NO bushes, NO rocks, NO flowers, NO trees, NO buildings, NO people, NO fences, NO bridge, NO text: only flat grass with a few tiny grass tufts, flat sandy roads with a few tiny pebble dots, the flat blue pond and the cliff. A fully painted, opaque image that fills the whole frame.',
+    ),
+  },
+  {
+    key: 'cloud_band',
+    size: '1536x1024',
+    transparent: true,
+    max: TOWN_MAX.sky,
+    label: '구름 띠 (지도 위 끝, 탑이 들어가는 구름)',
+    refs: ['d_dwarf_idle'],
+    note:
+      '둘째 회차. 첫 합성은 구름을 캔버스에 크림색으로 그렸는데 UI 종이색과 같아 탑이 구름으로 들어가지 않고 지도 끝이나 빈 머리글처럼 ' +
+      '보였다 (검토). 합성에서는 윗부분(원본 0~530행)을 360px 높이로 줄여 지도 폭만큼 좌우로 뒤집어 가며 이어 붙인다.',
+    prompt: para(
+      STYLE_REF_ONLY,
+      'View: the sky at the very top of a cozy tycoon / management game village map. Flat colors only, no shading, no gradients.',
+      'A long horizontal band of big fluffy cartoon cumulus clouds that fills the FULL WIDTH of the image from the left edge to the right edge with no gap at either side (copies will be placed side by side, so the band must be horizontally tileable). The upper part of the band is solid cloud that reaches the top edge of the image. The lower edge of the band is a bumpy, uneven row of big and small round cloud heaps hanging down, with the transparent background showing below and between them; a few heaps hang lower than others. Colours, all perfectly flat: the upper parts of the puffs almost white (#FFFFFF to #F4F7F8); the lower part of each heap a second flat pale blue-grey (#DCE4EA), divided from the white by one simple curved line; in a few small gaps between puffs a flat pale sky blue (#CFE3EA). The same thick dark brown hand-drawn outline around every puff as the reference character. No shading, no gradients, no sun, no birds, no ground, no buildings, no towers. The cloud band covers roughly the top 55% of the image; below that the image is fully transparent except for the lowest hanging puffs. Transparent background with a real alpha channel.',
+    ),
+  },
+
+  // ---- 건물
+  {
+    key: 'bld_forge',
+    size: '1024x1024',
+    transparent: true,
+    max: TOWN_MAX.building,
+    label: '대장간 (마을의 주인공 건물)',
+    refs: ['d_dwarf_idle', '@bld_guild'],
+    note:
+      '둘째 판 (둘째 회차). 첫 판(bld_forge.rejected1.png, 첫 회차 건물들의 기준)은 집만 한 돌집이라 멀리서 대장간으로 읽히지 않았고, ' +
+      '간판 그림이 한글(全·숫)처럼 읽혔다 (검토). 길드를 참조로 집보다 넓은 열린 작업장으로 다시 그렸다. 굴뚝 연기는 넣지 않고 합성에서 ' +
+      '그린다. 길드나 집보다 조금 더 아이소메트릭 쪽으로 돌아 있다.',
+    prompt: para(
+      STYLE_REF_ONLY,
+      'The second attached image is the guild hall from the same village map set. Match it exactly: the same 3/4 top-down camera angle, the same thick dark brown outline weight, the same flat fills and palette, the same small amount of detail, and the same scale (a door of the same size, so the buildings line up on one map). Do NOT redraw the guild; draw only the new building described below.',
+      TOWN_VIEW_TURNED,
+      `A big dwarf blacksmith forge workshop, the main hero building of the village. It is clearly much WIDER than a house: as wide as the guild hall in the second image or wider, but lower, one storey. A long low building of grey stone and wooden beams with a dark brown wooden plank roof. The LEFT part of the front is an OPEN-FRONTED workshop with no front wall: a deep roof overhang held up by two thick wooden posts, and inside it, plainly visible, a big round stone forge hearth with a bright flat orange fire, a black iron anvil on a wooden tree stump standing under the eave, a hammer and a pair of tongs hanging on the back wall, and a wooden water barrel. The RIGHT part of the front is a closed stone wall with a wooden door and one small window with warm orange light. ONE thick round stone chimney rises from the roof right above the hearth, with NO smoke at all (just an empty dark chimney opening). A wooden sign hangs from an iron bracket at the front corner, painted with a pictogram of a hammer above an anvil: pictogram only, no letters, no text, no glyph-like shapes, nothing that could be read as a letter or a character. ${TOWN_FRAME}`,
+    ),
+  },
+  townBuilding(
+    'bld_guild',
+    '모험가 길드',
+    'An adventurer guild hall, same game, same 3/4 top-down view and style as the second attached image: a big two-story wooden hall with a red-brown roof, a large banner with a simple sword-and-shield symbol (no letters), a notice board with a few pinned papers (no readable text) beside the double doors, two little flag poles. Bigger than the forge.',
+    { note: '게시판 종이에는 읽히지 않는 구불선만 있다. 대장간 첫 판보다 크다 (둘째 판 대장간이 이 그림을 참조로 받았다).' },
+  ),
+  townBuilding(
+    'bld_shop',
+    '재료 상점',
+    'A small general goods and materials shop, same 3/4 top-down view and style as the second attached image: a cozy small wooden shop with a striped cloth awning, crates of ore and sacks out front, a hanging sign with a simple coin symbol (no letters).',
+    {
+      extra:
+        'It must NOT look like the forge: no chimney and no smoke at all, no glowing doorway, no tools inside; instead a plain closed wooden shop door with a small window and a wide shop counter window under the awning. Give it a soft muted green roof so it reads as a different building at a glance.',
+      note: '둘째 판. 첫 판(bld_shop.rejected1.png)은 굴뚝 연기, 대장간과 같은 지붕, 빛나는 문간과 연장 걸이라 대장간이 하나 더 있는 것처럼 보였다.',
+    },
+  ),
+  townBuilding(
+    'bld_inn',
+    '여관',
+    'A village inn and tavern, same 3/4 top-down view and style as the second attached image: a two-story timber house with a warm lit window, a hanging sign with a simple mug symbol (no letters), a bench by the door.',
+    { extra: 'No smoke; the door is a normal wooden door (not a glowing doorway) so it does not look like the forge.' },
+  ),
+  townBuilding(
+    'bld_house_a',
+    '집 A (초가 오두막)',
+    'A small cute villager cottage, same 3/4 top-down view and style as the second attached image: round-ish walls, a straw-colored roof, one round window, a tiny flower box. Smaller than the shop.',
+    { note: '둥근 벽이라 거의 정면으로 보인다. 지도에서는 좌우로 뒤집어서도 쓴다.' },
+  ),
+  townBuilding(
+    'bld_house_b',
+    '집 B (좁은 이층집)',
+    'A small villager house, same 3/4 top-down view and style as the second attached image: a narrow two-story house with a blue-grey roof and a little chimney, a small fence corner. Different from a straw cottage.',
+    {
+      extra: 'It is just a private home: NO hanging sign and no symbol anywhere, and no smoke from the chimney (only the forge has smoke).',
+      note: '둘째 판. 첫 판(bld_house_b.rejected1.png)은 집 모양 간판과 굴뚝 연기를 그렸다. 지도에서 간판은 들어갈 수 있는 건물, 연기는 대장간의 표시다.',
+    },
+  ),
+  townBuilding(
+    'bld_market',
+    '시장 (노점 둘)',
+    'Two small market stalls side by side, same 3/4 top-down view and style as the second attached image: wooden stalls with cloth roofs (one orange, one green), baskets of fruit and a few bread loaves.',
+    { extra: 'No people, no sellers.', note: '사과와 빵 그림 간판(글자 없음)을 스스로 더했다. 둘째 회차 광장 소품의 기준.' },
+  ),
+  townBuilding(
+    'bld_mine',
+    '광산 입구',
+    'A small mine entrance in a rocky hillside, same 3/4 top-down view and style as the second attached image: a dark tunnel framed by wooden beams, a little rail track coming out with one cart full of grey-brown ore lumps, a lantern. This is where the ore lumps come from.',
+    {
+      extra: 'The rocky hillside is a small self-contained mound of rounded grey-brown rocks (flat fills), not a whole landscape; no people.',
+      note: '바닥 그림자가 없다 (합성에서 접지 타원만 깐다).',
+    },
+  ),
+  {
+    key: 'bld_gate',
+    size: '1536x1024',
+    transparent: true,
+    max: TOWN_MAX.building,
+    label: '마을 문 (큰길을 가로지르는 문)',
+    refs: ['d_dwarf_idle', '@bld_gate'],
+    note:
+      '다섯째 판 (둘째 회차). 첫 회차의 셋째 판(bld_gate.rejected3.png)은 대장간처럼 대각선으로 놓여, 첫 합성에서 기울이고 1.35배로 ' +
+      '늘려 큰길에 맞췄다 (기둥 머리가 찌그러졌다, 검토). 정면 대칭으로 다시 뽑은 넷째 판(rejected4)은 문 안쪽이 그림 폭의 35%뿐이라, ' +
+      '그 판을 두 번째 참조로 주고 비율을 적어 넓혔다(약 49%). 다른 건물과 달리 이것만 정면을 본다. 첫 판(rejected1)은 기둥이 비뚤고 ' +
+      '홈이 있었고, 둘째 판(rejected2)은 선이 얇고 나뭇결·금이 있었다.',
+    prompt: para(
+      STYLE_REF_ONLY,
+      'The second attached image is the previous drawing of this same village gate. Keep its parts, colours, outline weight and straight-on symmetric front view exactly, but move the two pillars much FARTHER APART so the opening is much wider, as described below.',
+      TOWN_VIEW_FRONT,
+      `A small, low, cute village gate seen straight-on from the front, symmetric, the road runs straight toward the viewer through the arch: two short upright stone pillars (each a stack of three big rounded grey stone blocks with a flat stone cap), a curved wooden arch beam joining the tops of the pillars, and a small blank wooden plaque hanging from the middle of the arch with NOTHING on it (no letters, no symbols). On the outer side of each pillar, a short wooden palisade of three or four pointed logs held by one crossbar, running straight out to the left and to the right. The open passage between the two pillars is wide: about 45% of the whole image width. The gate is short and wide, not tall. Plain flat fills, no wood grain, no cracks, no scratch marks, the same very thick dark brown outline. No road drawn, no people. ${TOWN_FRAME} Proportions from left to right across the whole gate: left palisade about 15%, left pillar about 12%, EMPTY OPENING about 46%, right pillar about 12%, right palisade about 15%. The arch beam is long and only gently curved to span this wide opening, with the small blank plaque hanging from its middle. One flat soft-grey shadow shape on the ground at the lower right of each pillar is allowed.`,
+    ),
+  },
+  townBuilding(
+    'bld_fountain',
+    '분수 (광장 가운데)',
+    'A round stone fountain for the village plaza, same 3/4 top-down view and style as the second attached image: a round stone basin with flat blue water and a small spout in the middle, a couple of stone benches is NOT needed, just the fountain.',
+    {
+      extra:
+        'Seen from the same 40-degree top-down angle as the forge, so the round basin looks like a wide oval and its flat water surface is clearly visible from above. The water is drawn as flat blue shapes with thick outlines (a simple little splash at the spout), no gradients. No benches, no people.',
+      note: '바닥 그림자가 없다. 돌이 대장간보다 조금 따뜻한 회갈색이다.',
+    },
+  ),
+
+  // ---- 탑 넷 (물·불·땅·바람). 합성에서는 한 층을 잘라 위로 쌓아 끝없이 늘린다 (원본 px 행, tools/art/town/layout.ts).
+  {
+    key: 'tower_water',
+    size: '1024x1536',
+    transparent: true,
+    max: TOWN_MAX.tower,
+    label: '물의 탑',
+    refs: ['d_dwarf_idle', '@bld_forge'],
+    note: '탑 넷의 기준 (둥근 받침과 아치 문, 고리 턱 둘, 아치 창, 구름에 감긴 뾰족 지붕). 합성: 원본 580~908행 한 층을 8번 쌓는다.',
+    prompt: para(
+      STYLE_REF_ONLY,
+      TOWN_SAME_FORGE,
+      TOWN_VIEW_FORGE,
+      `A tall mysterious tower for heroes to climb, seen in the distance, same 3/4 top-down view and doodle style as the second attached image: a tall slim round stone tower with a pointed top, its theme is WATER: blue stones, a little waterfall line and wave marks, the top fades into a few flat cloud puffs (the tower is endless). ${TOWN_FRAME} Keep the silhouette simple and chunky with the SAME very thick dark brown outline as the forge and plain flat fills. The tower fills most of the frame height; its bottom is a round stone base with one small arched door, standing on the ground with one flat grey shadow to the lower right; flat cloud puffs wrap only around the very top. Stones are simple rounded blocks like the forge chimney. No people.`,
+    ),
+  },
+  townTower(
+    'tower_fire',
+    '불의 탑',
+    'FIRE: red-orange stones and a few flat flame shapes',
+    'warm red-orange stone (NOT cream or white), with darker brick-red ledges; instead of the waterfall stripe there is a stripe of flat lava-orange with flame shapes, and a few small flat flame shapes lick up from the base ring. Flames are simple flat shapes with thick outlines, no glow, no gradients. No people.',
+    '둘째 판. 첫 판(tower_fire.rejected1.png)은 벽이 크림색에 붉은 테만 둘러 등대처럼 보였다. 합성: 원본 585~904행 한 층을 9번 쌓는다 (불꽃 띠의 이음매가 조금 비친다).',
+  ),
+  townTower(
+    'tower_earth',
+    '땅의 탑',
+    'EARTH: brown and moss-green stones with a few roots and rocks',
+    'warm brown stone with patches of flat moss-green, darker brown ledges and a moss-green spire; instead of the waterfall stripe, a few thick brown roots climb up the wall, and a couple of round rocks and a small sprout sit at the base. Plain flat fills with thick outlines, no gradients. No people.',
+    '합성: 원본 580~900행 한 층을 8번 쌓는다 (쌓은 이음매에서 덩굴이 조금 어긋난다).',
+  ),
+  townTower(
+    'tower_wind',
+    '바람의 탑',
+    'WIND: pale mint and white stones with swirl lines and a little flag',
+    'pale mint and off-white stone with soft teal ledges; instead of the waterfall stripe, a few curly swirl lines (wind) wrap around the tower, and a small triangular flag on a thin pole flutters from the spire. Plain flat fills with thick outlines, no gradients. No people.',
+    '소용돌이는 외곽선 없는 가는 청록 선이다. 깃발 때문에 그림 상자의 가운데가 조금 오른쪽이다. 합성: 원본 590~908행 한 층을 9번 쌓는다.',
+  ),
+
+  // ---- 소품
+  townProp('prop_tree_round', '둥근 나무', 'One round fluffy deciduous tree, 3/4 top-down view, a big round green crown blob and a short brown trunk.', {
+    note: '소품 세트의 기준 (나머지 첫 회차 소품이 두 번째 참조로 받았다). 혼자 바닥 그림자가 없다 (합성에서 접지 타원을 깐다).',
+  }),
+  townProp('prop_tree_pine', '뾰족 나무', 'One small pine tree, 3/4 top-down view, three stacked dark green triangles and a short trunk.'),
+  townProp('prop_bush', '덤불', 'One small round green bush with two tiny flowers, 3/4 top-down view.'),
+  townProp('prop_rocks', '바위', 'A small cluster of three grey rounded rocks, 3/4 top-down view.'),
+  townProp('prop_fence', '울타리 (옆으로 이어 붙인다)', 'One short straight section of a low wooden picket fence (four posts), 3/4 top-down view, horizontal.', {
+    size: '1536x1024',
+    extra:
+      'IMPORTANT: the fence runs perfectly HORIZONTALLY from left to right, parallel to the bottom edge of the image, NOT diagonal and NOT isometric. We see its front face straight on, from slightly above, so only a thin sliver of the top of each post shows. Four separate posts with clear gaps between them, joined by two straight horizontal rails. Every post and rail is ONE single flat warm brown color: no darker side faces, no lighter top faces, no inner lines. Low and wide, about four times wider than tall.',
+    note: '둘째 판. 첫 판(prop_fence.rejected1.png)은 대각선 아이소메트릭에 옆면 음영이 있었다.',
+  }),
+  townProp('prop_lamp', '가로등', 'One little street lamp post with a warm lit lantern on top, 3/4 top-down view.', {
+    note: '지붕과 받침 오른쪽에 조금 어두운 면이 하나 있다 (작게 쓰면 보이지 않아 두었다).',
+  }),
+  townProp('prop_flowers', '꽃', 'A small patch of wild flowers (a few pink, yellow and white blobs) on grass, flat, 3/4 top-down view.'),
+  townProp('prop_crates', '상자와 통', 'A small stack of two wooden crates and one barrel, 3/4 top-down view.'),
+  townProp(
+    'prop_signpost',
+    '이정표',
+    'One wooden signpost with two arrow boards pointing different ways (no letters, just blank boards), 3/4 top-down view.',
+    {
+      extra:
+        'IMPORTANT: keep it as plain and chunky as the round tree reference. NO wood grain lines, NO thin inner lines, NO scratches, NO nails or dots on the boards. The post and each arrow board are each ONE single flat color with only the thick dark brown outline: no darker side faces, no lighter top faces, no shading planes. Nothing else at its foot (no rocks, no grass), only one flat shadow blob. The two blank arrow boards point to opposite sides (one left, one right).',
+      note: '둘째 판. 첫 판(prop_signpost.rejected1.png)은 나뭇결, 못 자국 점, 옆면 음영, 발치의 음영 진 바위가 있었다.',
+    },
+  ),
+  townProp('prop_cart', '광석 수레', 'One small wooden hand cart loaded with grey-brown ore lumps, 3/4 top-down view.', {
+    extra:
+      'IMPORTANT: keep it as plain and chunky as the round tree reference, a simple toy-like cart. The cart body is one simple box in ONE flat warm brown color with no plank lines, no darker side faces, no lighter top faces. Two simple round wheels, each a plain flat circle with a small center dot (no spokes). Two short handles. The ore lumps on top are 3 or 4 simple round blobs, each ONE flat grey-brown color with NO facets, NO darker sides, NO highlights. Only one flat shadow blob under it. Whole cart fully inside the frame with a generous margin.',
+    note: '둘째 판. 첫 판(prop_cart.rejected1.png)은 광석에 면과 음영, 바큇살, 판자 선, 어두운 옆면이 있었다. 지도에서는 대장간 앞마당에 둔다.',
+  }),
+  townPlazaProp(
+    'prop_bench',
+    '벤치',
+    'A small wooden park bench for a village plaza: a simple bench of a few warm brown wooden planks with a backrest and two stubby legs at each end, nothing on it. Small, chunky and simple.',
+  ),
+  townPlazaProp(
+    'prop_planter',
+    '꽃 화분',
+    'A square wooden flower planter box for a village plaza: a low square box of brown wooden planks, filled with one small round green bush and a few simple pink and yellow flowers. Small, chunky and simple.',
+  ),
+  townPlazaProp(
+    'prop_stall',
+    '노점 수레',
+    'A small cute street vendor hand cart for a village plaza: a wooden cart with two big wooden wheels and two handles, a small striped cloth canopy (cream and soft red stripes) on two thin poles, a few round apples and loaves of bread on top. Small, chunky and simple, no sign.',
+  ),
+];
+
 // ── 전체 목록 ───────────────────────────────────────────────────────────
 
 const inGroup =
   (group: ArtGroup) =>
   (e: Entry): ArtAsset => ({ ...e, group });
 
-/** 모든 에셋. 그룹 순서(scene, ui, cards, refine), 그룹 안에서는 위에 적은 순서. */
+/** 모든 에셋. 그룹 순서(scene, ui, cards, refine, town), 그룹 안에서는 위에 적은 순서. */
 export const ART_ASSETS: readonly ArtAsset[] = [
   ...SCENE.map(inGroup('scene')),
   ...UI.map(inGroup('ui')),
   ...[...CARDS_A, ...CARDS_B].map(inGroup('cards')),
   ...REFINE.map(inGroup('refine')),
+  ...TOWN.map(inGroup('town')),
 ];
 
 /** '그룹/키'. 키는 그룹 안에서만 겹치지 않는다 (bellows, quench는 scene과 cards에 다 있다). */

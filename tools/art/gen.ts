@@ -9,6 +9,7 @@
 //
 // 참조(refs): 'name'은 --ref 폴더의 <name>.png, 없으면 REF_IMAGES의 대신할 에셋.
 //             '@key'는 다른 에셋의 원본 <out>/<그룹>/<key>.png, 없으면 처리된 src/assets/art/<그룹>/<key>.webp.
+//             자기 키(고쳐 그리기)는 다시 뽑기 직전의 지금 원본이다 (_old로 옮긴 그 파일을 보낸다).
 //
 // Options:
 //   --out DIR      원본 PNG 폴더 (기본: OS 임시 폴더/blacksmith-art/raw, process.ts --raw의 기본값과 같다)
@@ -174,8 +175,10 @@ async function genOne(a: ArtAsset, rawDir: string, refDir: string, opts: { dry: 
     renameSync(target, backup);
     console.log(`  있던 원본을 옮겨 둠: ${backup}`);
   }
+  // 자기 키를 참조하면(고쳐 그리기) 방금 _old로 옮긴 지금 원본을 보낸다.
+  const sent = backup === null ? refs : refs.map((r) => (r.path === target ? { ...r, path: backup } : r));
   const started = Date.now();
-  const code = await run(cmd, args, workDir, task);
+  const code = await run(cmd, codexArgs(workDir, sent, opts.model), workDir, task);
   const made = existsSync(target) && statSync(target).mtimeMs >= started - 2000;
   if (!made) {
     if (backup !== null && !existsSync(target)) renameSync(backup, target);
