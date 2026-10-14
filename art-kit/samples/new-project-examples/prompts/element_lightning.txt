@@ -1,0 +1,18 @@
+Use your built-in image generation tool (image_gen) to create exactly ONE image, then save it as element_lightning.png in the current directory.
+- Size: 1024x1024 (square). If the tool has a size parameter, use this size or the closest supported one.
+- Background: TRANSPARENT, a real alpha channel in a PNG, no backdrop at all. If the tool has a background parameter, set it to transparent.
+- Attached reference images, in order: 1) d_dwarf_idle, 2) element_water. Use them as the image prompt says.
+- Generate once, then copy the generated file from where the tool saved it to ./element_lightning.png. Do not edit, crop, resize or post-process it, and do not create any other files.
+
+Image prompt:
+Super simple flat doodle cartoon in EXACTLY the same style as the attached dwarf character image: thick, slightly uneven hand-drawn dark brown outlines, flat colors, NO shading, NO gradients, NO texture, NO highlights, very few details, simple round chunky shapes, cute and silly (the Korean "hachanhan" meme vibe), warm cozy palette (cream, warm brown, soft grey, soft orange, a little muted). No text, no letters, no numbers, no watermark, no signature.
+
+The first attached image (a doodle dwarf character) is a STYLE REFERENCE ONLY: copy its drawing style exactly (same thick dark brown outline weight, flat fills, tiny amount of detail), but do NOT draw the dwarf or any person; draw only what is asked below.
+
+The second attached image is another icon from the same game UI icon set. Match it exactly in drawing style, outline weight and how big the shape sits in the frame (same scale and margin, centered), so all the icons look like one set. Do NOT redraw that icon; draw only the new icon described below.
+
+A small game UI icon that must read clearly at 24px: one simple bold shape, centered, filling about three quarters of the square canvas with a comfortable empty margin on every side, nothing cut off. Transparent background with a real alpha channel: no backdrop, no badge or circle behind it, no ground shadow, no glow. Draw it with the same VERY fat, bold dark brown marker outline as the dwarf, one flat color per part (no lighter or darker patches, no shading, no gradient, no glossy shine), and at most one or two inner lines. No face.
+
+Lightning element icon: one chunky cartoon lightning bolt: a FAT zigzag shape with two sharp bends, running from the upper right down to one blunt point at the lower left. Every straight segment is wide and chunky (about one third as wide as the whole bolt), never a thin line. One flat butter yellow (#f3d36a). Nothing else: no sparks, no clouds, no glow, no motion lines. The same size and weight as the droplet in the second image.
+
+Reply with only the saved file path.

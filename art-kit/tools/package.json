@@ -1,0 +1,9 @@
+{
+  "name": "art-kit-tools",
+  "private": true,
+  "description": "Codex 이미지 생성으로 낙서풍(D 화풍) 그림을 뽑고 다듬는 도구. npm 패키지 없음. node tools/gen.ts, node tools/process.ts 로 바로 돈다.",
+  "type": "module",
+  "engines": {
+    "node": ">=22.6"
+  }
+}
