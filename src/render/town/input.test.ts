@@ -34,7 +34,7 @@ function rig(upTakes = true) {
       return upTakes;
     },
     cancel: (id) => seen.push(`cancel ${id}`),
-    wheel: (dx, dy) => seen.push(`wheel ${dx},${dy}`),
+    wheel: (dx, dy, at) => seen.push(`wheel ${dx},${dy}${at !== null ? ` @${at.x},${at.y}` : ''}`),
   };
   const off = attachTownInput(
     {
@@ -85,6 +85,12 @@ describe('the map’s fingers on the page', () => {
     r.input.dispatchEvent(w);
     expect(r.seen).toEqual(['wheel 3,40']);
     expect(w.defaultPrevented).toBe(true);
+  });
+
+  it('a wheel with ctrl (a trackpad pinch) zooms round the pointer', () => {
+    const r = rig();
+    r.input.dispatchEvent(ev('wheel', 5, { deltaX: 0, deltaY: -12, ctrlKey: true, clientX: 110, clientY: 220 }));
+    expect(r.seen).toEqual(['wheel 0,-12 @100,200']);
   });
 
   it('a lost finger is a cancel', () => {

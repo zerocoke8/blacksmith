@@ -3,6 +3,7 @@
 // keeps the scene alive while it is shown.
 
 import { type MutableRefObject, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import type { FighterSize } from '../../render/battle/layout.ts';
 import type { BattleScene } from '../../render/battle/scene.ts';
 import type { Cue } from '../../render/battle/timeline.ts';
 
@@ -15,6 +16,8 @@ export function BattleField(props: {
   onReady(): void;
   onCue(cue: Cue): void;
   paused?: boolean;
+  /** How big the fighters are drawn when the scene is made (SizeLab keeps them in step after). */
+  sizes?: FighterSize;
   children?: React.ReactNode;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
@@ -48,7 +51,7 @@ export function BattleField(props: {
     const host = canvasRef.current;
     if (host === null) return;
     sceneModule
-      .then((m) => m.createBattleScene(host, sizeRef.current.w, sizeRef.current.h, { reducedMotion: cb.current.reduced, onCue: (c) => cb.current.onCue(c) }))
+      .then((m) => m.createBattleScene(host, sizeRef.current.w, sizeRef.current.h, { reducedMotion: cb.current.reduced, onCue: (c) => cb.current.onCue(c), sizes: cb.current.sizes }))
       .then((scene) => {
         made = scene;
         if (cancelled) {

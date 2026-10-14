@@ -14,7 +14,7 @@ import { heroPower, heroStats, heroWeapon, type HeroesState } from '../../sim/he
 import { buildTeam, type Formation, formationProblemText, teamPower } from '../../sim/stage/index.ts';
 import { Seg } from '../cards/parts.tsx';
 import { HERO_LINES } from '../battle/text.ts';
-import { StarRow, TypeIcons } from './HeroCard.tsx';
+import { HeroPic, StarRow, TypeIcons } from './HeroCard.tsx';
 import {
   checkFormation,
   memberCount,
@@ -135,7 +135,6 @@ export function FormationEditor(props: {
             );
           }
           const spec = heroSpec(key);
-          const pic = heroArtUrl(key);
           const off = check.offRow.includes(key);
           return (
             <button
@@ -152,7 +151,7 @@ export function FormationEditor(props: {
               }}
               aria-label={`${FORMATION_ROW_LABEL[r]} ${i + 1}: ${spec.name}`}
             >
-              <span className="fe-pic">{pic !== null && <img src={pic} alt="" draggable={false} />}</span>
+              <HeroPic heroKey={key} className="fe-pic" />
               <TypeIcons element={spec.element} weapon={spec.weapon} healer={spec.role === 'healer'} />
               <span className="fe-name">{spec.name.split(' ').pop()}</span>
               {off && <i className="fe-off" title={HERO_LINES.offRow} aria-label={HERO_LINES.offRow} />}
@@ -226,7 +225,6 @@ export function FormationEditor(props: {
       <div className="fe-pick">
         {listed.map((key) => {
           const spec = heroSpec(key);
-          const pic = heroArtUrl(key);
           const at = placeOf(f, key);
           const card = heroCardView(heroes.roster, key);
           const bare = heroWeapon(heroes.armory, key) === null;
@@ -248,7 +246,7 @@ export function FormationEditor(props: {
               aria-pressed={at !== null}
               aria-label={`${spec.name}, 전투력 ${pw.toLocaleString('ko-KR')}${bare ? ', 맨손' : ''}${at !== null ? `, ${FORMATION_ROW_LABEL[at.row]}` : ''}`}
             >
-              <span className="fe-pic">{pic !== null && <img src={pic} alt="" draggable={false} loading="lazy" />}</span>
+              <HeroPic heroKey={key} className="fe-pic" />
               <TypeIcons element={spec.element} weapon={spec.weapon} healer={spec.role === 'healer'} />
               <span className="fe-tags">
                 {at !== null && <b className="fe-in">{FORMATION_ROW_LABEL[at.row]}</b>}

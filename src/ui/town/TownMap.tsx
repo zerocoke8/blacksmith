@@ -64,8 +64,9 @@ interface Props {
   onReady(ms: Readonly<Record<string, number>>): void;
 }
 
-/** Where the camera was when the map last closed this session (memory only: 9.1 does not keep it). */
+/** Where the camera was, and its zoom, when the map last closed this session (memory only: 9.1 does not keep it). */
 let lastCamera: Cam | null = null;
+let lastZoomShare: number | null = null;
 /** The map faded in once this session; coming back to it, it is just there. */
 let shownOnce = false;
 
@@ -87,7 +88,8 @@ export default function TownMap(props: Props) {
   const sceneRef = useRef<TownScene | null>(null);
   const tagEls = useRef(new Map<string, HTMLElement>());
   const [size, setSize] = useState({ w: 0, h: 0 });
-  const [zoom, setZoom] = useState(0);
+  /** The camera has reported once: the layer can show. */
+  const [camUp, setCamUp] = useState(false);
   const [ready, setReady] = useState(false);
   const [fade, setFade] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -104,6 +106,13 @@ export default function TownMap(props: Props) {
     const v = camRef.current;
     if (layer === null || v === null) return;
     layer.style.transform = `translate3d(${(-v.x * v.z).toFixed(2)}px, ${(-v.y * v.z).toFixed(2)}px, 0)`;
+    // The tags and the bubble stand at map px × --z, set here in the same frame as the move (a pinch
+    // would leave them a frame behind the map if the zoom went through React).
+    const z = String(v.z);
+    if (layer.style.getPropertyValue('--z') !== z) {
+      layer.style.setProperty('--z', z);
+      placeBubble();
+    }
     // Tags under the top band or the quick entries hide (their buildings still take the taps).
     const { top, bottom } = cb.current.insets;
     const h = sizeRef.current.h;
@@ -140,7 +149,7 @@ export default function TownMap(props: Props) {
     const onCamera = (v: CameraView) => {
       camRef.current = v;
       follow();
-      setZoom((z) => (z === v.z ? z : v.z));
+      setCamUp(true);
     };
     const toTap = (t: TownTap): MapTap => {
       if (t.kind === 'building') {
@@ -157,6 +166,7 @@ export default function TownMap(props: Props) {
         m.createTownScene(host, sizeRef.current.w, sizeRef.current.h, {
           reducedMotion: cb.current.reduced,
           camera: lastCamera,
+          zoomShare: lastZoomShare,
           locks: locksRef.current,
           input,
           insets: () => cb.current.insets,
@@ -184,7 +194,10 @@ export default function TownMap(props: Props) {
     return () => {
       cancelled = true;
       const s = sceneRef.current;
-      if (s !== null) lastCamera = s.camera();
+      if (s !== null) {
+        lastCamera = s.camera();
+        lastZoomShare = s.zoomShare();
+      }
       s?.destroy();
       sceneRef.current = null;
       cb.current.apiRef.current = null;
@@ -209,10 +222,10 @@ export default function TownMap(props: Props) {
 
   // A bubble stays on screen: pulled in from the sides (its tail still points at what spoke), and
   // turned to hang below its point when it would go under the top band.
-  const bubble = props.bubble;
-  useLayoutEffect(() => {
+  function placeBubble() {
     const el = bubbleRef.current;
     const v = camRef.current;
+    const bubble = cb.current.bubble;
     if (el === null || v === null || bubble === null) return;
     const w = el.offsetWidth;
     const h = el.offsetHeight;
@@ -231,13 +244,14 @@ export default function TownMap(props: Props) {
     el.classList.toggle('below', below);
     // Hanging below a point that is itself under the band: down to just under the band.
     el.style.marginTop = below && sy + 12 < top ? `${(top - sy - 12).toFixed(1)}px` : '';
-  }, [bubble, zoom]);
+  }
+  const bubble = props.bubble;
+  useLayoutEffect(placeBubble, [bubble]);
 
-  const z = zoom;
   return (
     <div ref={hostRef} className={`tm-host${ready ? ' ready' : ''}${fade ? ' fade' : ''}`}>
       <div ref={canvasRef} className="tm-canvas" aria-hidden="true" />
-      {ready && z > 0 && (
+      {ready && camUp && (
         <div ref={layerRef} className="tm-layer">
           {MAP_BUILDINGS.map((b) => {
             const at = labelPoint(b);
@@ -256,7 +270,7 @@ export default function TownMap(props: Props) {
                 type="button"
                 className={`tm-tag tm-tag-${b.building}${lock.locked ? ' locked' : ''}`}
                 data-tap={b.uid}
-                style={{ left: at.x * z, top: at.y * z }}
+                style={{ left: `calc(${at.x}px * var(--z))`, top: `calc(${at.y}px * var(--z))` }}
                 aria-label={lock.locked ? `${name}: ${lockedTag(lock.opensAt)}` : name}
                 onClick={() => {
                   // A click the map did not take: a keyboard, a screen reader. A finger's tap is the
@@ -276,7 +290,7 @@ export default function TownMap(props: Props) {
             );
           })}
           {bubble !== null && (
-            <div ref={bubbleRef} key={bubble.key} className="tm-bubble" style={{ left: bubble.x * z, top: bubble.y * z }} role="status">
+            <div ref={bubbleRef} key={bubble.key} className="tm-bubble" style={{ left: `calc(${bubble.x}px * var(--z))`, top: `calc(${bubble.y}px * var(--z))` }} role="status">
               {bubble.text}
             </div>
           )}

@@ -32,6 +32,8 @@ export interface Actor {
   /** The picture's on-screen height and width (px). */
   readonly height: number;
   readonly width: number;
+  /** Draws it at another height (px), in the middle of whatever it is doing (the 크기 panel). */
+  resize(height: number): void;
   /** Starts an action; one-shot ones last `durMs` (default: the sheet's length) and go back to idle. */
   play(action: AnimAction, durMs?: number): void;
   hit(): void;
@@ -64,7 +66,8 @@ export function makeActor(opts: ActorOptions): Actor {
   view.addChild(body);
   const still = new Sprite(opts.still);
   still.anchor.set(ANIM_ANCHOR.x, ANIM_ANCHOR.y);
-  const k = opts.height / Math.max(1, opts.still.height);
+  let height = opts.height;
+  let k = height / Math.max(1, opts.still.height);
   // The flash: the same picture added over itself (brightens toward white), shown on a hit.
   const flash = new Sprite(opts.still);
   flash.anchor.set(ANIM_ANCHOR.x, ANIM_ANCHOR.y);
@@ -73,9 +76,11 @@ export function makeActor(opts: ActorOptions): Actor {
   body.addChild(still, flash);
   const mirror = opts.facing === 1 ? -1 : 1;
   /** px per motion unit (MOTION is in px at a fighter 100 px tall). */
-  const u = opts.height / 100;
+  let u = height / 100;
 
   const sheets = new Map<AnimAction, AnimatedSprite>();
+  /** A sheet's frame height (px of the picture). */
+  const frameH = new Map<AnimatedSprite, number>();
   for (const [action, frames] of Object.entries(opts.sheets ?? {}) as [AnimAction, Texture[]][]) {
     if (frames.length === 0) continue;
     const a = new AnimatedSprite(frames);
@@ -84,11 +89,18 @@ export function makeActor(opts: ActorOptions): Actor {
     a.loop = ANIM_SPEC[action].loop;
     a.visible = false;
     a.autoUpdate = false;
-    const fh = frames[0]?.height ?? 1;
-    a.scale.set((opts.height / fh) * mirror, opts.height / fh);
+    frameH.set(a, frames[0]?.height ?? 1);
     body.addChild(a);
     sheets.set(action, a);
   }
+
+  const scaleSheets = () => {
+    for (const a of sheets.values()) {
+      const fh = frameH.get(a) ?? 1;
+      a.scale.set((height / fh) * mirror, height / fh);
+    }
+  };
+  scaleSheets();
 
   let action: MotionAction = 'idle';
   let t = 0;
@@ -110,8 +122,18 @@ export function makeActor(opts: ActorOptions): Actor {
 
   const api: Actor = {
     view,
-    height: opts.height,
-    width: opts.height * (opts.still.width / Math.max(1, opts.still.height)),
+    get height() {
+      return height;
+    },
+    get width() {
+      return height * (opts.still.width / Math.max(1, opts.still.height));
+    },
+    resize(next) {
+      height = Math.max(1, next);
+      k = height / Math.max(1, opts.still.height);
+      u = height / 100;
+      scaleSheets();
+    },
     play(next, durMs) {
       if (fallen) return;
       action = next;

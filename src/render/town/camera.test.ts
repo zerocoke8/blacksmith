@@ -5,7 +5,9 @@ import {
   capSpeed,
   centerOn,
   clampCam,
+  clampZoom,
   makeGesture,
+  pinchView,
   releaseVelocity,
   rubberband,
   rubberPos,
@@ -14,6 +16,7 @@ import {
   TAP,
   unrubberPos,
   zoomFor,
+  zoomRange,
 } from './camera.ts';
 
 const MAP_W = 2458;
@@ -228,33 +231,80 @@ describe('tap or drag', () => {
     expect(g.driver()).toBeNull();
   });
 
-  it('a second finger (a pinch, no zoom yet) cancels the drag: the map does not slide under it', () => {
+  it('a second finger cancels the drag and the two pinch: the map does not slide under them', () => {
     const g = makeGesture();
     g.down(1, 200, 400, 0, false);
     g.move(1, 180, 400, 16);
     expect(g.move(1, 150, 400, 32).some((e) => e.type === 'drag')).toBe(true);
-    // The second finger comes down: the touch is off.
-    expect(g.down(2, 260, 400, 40, false)).toEqual([{ type: 'cancel' }]);
+    // The second finger comes down: the drag is off, a pinch begins (their middle, their distance).
+    expect(g.down(2, 250, 400, 40, false)).toEqual([{ type: 'cancel' }, { type: 'pinchStart', x: 200, y: 400, d: 100 }]);
     expect(g.driver()).toBeNull();
-    // The fingers spread: nothing moves, nothing is tapped, and no throw on the lift.
-    expect(g.move(1, 80, 400, 56)).toEqual([]);
-    expect(g.move(2, 380, 400, 56)).toEqual([]);
-    expect(g.up(2, 380, 400, 80)).toEqual([]);
+    expect(g.pinching()).toBe(true);
+    // The fingers spread: a pinch on every move, never a drag or a tap.
+    expect(g.move(1, 100, 400, 56)).toEqual([{ type: 'pinch', x: 175, y: 400, d: 150 }]);
+    expect(g.move(2, 300, 400, 60)).toEqual([{ type: 'pinch', x: 200, y: 400, d: 200 }]);
+    // A third finger changes nothing.
+    expect(g.down(3, 10, 10, 62, false)).toEqual([]);
+    expect(g.move(3, 40, 10, 64)).toEqual([]);
+    expect(g.up(3, 40, 10, 66)).toEqual([]);
+    // One lifts: the pinch ends, no throw.
+    expect(g.up(2, 300, 400, 80)).toEqual([{ type: 'pinchEnd' }]);
+    expect(g.pinching()).toBe(false);
     // One finger still down: still nothing until every finger has lifted.
     expect(g.active()).toBe(true);
     expect(g.move(1, 20, 400, 90)).toEqual([]);
     expect(g.up(1, 20, 400, 100)).toEqual([]);
     expect(g.active()).toBe(false);
     // Then a new touch works as ever.
-    g.down(3, 100, 100, 200, false);
-    expect(g.up(3, 101, 100, 260).map((e) => e.type)).toEqual(['release', 'tap']);
+    g.down(4, 100, 100, 200, false);
+    expect(g.up(4, 101, 100, 260).map((e) => e.type)).toEqual(['release', 'tap']);
+  });
+
+  it('a finger left on the glass after a pinch pinches again with a new second finger', () => {
+    const g = makeGesture();
+    g.down(1, 100, 100, 0, false);
+    g.down(2, 200, 100, 10, false);
+    expect(g.up(2, 200, 100, 20)).toEqual([{ type: 'pinchEnd' }]);
+    expect(g.down(5, 100, 300, 30, false)).toEqual([{ type: 'pinchStart', x: 100, y: 200, d: 200 }]);
+    // A lost finger ends the pinch as a lift does.
+    expect(g.cancel(1)).toEqual([{ type: 'pinchEnd' }]);
   });
 
   it('two fingers landing for a tap tap nothing', () => {
     const g = makeGesture();
     g.down(1, 100, 100, 0, false);
     g.down(2, 140, 100, 10, false);
-    expect(g.up(1, 100, 100, 60)).toEqual([]);
+    expect(g.up(1, 100, 100, 60)).toEqual([{ type: 'pinchEnd' }]);
     expect(g.up(2, 140, 100, 70)).toEqual([]);
+  });
+});
+
+describe('pinch zoom (사용자 결정 2026-10-14: the first look is the closest, out a fair way)', () => {
+  const view = { w: 390, h: 844 };
+
+  it('zooms from the first look out to CAMERA.zoomOut of it, never past the whole map', () => {
+    const r = zoomRange(view, MAP_W, MAP_H);
+    expect(r.max).toBe(zoomFor(390));
+    expect(r.min).toBeCloseTo(r.max * CAMERA.zoomOut);
+    // At the farthest, the view still sits inside the map.
+    expect(view.w / r.min).toBeLessThanOrEqual(MAP_W);
+    expect(view.h / r.min).toBeLessThanOrEqual(MAP_H);
+    // A map hardly bigger than the view: out only as far as the map covers it.
+    const small = zoomRange(view, 900, 1700);
+    expect(small.min).toBeCloseTo(Math.max(390 / 900, 844 / 1700));
+    expect(clampZoom(9, r)).toBe(r.max);
+    expect(clampZoom(0, r)).toBe(r.min);
+  });
+
+  it("keeps the map point under the fingers' middle under it, and zooms with their spread", () => {
+    const r = zoomRange(view, MAP_W, MAP_H);
+    const start = { z: r.max, d: 200, mx: 1000, my: 2000 };
+    // Fingers close in to half: half the zoom (held at the range's end).
+    const v = pinchView(start, { x: 195, y: 400, d: 100 }, r);
+    expect(v.z).toBeCloseTo(Math.max(r.min, r.max / 2));
+    expect(v.x + 195 / v.z).toBeCloseTo(1000);
+    expect(v.y + 400 / v.z).toBeCloseTo(2000);
+    // Spread past the start: no closer than the first look.
+    expect(pinchView(start, { x: 195, y: 400, d: 400 }, r).z).toBe(r.max);
   });
 });

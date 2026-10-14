@@ -26,6 +26,7 @@ import { BattleField } from './BattleField.tsx';
 import { type BattleSpeed, loadSpeed, makeCueSound, nextSpeed, saveSpeed } from './feel.ts';
 import { mockGroup, rankWindow } from './rankMock.ts';
 import { battleShow, timelineUnits } from './show.ts';
+import { SizeLab, useFighterSize } from './SizeLab.tsx';
 import { DAILY_LINES } from './text.ts';
 import './battle.css';
 
@@ -58,6 +59,7 @@ export default function DailyScreen(props: { onExit(): void }) {
   const game = useGame();
   const sceneRef = useRef<BattleScene | null>(null);
   const [sceneUp, setSceneUp] = useState(false);
+  const [sizes, setSizes] = useFighterSize(sceneRef, sceneUp);
   const [playing, setPlaying] = useState(false);
   const [damage, setDamage] = useState(0);
   const [clock, setClock] = useState<Clock | null>(null);
@@ -219,7 +221,8 @@ export default function DailyScreen(props: { onExit(): void }) {
         <span className={`bt-tries${daily.tries === 0 ? ' none' : ''}`}>{DAILY_LINES.tries(daily.tries, DAILY_TRIES)}</span>
       </div>
 
-      <BattleField reduced={reduced} sceneRef={sceneRef} onReady={() => setSceneUp(true)} onCue={onCue}>
+      <BattleField reduced={reduced} sceneRef={sceneRef} onReady={() => setSceneUp(true)} onCue={onCue} sizes={sizes}>
+        <SizeLab sizes={sizes} onChange={setSizes} />
         <div className="bt-damage" aria-live="off">
           <small>데미지</small>
           <b>{fmt(damage)}</b>

@@ -20,8 +20,11 @@ export interface TownInputHandlers {
   /** The finger lifted. True when the map took the touch (a tap or a drag): the click after it is dropped. */
   up(p: TownPointer): boolean;
   cancel(id: number): void;
-  /** A mouse wheel or a trackpad (desktop testing; phones drag), CSS px. */
-  wheel(dx: number, dy: number): void;
+  /**
+   * A mouse wheel or a trackpad (desktop testing; phones drag and pinch), CSS px. With ctrl held (a
+   * trackpad pinch comes as that) it zooms round `at` (CSS px in the map box); otherwise `at` is null.
+   */
+  wheel(dx: number, dy: number, at: { x: number; y: number } | null): void;
 }
 
 export interface TownInputOptions {
@@ -29,8 +32,8 @@ export interface TownInputOptions {
   readonly input: EventTarget;
   /** The window: the click after a touch the map took is caught there, before anything else sees it. */
   readonly win: EventTarget;
-  /** A pointer's place in the map box (CSS px). */
-  local(e: PointerEvent): { x: number; y: number };
+  /** A pointer's (or a wheel's) place in the map box (CSS px). */
+  local(e: MouseEvent): { x: number; y: number };
   /** The name tag under a pointer (its data-tap), or null. */
   tagOf(e: Event): string | null;
   /** Keeps a finger's moves coming to the map box even when it leaves it. */
@@ -65,7 +68,7 @@ export function attachTownInput(o: TownInputOptions, h: TownInputHandlers): () =
   const onWheel = (e: Event) => {
     const we = e as WheelEvent;
     e.preventDefault();
-    h.wheel(we.deltaX, we.deltaY);
+    h.wheel(we.deltaX, we.deltaY, we.ctrlKey ? o.local(we) : null);
   };
   // Any new touch anywhere: the click that comes after it is its own.
   const onAnyDown = () => {

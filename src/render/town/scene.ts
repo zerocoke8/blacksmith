@@ -4,7 +4,8 @@
 // the clouds round the towers, the cloud band. Living a little: the forge's chimney smokes, the
 // fountain splashes, the band drifts, the guests walk from the gate to the shop and back (9.3), the
 // dwarf breathes at his door. One finger drags the map; it glides on, stops at the edges with a
-// light bounce; a tap goes to whatever is under it (hit.ts), the building pressed squashes, a guest
+// light bounce; two fingers pinch it smaller (down to camera.ts CAMERA.zoomOut of the first look, the
+// closest it gets); a tap goes to whatever is under it (hit.ts), the building pressed squashes, a guest
 // or the dwarf tapped hops. With less motion the map keeps still: no drifting, smoking or walking.
 // Everything here is the screen's show (CLAUDE.md 규칙 2): nothing is counted or saved, and the map's
 // place is not kept (9.1). Loaded with a dynamic import when the home screen opens.
@@ -21,13 +22,16 @@ import {
   camBounds,
   capSpeed,
   clampCam,
+  clampZoom,
   makeGesture,
+  pinchView,
   rubberPos,
   settled,
   stepAxis,
   TAP,
   unrubberPos,
-  zoomFor,
+  type ZoomRange,
+  zoomRange,
 } from './camera.ts';
 import { type AlphaMask, type HitTarget, hitTest } from './hit.ts';
 import { attachTownInput } from './input.ts';
@@ -70,6 +74,8 @@ export interface TownSceneOptions {
   readonly reducedMotion: boolean;
   /** Where the camera was the last time the map was open this session; null: on the forge (9.1). */
   readonly camera: Cam | null;
+  /** The zoom then, as a share of the first look's (a pinch's; null: the first look). */
+  readonly zoomShare?: number | null;
   readonly locks: Readonly<Record<TownBuildingId, TownLock>>;
   /** The element that takes the fingers (the map's box, the name tags inside it). */
   readonly input: HTMLElement;
@@ -85,9 +91,11 @@ export interface TownSceneOptions {
 export interface TownScene {
   resize(w: number, h: number): void;
   setLocks(locks: Readonly<Record<TownBuildingId, TownLock>>): void;
-  /** Back to the forge (the 실험 panel, or the forge's quick entry while on the map). */
+  /** Back to the forge at the first look's zoom (the 실험 panel). */
   home(): void;
   camera(): Cam;
+  /** The zoom as a share of the first look's (1: not pinched out). A width change keeps the share. */
+  zoomShare(): number;
   /** Stops drawing while something covers the map (a sheet), and starts again. */
   pause(on: boolean): void;
   /** How long the map took to get ready (ms by step). */
@@ -441,8 +449,14 @@ export async function createTownScene(host: HTMLElement, width: number, height: 
   // ---- Camera ----
   let W = Math.max(1, width);
   let H = Math.max(1, height);
-  let z = zoomFor(W);
+  let zr: ZoomRange = zoomRange({ w: W, h: H }, MAP_W, MAP_H);
+  let z = opts.camera !== null && opts.zoomShare != null ? clampZoom(zr.max * opts.zoomShare, zr) : zr.max;
   let bounds: Bounds = camBounds(MAP_W, MAP_H, { w: W, h: H }, z);
+  /** A new zoom: the edges move with it. */
+  const setZoom = (next: number) => {
+    z = clampZoom(next, zr);
+    bounds = camBounds(MAP_W, MAP_H, { w: W, h: H }, z);
+  };
   const homeCam = () => homeCamera({ w: W, h: H }, z, bounds, opts.insets());
   const start = opts.camera !== null ? clampCam(opts.camera, bounds) : homeCam();
   let ax = { p: start.x, v: 0 };
@@ -466,6 +480,16 @@ export async function createTownScene(host: HTMLElement, width: number, height: 
 
   // ---- Fingers ----
   const gesture = makeGesture();
+  /** A pinch: the zoom and finger distance it began at, and the map point first under the fingers' middle. */
+  let pinch: { z: number; d: number; mx: number; my: number } | null = null;
+  /** Zoom round a view point (CSS px): the map point under it stays under it. */
+  const zoomAround = (next: number, x: number, y: number) => {
+    const m = { x: ax.p + x / z, y: ay.p + y / z };
+    setZoom(next);
+    const c = clampCam({ x: m.x - x / z, y: m.y - y / z }, bounds);
+    ax = { p: c.x, v: 0 };
+    ay = { p: c.y, v: 0 };
+  };
   let pressed: Placed | null = null;
   let pop: { p: Placed; t: number } | null = null;
   let downTarget: string | null = null;
@@ -573,11 +597,19 @@ export async function createTownScene(host: HTMLElement, width: number, height: 
       down(p, tag) {
         const ev = gesture.down(p.id, p.x, p.y, p.t, Math.hypot(ax.v, ay.v) > CAMERA.catchSpeed);
         app.ticker.maxFPS = 0;
-        if (ev.some((x) => x.type === 'cancel')) {
-          // A second finger: the touch is off (no pinch zoom yet), the map settles where it is.
-          endTouch();
-          return;
+        if (ev.some((x) => x.type === 'cancel')) endTouch();
+        for (const x of ev) {
+          if (x.type !== 'pinchStart') continue;
+          // Two fingers: the map stops and zooms round the point between them. A map held or springing
+          // past an edge stays where it shows (the pinch goes on from the finger position that shows
+          // there, like a drag), and springs back once the fingers lift.
+          ax = { p: ax.p, v: 0 };
+          ay = { p: ay.p, v: 0 };
+          const rx = unrubberPos(ax.p, bounds.minX, bounds.maxX, W / z);
+          const ry = unrubberPos(ay.p, bounds.minY, bounds.maxY, H / z);
+          pinch = { z, d: x.d, mx: rx + x.x / z, my: ry + x.y / z };
         }
+        if (gesture.pinching() || ev.some((x) => x.type === 'cancel')) return;
         if (gesture.driver() !== p.id) return;
         // The finger catches a gliding map, and holds one springing back from past an edge where it
         // is (the drag goes on from the finger position that shows there, so nothing jumps).
@@ -597,6 +629,11 @@ export async function createTownScene(host: HTMLElement, width: number, height: 
             setPressed(null);
             dragStartAt = p.t;
             opts.onDrag?.('start', 0);
+          } else if (x.type === 'pinch' && pinch !== null) {
+            const v = pinchView(pinch, x, zr);
+            setZoom(v.z);
+            ax = { p: rubberPos(v.x, bounds.minX, bounds.maxX, W / z), v: 0 };
+            ay = { p: rubberPos(v.y, bounds.minY, bounds.maxY, H / z), v: 0 };
           } else if (x.type === 'drag' && raw !== null) {
             raw = { x: raw.x - x.dx / z, y: raw.y - x.dy / z };
             ax = { p: rubberPos(raw.x, bounds.minX, bounds.maxX, W / z), v: 0 };
@@ -607,7 +644,9 @@ export async function createTownScene(host: HTMLElement, width: number, height: 
       up(p) {
         const events = gesture.up(p.id, p.x, p.y, p.t);
         for (const x of events) {
-          if (x.type === 'release') {
+          if (x.type === 'pinchEnd') {
+            pinch = null;
+          } else if (x.type === 'release') {
             raw = null;
             if (x.dragged) {
               opts.onDrag?.('end', p.t - dragStartAt);
@@ -633,9 +672,16 @@ export async function createTownScene(host: HTMLElement, width: number, height: 
         return events.length > 0;
       },
       cancel(id) {
-        if (gesture.cancel(id).length > 0) endTouch();
+        const ev = gesture.cancel(id);
+        if (ev.some((x) => x.type === 'pinchEnd')) pinch = null;
+        if (ev.some((x) => x.type === 'cancel')) endTouch();
       },
-      wheel(dx, dy) {
+      wheel(dx, dy, at) {
+        if (at !== null) {
+          // A trackpad pinch (or ctrl and the wheel): zoom round the pointer.
+          zoomAround(z * Math.exp(-dy * CAMERA.wheelZoom), at.x, at.y);
+          return;
+        }
         ax = { p: Math.max(bounds.minX, Math.min(bounds.maxX, ax.p + dx / z)), v: 0 };
         ay = { p: Math.max(bounds.minY, Math.min(bounds.maxY, ay.p + dy / z)), v: 0 };
       },
@@ -647,7 +693,7 @@ export async function createTownScene(host: HTMLElement, width: number, height: 
   const tick = () => {
     const dt = Math.min(64, app.ticker.deltaMS);
     time += dt;
-    if (raw === null && gliding()) {
+    if (raw === null && pinch === null && gliding()) {
       ax = stepAxis(ax, bounds.minX, bounds.maxX, dt);
       ay = stepAxis(ay, bounds.minY, bounds.maxY, dt);
       if (reduced) {
@@ -703,8 +749,10 @@ export async function createTownScene(host: HTMLElement, width: number, height: 
   const tReady = performance.now();
 
   const relayout = () => {
-    z = zoomFor(W);
-    bounds = camBounds(MAP_W, MAP_H, { w: W, h: H }, z);
+    // The same share of the first look's zoom as before (a pinched-out map stays pinched out).
+    const share = z / zr.max;
+    zr = zoomRange({ w: W, h: H }, MAP_W, MAP_H);
+    setZoom(zr.max * share);
     const c = clampCam({ x: ax.p, y: ay.p }, bounds);
     ax = { p: c.x, v: 0 };
     ay = { p: c.y, v: 0 };
@@ -727,6 +775,7 @@ export async function createTownScene(host: HTMLElement, width: number, height: 
       if (paused) app.render();
     },
     home() {
+      setZoom(zr.max);
       const c = homeCam();
       ax = { p: c.x, v: 0 };
       ay = { p: c.y, v: 0 };
@@ -734,6 +783,7 @@ export async function createTownScene(host: HTMLElement, width: number, height: 
       if (paused) app.render();
     },
     camera: () => ({ x: ax.p, y: ay.p }),
+    zoomShare: () => z / zr.max,
     pause(on) {
       if (destroyed || on === paused) return;
       paused = on;

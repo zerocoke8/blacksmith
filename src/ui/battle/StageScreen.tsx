@@ -44,6 +44,7 @@ import { settleIdleBefore } from '../refine/store.ts';
 import { BattleField } from './BattleField.tsx';
 import { type BattleSpeed, loadSpeed, makeCueSound, nextSpeed, saveSpeed } from './feel.ts';
 import { huntFight } from './hunt.ts';
+import { SizeLab, useFighterSize } from './SizeLab.tsx';
 import { battleShow, timelineUnits } from './show.ts';
 import { idleReturnLine, STAGE_LINES } from './text.ts';
 import './battle.css';
@@ -91,6 +92,7 @@ export default function StageScreen(props: { onExit(): void }) {
   const game = useGame();
   const sceneRef = useRef<BattleScene | null>(null);
   const [sceneUp, setSceneUp] = useState(false);
+  const [sizes, setSizes] = useFighterSize(sceneRef, sceneUp);
   const [mode, setMode] = useState<Mode>({ kind: 'wait' });
   const [banner, setBanner] = useState<Banner | null>(null);
   const [clock, setClock] = useState<Clock | null>(null);
@@ -351,7 +353,8 @@ export default function StageScreen(props: { onExit(): void }) {
         </button>
       </div>
 
-      <BattleField reduced={reduced} sceneRef={sceneRef} onReady={() => setSceneUp(true)} onCue={onCue}>
+      <BattleField reduced={reduced} sceneRef={sceneRef} onReady={() => setSceneUp(true)} onCue={onCue} sizes={sizes}>
+        <SizeLab sizes={sizes} onChange={setSizes} />
         {banner !== null && (
           <div key={banner.key} className={`bt-banner ${banner.tone}`} role="status">
             <b>{banner.text}</b>

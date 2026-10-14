@@ -1,9 +1,11 @@
-// The battle's sound and speed (platform/audio.ts; the speed is a per-device setting through
-// platform/storage.ts). Sounds are the synthesised stand-ins until the ElevenLabs files arrive
-// (tools/art/README.md): a blow, a crit, a heal, never more often than the ear can tell apart.
+// The battle's sound, speed and fighter sizes (platform/audio.ts; the speed and the sizes the 크기
+// panel tried are per-device settings through platform/storage.ts). Sounds are the synthesised
+// stand-ins until the ElevenLabs files arrive (tools/art/README.md): a blow, a crit, a heal, never
+// more often than the ear can tell apart.
 
 import { sound } from '../../platform/audio.ts';
 import { webStore } from '../../platform/storage.ts';
+import { clampFighterSize, FIGHTER_SIZE, type FighterSize } from '../../render/battle/layout.ts';
 import type { Cue } from '../../render/battle/timeline.ts';
 
 /** Playback speeds the button cycles through. The battle itself is the same at any speed. */
@@ -39,4 +41,20 @@ export function makeCueSound(now: () => number = () => performance.now()) {
     last[intent] = t;
     sound.play(intent);
   };
+}
+
+const SIZE_KEY = 'pref.battleSize';
+
+/** The fighters' sizes this device tried in the 크기 panel (SizeLab), or the starting ones. */
+export async function loadFighterSize(): Promise<FighterSize> {
+  try {
+    const raw = await webStore.load(SIZE_KEY);
+    return clampFighterSize(raw !== null ? (JSON.parse(raw) as Record<string, unknown>) : {});
+  } catch {
+    return FIGHTER_SIZE;
+  }
+}
+
+export function saveFighterSize(s: FighterSize): void {
+  void webStore.save(SIZE_KEY, JSON.stringify(s));
 }

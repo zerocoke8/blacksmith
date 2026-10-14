@@ -20,7 +20,7 @@ import * as draw from '../forge/procedural.ts';
 import { townMapUrl } from '../town/assets.ts';
 import { type Actor, makeActor, sliceSheet } from './anim.ts';
 import { heroArtUrl, monsterArtUrl, sheetUrls } from './assets.ts';
-import { bossBox, bossCenterX, enemySpots, FIELD, type FieldSpot, heroSpots, unitHeight } from './layout.ts';
+import { bossCenterX, bossFeetY, enemySpots, FIELD, FIGHTER_SIZE, type FieldSpot, type FighterSize, fighterHeight, heroSpots, unitHeight } from './layout.ts';
 import { ANIM_SPEC, type AnimAction } from './motion.ts';
 import type { Cue, ShotStyle, Timeline } from './timeline.ts';
 
@@ -128,6 +128,8 @@ export interface BattleSceneOptions {
   reducedMotion: boolean;
   /** Every cue as it plays (sounds, the running damage total). */
   onCue?(cue: Cue): void;
+  /** How big the fighters are drawn (layout.ts FIGHTER_SIZE when not given). */
+  sizes?: FighterSize;
 }
 
 export interface BattleScene {
@@ -146,6 +148,8 @@ export interface BattleScene {
   /** After the end: the heroes hop (a win) or stand. */
   finish(outcome: BattleOutcome): void;
   resize(w: number, h: number): void;
+  /** Draws the fighters at other sizes, now (the 크기 panel). */
+  setSizes(sizes: FighterSize): void;
   pause(on: boolean): void;
   /** How long the pictures and the GPU took to get ready (ms). */
   readonly readyMs: number;
@@ -272,6 +276,7 @@ export async function createBattleScene(host: HTMLElement, width: number, height
   await ensureNumberFont();
   const app = lease.app;
   const reduced = opts.reducedMotion;
+  let sizes: FighterSize = opts.sizes ?? FIGHTER_SIZE;
   let W = Math.max(1, Math.round(width));
   let H = Math.max(1, Math.round(height));
   let destroyed = false;
@@ -499,8 +504,11 @@ export async function createBattleScene(host: HTMLElement, width: number, height
     f.bar.position.set(x, f.spot.y - f.actor.height * 1.0 - 12);
   };
 
+  const heightOf = (spec: BattleUnitSpec, aspect: number) =>
+    fighterHeight(W, H, { side: spec.side, boss: spec.boss === true, size: spec.side === 'hero' ? 1 : (spec.size ?? 0.65) }, aspect, sizes);
+
   const layoutFighters = () => {
-    const uh = unitHeight(W, H);
+    for (const f of fighters) f.actor.resize(heightOf(f.spec, f.actor.width / Math.max(1, f.actor.height)));
     const heroes = fighters.filter((f) => f.spec.side === 'hero');
     const front = heroes.filter((f) => f.spec.row !== 'back');
     const back = heroes.filter((f) => f.spec.row === 'back');
@@ -510,10 +518,11 @@ export async function createBattleScene(host: HTMLElement, width: number, height
     const enemies = fighters.filter((f) => f.spec.side === 'enemy');
     const es = enemySpots(W, H, enemies.length, enemies.length === 1 && enemies[0]?.spec.boss === true);
     enemies.forEach((f, i) => (f.spot = es[i] as FieldSpot));
-    // A big lone boss stays on the monsters' side: its left edge clear of the front row, its right of the field's edge.
+    // A big lone boss stands in the middle of the fight: its body level with the heroes', its left
+    // edge clear of the front row, its right of the field's edge.
     for (const f of enemies) {
       if (f.spec.boss !== true) continue;
-      f.spot = { ...f.spot, x: bossCenterX(W, f.actor.width, f.spot.x) };
+      f.spot = { ...f.spot, x: bossCenterX(W, f.actor.width, f.spot.x), y: bossFeetY(H, f.actor.height, unitHeight(W, H) * sizes.hero) };
     }
     for (const f of fighters) {
       f.shadow.clear();
@@ -522,7 +531,6 @@ export async function createBattleScene(host: HTMLElement, width: number, height
       place(f);
       drawBar(f);
     }
-    void uh;
   };
 
   const setup = async (show: BattleShow, march: boolean) => {
@@ -536,17 +544,14 @@ export async function createBattleScene(host: HTMLElement, width: number, height
     void setTower(show.element);
     if (destroyed) return;
     clearFighters();
-    const uh = unitHeight(W, H);
     all.forEach((spec, i) => {
       const p = pics[i];
       const still = p?.still ?? (spec.side === 'hero' ? tex.heroStandIn : tex.enemyStandIn);
-      const size = spec.side === 'hero' ? 1 : (spec.size ?? 0.65);
-      // A lone boss keeps to the monsters' side of the field, clear of the front row (layout.ts bossBox).
-      const fit = spec.boss === true ? (bossBox(W).maxW * still.height) / Math.max(1, still.width) : Number.POSITIVE_INFINITY;
       const actor = makeActor({
         still,
         sheets: p?.sheets,
-        height: Math.min(uh * size, fit),
+        // A lone boss keeps to the monsters' side of the field, clear of the front row (layout.ts bossBox).
+        height: heightOf(spec, still.width / Math.max(1, still.height)),
         facing: spec.side === 'hero' ? 1 : -1,
         melee: spec.shot === null,
         phase: (i * 0.37) % 1,
@@ -1044,6 +1049,11 @@ export async function createBattleScene(host: HTMLElement, width: number, height
       drawField();
       layoutFighters();
       drawBossBar();
+    },
+    setSizes(next) {
+      if (destroyed) return;
+      sizes = next;
+      layoutFighters();
     },
     pause(on) {
       if (destroyed) return;
