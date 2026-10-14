@@ -20,7 +20,19 @@ import * as draw from '../forge/procedural.ts';
 import { townMapUrl } from '../town/assets.ts';
 import { type Actor, makeActor, sliceSheet } from './anim.ts';
 import { heroArtUrl, monsterArtUrl, sheetUrls } from './assets.ts';
-import { bossCenterX, bossFeetY, enemySpots, FIELD, FIGHTER_SIZE, type FieldSpot, type FighterSize, fighterHeight, heroSpots, unitHeight } from './layout.ts';
+import {
+  bossCenterX,
+  bossFeetY,
+  dashPoint,
+  enemySpots,
+  FIELD,
+  FIGHTER_SIZE,
+  type FieldSpot,
+  type FighterSize,
+  fighterHeight,
+  heroSpots,
+  unitHeight,
+} from './layout.ts';
 import { ANIM_SPEC, type AnimAction } from './motion.ts';
 import type { Cue, ShotStyle, Timeline } from './timeline.ts';
 
@@ -243,7 +255,18 @@ interface Fighter {
   trailHp: number;
   /** While walking in: from x (px), ms left. */
   enter: { fromX: number; t: number; dur: number } | null;
+  /**
+   * A melee run (timeline 'dash'): from where it was (offset from its spot, px) up to its foe, a stay,
+   * and back; t is ms since it began.
+   */
+  dash: { dst: Fighter; fromX: number; fromY: number; t: number; go: number; hold: number; back: number } | null;
+  /** Where its feet are now (px): its spot, plus a walk-in or a run. */
+  feetX: number;
+  feetY: number;
 }
+
+/** How high a run hops on the way (× the runner's height). */
+const DASH_HOP = 0.07;
 
 interface Float {
   obj: Container;
@@ -495,13 +518,41 @@ export async function createBattleScene(host: HTMLElement, width: number, height
     bossName.position.set(x + 2, y - 4);
   };
 
-  const place = (f: Fighter, dx = 0) => {
+  /** Puts a fighter dx, dy off its spot (its shadow on the ground), lifted `lift` px off it. */
+  const place = (f: Fighter, dx = 0, dy = 0, lift = 0) => {
     const x = f.spot.x + dx;
-    f.actor.view.position.set(x, f.spot.y);
-    f.actor.view.zIndex = f.spot.y;
-    f.shadow.position.set(x, f.spot.y);
+    const y = f.spot.y + dy;
+    f.feetX = x;
+    f.feetY = y;
+    f.actor.view.position.set(x, y - lift);
+    f.actor.view.zIndex = y;
+    f.shadow.position.set(x, y);
     f.shadow.alpha = f.actor.view.alpha;
-    f.bar.position.set(x, f.spot.y - f.actor.height * 1.0 - 12);
+    f.bar.position.set(x, y - lift - f.actor.height * 1.0 - 12);
+  };
+
+  // ---- Melee runs (timeline 'dash'): up to the foe, a stay, back to the spot ----
+  /** The offset from its spot where a runner stops in front of its foe. */
+  const dashTarget = (f: Fighter, d: Fighter) => {
+    const body = (u: Fighter) => ({ x: u.spot.x, y: u.spot.y, w: u.actor.width, h: u.actor.height });
+    const p = dashPoint({ ...body(f), side: f.spec.side, boss: f.spec.boss === true }, body(d));
+    return { x: p.x - f.spot.x, y: p.y - f.spot.y };
+  };
+  /** Where a run has the fighter now (offset from its spot) and how high it hops. */
+  const dashOffset = (f: Fighter): { x: number; y: number; lift: number } => {
+    const r = f.dash;
+    if (r === null) return { x: 0, y: 0, lift: 0 };
+    const to = dashTarget(f, r.dst);
+    const hop = f.actor.height * DASH_HOP;
+    if (r.t < r.go) {
+      const k = r.go <= 0 ? 1 : r.t / r.go;
+      const e = 1 - (1 - k) ** 2;
+      return { x: r.fromX + (to.x - r.fromX) * e, y: r.fromY + (to.y - r.fromY) * e, lift: Math.sin(k * Math.PI) * hop };
+    }
+    if (r.t < r.go + r.hold) return { ...to, lift: 0 };
+    const k = r.back <= 0 ? 1 : Math.min(1, (r.t - r.go - r.hold) / r.back);
+    const e = k < 0.5 ? 2 * k * k : 1 - (-2 * k + 2) ** 2 / 2;
+    return { x: to.x * (1 - e), y: to.y * (1 - e), lift: Math.sin(k * Math.PI) * hop };
   };
 
   const heightOf = (spec: BattleUnitSpec, aspect: number) =>
@@ -561,7 +612,7 @@ export async function createBattleScene(host: HTMLElement, width: number, height
       units.addChild(shadow, actor.view);
       fx.addChild(bar);
       shadow.zIndex = -1;
-      const f: Fighter = { spec, actor, spot: { x: 0, y: 0, depth: 1 }, shadow, bar, nums: [], label: null, numCount: 0, hp: spec.hp, shownHp: spec.hp, trailHp: spec.hp, enter: null };
+      const f: Fighter = { spec, actor, spot: { x: 0, y: 0, depth: 1 }, shadow, bar, nums: [], label: null, numCount: 0, hp: spec.hp, shownHp: spec.hp, trailHp: spec.hp, enter: null, dash: null, feetX: 0, feetY: 0 };
       if (spec.hp <= 0) actor.down();
       fighters.push(f);
       byId.set(spec.id, f);
@@ -584,7 +635,7 @@ export async function createBattleScene(host: HTMLElement, width: number, height
     fx.addChild(obj);
     floats.push({ obj, kind, t: 0, dur, vy, x0: obj.position.x, y0: obj.position.y, scale0: obj.scale.x });
   };
-  const bodyPoint = (f: Fighter) => ({ x: f.actor.view.position.x, y: f.spot.y - f.actor.height * 0.5 });
+  const bodyPoint = (f: Fighter) => ({ x: f.actor.view.position.x, y: f.feetY - f.actor.height * 0.5 });
   // ---- Numbers: a pool of bitmap texts, a short stack over each fighter ----
   const numPool: BitmapText[] = [];
   const takeNumber = (): BitmapText => {
@@ -719,7 +770,7 @@ export async function createBattleScene(host: HTMLElement, width: number, height
     g.roundRect(-w / 2, -h / 2, w, h, 10).fill(big ? 0xfbe8a6 : 0xfff8ea).stroke({ width: 2.5, color: INK });
     c.addChild(g, t);
     const x = Math.max(w / 2 + 6, Math.min(W - w / 2 - 6, f.actor.view.position.x));
-    c.position.set(x, f.spot.y - f.actor.height - 34);
+    c.position.set(x, f.feetY - f.actor.height - 34);
     addFloat(c, 'label', lifeAt(big ? 1300 : 950), -10);
     f.label = floats[floats.length - 1] ?? null;
   };
@@ -740,7 +791,7 @@ export async function createBattleScene(host: HTMLElement, width: number, height
     r.tint = BATTLE_COLORS.ring;
     r.width = f.actor.height * 1.5;
     r.height = f.actor.height * 0.5;
-    r.position.set(f.actor.view.position.x, f.spot.y);
+    r.position.set(f.actor.view.position.x, f.feetY);
     addFloat(r, 'ring', 900);
   };
 
@@ -797,6 +848,15 @@ export async function createBattleScene(host: HTMLElement, width: number, height
           sunAt(f);
           kick(f.actor.height * 0.08);
         } else if (c.action === 'skill' && f.spec.shot === null) speedAt(f);
+        return;
+      }
+      case 'dash': {
+        const f = byId.get(c.unit);
+        const d = byId.get(c.dst);
+        if (f === undefined || d === undefined || quiet || reduced || f.actor.isDown()) return;
+        // From wherever it is now (a run back can be caught by the next run).
+        const now = dashOffset(f);
+        f.dash = { dst: d, fromX: now.x, fromY: now.y, t: 0, go: c.go, hold: c.hold, back: c.back };
         return;
       }
       case 'cast': {
@@ -895,8 +955,20 @@ export async function createBattleScene(host: HTMLElement, width: number, height
         dx = (f.enter.fromX - f.spot.x) * (1 - e);
         if (k >= 1) f.enter = null;
       }
+      let dy = 0;
+      let lift = 0;
+      if (f.dash !== null) {
+        f.dash.t += dt;
+        if (f.dash.t >= f.dash.go + f.dash.hold + f.dash.back) f.dash = null;
+        else {
+          const o = dashOffset(f);
+          dx += o.x;
+          dy = o.y;
+          lift = o.lift;
+        }
+      }
       f.actor.update(dt, time);
-      place(f, dx);
+      place(f, dx, dy, lift);
       // The bar eases to the HP; its pale trail follows a little later.
       const before = `${f.shownHp}|${f.trailHp}`;
       f.shownHp += (f.hp - f.shownHp) * Math.min(1, dt / 70);
@@ -1011,6 +1083,7 @@ export async function createBattleScene(host: HTMLElement, width: number, height
       if (r === null) return;
       running = null;
       for (let i = r.next; i < r.tl.cues.length; i++) applyCue(r.tl.cues[i] as Cue, true);
+      for (const f of fighters) f.dash = null;
       clearFx();
       r.resolve('skipped');
     },

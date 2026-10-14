@@ -122,3 +122,50 @@ describe('the six actions (스프라이트 규격)', () => {
     expect(motionPose('idle', 0, Infinity, { melee: true, time: 0 }).dx).toBe(REST_POSE.dx);
   });
 });
+
+describe('melee runs (사용자 결정 2026-10-14: 근접은 적 근처까지 가서 친다)', () => {
+  type Dash = Extract<Cue, { kind: 'dash' }>;
+  const dashes = (cues: readonly Cue[]) => cues.filter((c): c is Dash => c.kind === 'dash');
+
+  it('a melee blow comes with a run that arrives as it lands; a shot has none', () => {
+    for (const speed of [1, 4]) {
+      const tl = buildTimeline([hit(5, 'h0', 'e0', 1, 99), hit(5, 'h1', 'e0', 1, 98), hit(7, 'e0', 'h0', 3, 97), { t: 7, kind: 'end', outcome: 'timeout' }], units, { tickMs: 100, speed });
+      const runs = dashes(tl.cues);
+      expect(runs.map((d) => d.unit)).toEqual(['h0', 'e0']);
+      const blow = tl.cues.find((c) => c.kind === 'impact' && c.src === 'h0')!;
+      const run = runs[0]!;
+      expect(run.dst).toBe('e0');
+      expect(run.at + run.go).toBeCloseTo(blow.at);
+      expect(run.go).toBeCloseTo(TIMELINE.dash.goMs / speed);
+      expect(run.back).toBeCloseTo(TIMELINE.dash.backMs / speed);
+      // Never before the fight starts, and in time order with the rest.
+      expect(run.at).toBeGreaterThan(0);
+      for (let i = 1; i < tl.cues.length; i++) expect(tl.cues[i]!.at).toBeGreaterThanOrEqual(tl.cues[i - 1]!.at);
+    }
+  });
+
+  it('one run per tick: it stays until after the last blow of a flurry', () => {
+    const events: BattleEvent[] = [
+      { t: 2, kind: 'cast', src: 'h0', via: 'skill', skill: 'flurry', name: '연속 찌르기' },
+      hit(2, 'h0', 'e0', 5, 95, { via: 'skill' }),
+      hit(2, 'h0', 'e0', 6, 89, { via: 'skill' }),
+      hit(2, 'h0', 'e0', 7, 82, { via: 'skill' }),
+      hit(12, 'h0', 'e0', 7, 75),
+      { t: 12, kind: 'end', outcome: 'timeout' },
+    ];
+    const tl = buildTimeline(events, units, { tickMs: 100, speed: 1 });
+    const runs = dashes(tl.cues);
+    expect(runs).toHaveLength(2);
+    const blows = tl.cues.filter((c) => c.kind === 'impact');
+    const first = runs[0]!;
+    expect(first.at + first.go).toBeCloseTo(blows[0]!.at);
+    expect(first.at + first.go + first.hold).toBeCloseTo(blows[2]!.at + TIMELINE.dash.holdMs);
+    // Back at its place before its next attack (a hero attacks every 10 ticks).
+    expect(first.at + first.go + first.hold + first.back).toBeLessThan(runs[1]!.at);
+  });
+
+  it('a normal attack’s whole trip fits between two attacks at every speed', () => {
+    const { goMs, holdMs, backMs } = TIMELINE.dash;
+    expect(goMs + holdMs + backMs).toBeLessThan(10 * 100);
+  });
+});

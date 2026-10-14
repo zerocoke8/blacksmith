@@ -1,8 +1,8 @@
 // 사건 재생 시간표 (기획서 6.4 전투, CLAUDE.md 규칙 2): the battle's event list (sim/stage/battle.ts)
 // laid out in screen time. Each hit lands exactly on its tick (× the tick length, ÷ the speed); the
-// show around it — a melee lunge that reaches the foe as the hit lands, an arrow that leaves early
-// enough to arrive on it, a skill's wind-up, a fall just after the last blow, the end — is fitted
-// round those moments. Nothing here changes what happened: the HP after each cue is the event's own.
+// show around it — a melee fighter's run up to its foe that arrives as the hit lands (and back to its
+// place after), its lunge there, an arrow that leaves early enough to arrive on it, a skill's
+// wind-up, a fall just after the last blow, the end — is fitted round those moments. Nothing here changes what happened: the HP after each cue is the event's own.
 // Pure, so the schedule is tested without a screen.
 
 import type { BattleEvent, BattleOutcome, HitVia } from '../../sim/stage/battle.ts';
@@ -23,6 +23,11 @@ export type Cue =
   | { at: number; kind: 'act'; unit: string; action: 'attack' | 'skill' | 'ultimate'; dur: number }
   /** A skill or signature's name over the caster. */
   | { at: number; kind: 'cast'; unit: string; via: 'skill' | 'signature'; name: string }
+  /**
+   * A melee fighter runs from its place up to `dst` (`go` ms, arriving as its first blow of the tick
+   * lands), stays there `hold` ms (past its last blow of the tick) and runs back (`back` ms).
+   */
+  | { at: number; kind: 'dash'; unit: string; dst: string; go: number; hold: number; back: number }
   /** A shot leaves `src` and reaches `dst` after `dur`. */
   | { at: number; kind: 'shot'; src: string; dst: string; dur: number; style: ShotStyle }
   | {
@@ -53,6 +58,12 @@ export const TIMELINE = {
   shotMs: { arrow: 260, bolt: 200, orb: 330 } as Record<ShotStyle, number>,
   /** A ranged attack lets go this long before its shot leaves (the draw). */
   drawMs: 90,
+  /**
+   * A melee fighter's run to its foe and back (사용자 결정 2026-10-14: '근접은 적 근처까지 가서 친다'):
+   * the run there, the stay after its last blow of the tick, the run back. ×1 here; the speed shortens
+   * them. A hero attacks every 10 ticks (1 s at ×1), so the whole trip fits between two attacks.
+   */
+  dash: { goMs: 210, holdMs: 140, backMs: 260 },
   /** A fall comes this long after the last blow it took. */
   downLagMs: 140,
   /** The end comes this long after the last thing. */
@@ -83,6 +94,8 @@ export function buildTimeline(events: readonly BattleEvent[], units: readonly Ti
   const hitsThisTick = new Map<string, number>();
   const actedThisTick = new Set<string>();
   const castThisTick = new Map<string, 'skill' | 'signature'>();
+  /** A melee fighter's run on this tick: its stay grows to cover each later blow. */
+  const dashThisTick = new Map<string, Extract<Cue, { kind: 'dash' }>>();
   const lastImpact = new Map<string, number>();
   let outcome: BattleOutcome = 'timeout';
   let endAt = 0;
@@ -92,9 +105,11 @@ export function buildTimeline(events: readonly BattleEvent[], units: readonly Ti
     const last = lastImpact.get(unit);
     return last !== undefined && at <= last ? last + 1 : at;
   };
+  // A run back to its place goes on into the end's pad (the end does not wait for it).
+  const endOf = (c: Cue) => c.at + (c.kind === 'shot' || c.kind === 'act' ? c.dur : c.kind === 'dash' ? c.go + c.hold : 0);
   const push = (c: Cue) => {
     cues.push(c);
-    latest = Math.max(latest, c.at + (c.kind === 'shot' || c.kind === 'act' ? c.dur : 0));
+    latest = Math.max(latest, endOf(c));
   };
 
   for (const e of events) {
@@ -103,6 +118,7 @@ export function buildTimeline(events: readonly BattleEvent[], units: readonly Ti
       hitsThisTick.clear();
       actedThisTick.clear();
       castThisTick.clear();
+      dashThisTick.clear();
     }
     const T = tickTime(e.t, opts.tickMs, speed);
     switch (e.kind) {
@@ -128,6 +144,20 @@ export function buildTimeline(events: readonly BattleEvent[], units: readonly Ti
           const dur = actionMs('attack') / speed;
           const lead = shot === null ? dur * ATTACK_IMPACT_AT : (TIMELINE.shotMs[shot] + TIMELINE.drawMs) / speed;
           push({ at: at - lead, kind: 'act', unit: e.src, action: 'attack', dur });
+        }
+        if (shot === null) {
+          // The run there arrives on the first blow; each later blow of the tick keeps it there.
+          const run = dashThisTick.get(e.src);
+          const hold = TIMELINE.dash.holdMs / speed;
+          if (run === undefined) {
+            const go = TIMELINE.dash.goMs / speed;
+            const c: Extract<Cue, { kind: 'dash' }> = { at: at - go, kind: 'dash', unit: e.src, dst: e.dst, go, hold, back: TIMELINE.dash.backMs / speed };
+            dashThisTick.set(e.src, c);
+            push(c);
+          } else {
+            run.hold = Math.max(run.hold, at + hold - (run.at + run.go));
+            latest = Math.max(latest, endOf(run));
+          }
         }
         if (shot !== null) {
           const fly = TIMELINE.shotMs[shot] / speed;

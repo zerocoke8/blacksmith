@@ -165,3 +165,29 @@ export function clampFighterSize(s: Partial<Record<keyof FighterSize, unknown>>)
   };
   return { hero: one(s.hero, FIGHTER_SIZE.hero), enemy: one(s.enemy, FIGHTER_SIZE.enemy), boss: one(s.boss, FIGHTER_SIZE.boss) };
 }
+
+/**
+ * Where a melee fighter's run stops [튜닝: 연출] (사용자 결정 2026-10-14: '근접은 적 근처까지 가서 친다'):
+ * just in front of its foe, the facing edges of the two pictures `gap` (× the runner's height) apart;
+ * its lunge at the blow (motion.ts MOTION.lunge) then closes the gap. `edge`: the share of a
+ * picture's half width that counts as its body (a sword or a tail sticks out past it). `lane`: how
+ * far up or down toward its foe's lane it goes — not all the way, so two who run at one foe from two
+ * lanes stand apart, not on top of each other; a lone boss less still (a big body does not hop lanes).
+ */
+export const DASH = { gap: 0.1, edge: 0.7, lane: 0.7, bossLane: 0.35 } as const;
+
+export interface DashBody {
+  readonly x: number;
+  /** Feet (px from the top). */
+  readonly y: number;
+  readonly w: number;
+  readonly h: number;
+}
+
+/** The feet of a runner (side: heroes run right, monsters left) standing in front of its foe. */
+export function dashPoint(runner: DashBody & { side: 'hero' | 'enemy'; boss: boolean }, foe: DashBody): { x: number; y: number } {
+  const toward = runner.side === 'hero' ? 1 : -1;
+  const x = foe.x - toward * (DASH.edge * (foe.w / 2 + runner.w / 2) + DASH.gap * runner.h);
+  const y = runner.y + (foe.y - runner.y) * (runner.boss ? DASH.bossLane : DASH.lane);
+  return { x, y };
+}

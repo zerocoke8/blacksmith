@@ -4,6 +4,8 @@ import {
   bossCenterX,
   bossFeetY,
   clampFighterSize,
+  DASH,
+  dashPoint,
   enemySpots,
   FIELD,
   FIGHTER_SIZE,
@@ -113,5 +115,36 @@ describe('fighter sizes (the 크기 panel)', () => {
     expect(clampFighterSize({})).toEqual(FIGHTER_SIZE);
     expect(clampFighterSize({ hero: 99, enemy: -1, boss: 'x' })).toEqual({ hero: FIGHTER_SIZE_RANGE.max, enemy: FIGHTER_SIZE_RANGE.min, boss: FIGHTER_SIZE.boss });
     expect(clampFighterSize({ hero: 0.7 }).hero).toBe(0.7);
+  });
+});
+
+describe('where a melee run stops (dashPoint)', () => {
+  const [w, h] = [390, 600];
+  const uh = unitHeight(w, h);
+  const hero = { x: w * 0.36, y: h * 0.74, w: uh * 0.7, h: uh, side: 'hero' as const, boss: false };
+  const foe = { x: w * 0.63, y: h * 0.62, w: uh * 0.6, h: uh * 0.6 };
+
+  it('a hero stops just left of its foe, most of the way to its lane', () => {
+    const p = dashPoint(hero, foe);
+    expect(p.x).toBeGreaterThan(hero.x);
+    expect(p.x).toBeLessThan(foe.x);
+    // The bodies meet: less than the two half widths apart, but not on top of each other.
+    expect(foe.x - p.x).toBeLessThan((hero.w + foe.w) / 2 + DASH.gap * hero.h + 1e-9);
+    expect(foe.x - p.x).toBeGreaterThan(hero.w * 0.25);
+    expect(p.y).toBeCloseTo(hero.y + (foe.y - hero.y) * DASH.lane);
+    // Two runners from two lanes at one foe stand apart.
+    const other = dashPoint({ ...hero, y: h * 0.58 }, foe);
+    expect(Math.abs(other.y - p.y)).toBeGreaterThan(5);
+  });
+
+  it('a monster stops right of its hero; a lone boss only leans toward the hero’s lane', () => {
+    const mon = { ...foe, side: 'enemy' as const, boss: false };
+    const target = { x: hero.x, y: hero.y, w: hero.w, h: hero.h };
+    expect(dashPoint(mon, target).x).toBeGreaterThan(target.x);
+    const boss = { x: w * 0.74, y: h * 0.8, w: uh * 1.4, h: uh * 1.3, side: 'enemy' as const, boss: true };
+    const top = { ...target, y: h * 0.58 };
+    const p = dashPoint(boss, top);
+    expect(p.y).toBeCloseTo(boss.y + (top.y - boss.y) * DASH.bossLane);
+    expect(p.x).toBeGreaterThan(top.x);
   });
 });
