@@ -8,6 +8,8 @@ import { type AnimAction, ANIM_ACTIONS } from './motion.ts';
 const HEROES = import.meta.glob('/src/assets/art/heroes/*.webp', { query: '?no-inline', import: 'default', eager: true }) as Record<string, string>;
 const MONSTERS = import.meta.glob('/src/assets/art/monsters/*.webp', { query: '?no-inline', import: 'default', eager: true }) as Record<string, string>;
 const ICONS = import.meta.glob('/src/assets/art/icons/*.webp', { query: '?no-inline', import: 'default', eager: true }) as Record<string, string>;
+/** The battle UI's own pictures in ui/ (the flame ring round a ready signature card). */
+const UI = import.meta.glob('/src/assets/art/ui/ult_ready.webp', { query: '?no-inline', import: 'default', eager: true }) as Record<string, string>;
 /** Sheets: anim/<key>@<action>.webp (a horizontal strip, ANIM_SPEC frames). None are drawn yet. */
 const SHEETS = import.meta.glob('/src/assets/art/anim/*.webp', { query: '?no-inline', import: 'default', eager: true }) as Record<string, string>;
 
@@ -35,7 +37,12 @@ export function monsterArtUrl(key: string): string | null {
   return MONSTER_URLS.get(key) ?? null;
 }
 
-/** An icon (src/assets/art/icons/<key>.webp: element_*, weapon_*, role_*, star_*), or null. */
+/** A battle UI picture (src/assets/art/ui/<key>.webp: ult_ready), or null. */
+export function battleUiUrl(key: 'ult_ready'): string | null {
+  return byName(UI).get(key) ?? null;
+}
+
+/** An icon (src/assets/art/icons/<key>.webp: element_*, weapon_*, role_*, star_*, ui_auto, ui_speed, status_fast, status_slow), or null. */
 export function iconUrl(key: string): string | null {
   return ICON_URLS.get(key) ?? null;
 }

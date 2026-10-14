@@ -5,6 +5,8 @@ export const STAGE_LINES = {
   title: '스테이지',
   challenging: (floor: number) => `${floor}층에 도전하는 중`,
   cleared: (floor: number) => `${floor}층 돌파!`,
+  /** The speed button pressed during a fight: it takes hold from the next one. */
+  speedNext: (speed: number) => `다음 전투부터 ×${speed}`,
   /** Quick wins in a row share a banner. */
   clearedRun: (from: number, to: number) => `${from}~${to}층 돌파!`,
   bossCleared: (floor: number) => `${floor}층 보스를 넘었다!`,

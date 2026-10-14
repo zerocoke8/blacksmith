@@ -5,9 +5,14 @@ import { type HeroKey, heroSpec } from '../data/heroes.ts';
 import { DAILY_TRIES } from '../data/monsters.ts';
 import { type HeroesState, newHeroesState, type WeaponItem } from '../hero/index.ts';
 import type { Formation } from '../stage/formation.ts';
+import { DAILY_BOSS_ROAR } from '../data/monsters.ts';
+import { runBattle, startBattle } from '../stage/battle.ts';
 import {
+  beginDailyTry,
   challengeDaily,
   climbDaily,
+  dailyBattleKey,
+  finishDailyTry,
   dailyBossOf,
   dailyBossUnit,
   dailyRecord,
@@ -61,6 +66,16 @@ describe('the day\'s boss (8.1)', () => {
     expect(b.atk).toBeGreaterThan(a.atk);
     expect([a.body, a.element, a.boss]).toEqual(['armored', 'water', true]);
   });
+
+  it('roars every few seconds in a try, slowing the formation (data/monsters.ts DAILY_BOSS_ROAR)', () => {
+    for (let day = 1; day <= 5; day++) expect(dailyBossUnit(day, 3).skill).toBe(DAILY_BOSS_ROAR);
+    const t = challengeDaily(newDailyState(1), { battleSeed: 3, heroes: team(1, null), formation: F });
+    const roars = t?.result.events.filter((e) => e.kind === 'cast' && e.src === 'e0') ?? [];
+    expect(roars.length).toBeGreaterThan(1);
+    expect(roars[0]?.t).toBe(DAILY_BOSS_ROAR.firstTick);
+    const slowed = t?.result.events.filter((e) => e.kind === 'status' && e.t === DAILY_BOSS_ROAR.firstTick) ?? [];
+    expect(slowed.length).toBeGreaterThan(0);
+  });
 });
 
 describe('tries (8.2)', () => {
@@ -88,6 +103,28 @@ describe('tries (8.2)', () => {
     // A win gives the five tries back and clears the damage of the old stage.
     const afterWin = wins[0]?.state;
     expect(afterWin).toMatchObject({ cleared: 1, tries: DAILY_TRIES, bestDamage: 0 });
+  });
+
+  it('splits into begin (the try spent, to save before the fight) and finish, the same as one try', () => {
+    for (const ctx of [
+      { battleSeed: 3, heroes: team(1, null), formation: F },
+      { battleSeed: 3, heroes: team(20, 5), formation: F },
+    ]) {
+      const s: DailyState = { ...newDailyState(2), tries: 3, attempts: 4, bestDamage: 10 };
+      const begun = beginDailyTry(s, ctx);
+      if (begun === null) throw new Error('no try');
+      expect(begun.state).toEqual({ ...s, tries: 2, attempts: 5 });
+      expect(begun.setup.key).toEqual(dailyBattleKey(2, 1, 5));
+      const run = startBattle(begun.setup);
+      while (!run.done) run.step();
+      const finished = finishDailyTry(begun, run.result());
+      expect(finished).toEqual(challengeDaily(s, ctx));
+      expect(finishDailyTry(begun, runBattle(begun.setup))).toEqual(finished);
+    }
+    // Both ends of the day show up: the weak team loses, the strong one wins (five tries back).
+    expect(challengeDaily({ ...newDailyState(2), tries: 3 }, { battleSeed: 3, heroes: team(1, null), formation: F })?.won).toBe(false);
+    expect(challengeDaily({ ...newDailyState(2), tries: 3 }, { battleSeed: 3, heroes: team(20, 5), formation: F })?.state.tries).toBe(DAILY_TRIES);
+    expect(beginDailyTry({ ...newDailyState(1), tries: 0 }, { battleSeed: 3, heroes: team(1, null), formation: F })).toBeNull();
   });
 
   it('is the same run every time for the same seed', () => {

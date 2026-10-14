@@ -2,7 +2,8 @@
 //   node tools/stage/measure.ts                 levels × weapon quality, floors 1~100
 //   node tools/stage/measure.ts --team special  five specials instead of five normals
 //   node tools/stage/measure.ts --tier 1        every weapon stays iron (band 1) instead of following the floor's band
-//   node tools/stage/measure.ts --crit roll     crits rolled from the battle seed (15장의 1번; the default is CRIT_MODE)
+//   node tools/stage/measure.ts --crit gauge    crits on a fixed count, no luck (the default is CRIT_MODE: 'roll', from
+//                                               the battle seed, 사용자 결정 2026-10-14; one seed is one draw, try --seed)
 //   node tools/stage/measure.ts --star 10       every hero at this star index (0 = 동별 1, 15 = 달 1 금색, 20 = 해 1 빨강)
 //   node tools/stage/measure.ts --element match weapons carry the floor's weak element (속성 유리 every floor)
 //   node tools/stage/measure.ts --daily         the daily boss instead: highest stage killed per day of the turn

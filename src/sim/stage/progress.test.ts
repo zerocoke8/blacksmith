@@ -7,12 +7,16 @@ import { readFileSync } from 'node:fs';
 import { addExp, type HeroesState, newHeroesState, type WeaponItem } from '../hero/index.ts';
 import { type Formation, formationFull, formationProblems, formationProblemText, placeHero } from './formation.ts';
 import { bandBodyOrder, bossKindOf, floorEnemies, floorLayout, mobCount } from './layout.ts';
+import { runBattle, startBattle } from './battle.ts';
 import {
   autoClimb,
+  beginNextFloor,
   canAutoChallenge,
   challengeNextFloor,
+  finishNextFloor,
   newStageProgress,
   setAutoChallenge,
+  stageBattleKey,
   type StageProgress,
 } from './progress.ts';
 import { restoreStage, serializeStage } from './save.ts';
@@ -146,6 +150,31 @@ describe('next-floor challenge and auto-challenge (6.7)', () => {
     const ctx = { battleSeed: 5, heroes: team(1, 1), formation: F };
     expect(autoClimb(off, ctx).challenges).toHaveLength(0);
     expect(challengeNextFloor(off, ctx).won).toBe(true);
+  });
+
+  it('splits into begin (the attempt taken, to save before the fight) and finish, the same as one challenge', () => {
+    for (const [p, heroes] of [
+      [newStageProgress(), team(1, 3)],
+      [{ ...newStageProgress(), best: 40, attempts: 7 }, team(1, 1)],
+    ] as const) {
+      const ctx = { battleSeed: 4, heroes, formation: F };
+      const begun = beginNextFloor(p, ctx);
+      expect(begun.progress).toEqual({ ...p, attempts: p.attempts + 1 });
+      expect([begun.floor, begun.attempt]).toEqual([p.best + 1, p.attempts + 1]);
+      expect(begun.setup.key).toEqual(stageBattleKey(begun.floor, begun.attempt));
+      // Played live (stepped) or all at once, it ends the same as challengeNextFloor.
+      const run = startBattle(begun.setup);
+      while (!run.done) run.step();
+      const finished = finishNextFloor(begun, run.result(), heroes.level.level);
+      expect(finished).toEqual(challengeNextFloor(p, ctx));
+      expect(finishNextFloor(begun, runBattle(begun.setup), heroes.level.level)).toEqual(finished);
+    }
+  });
+
+  it('starts the fight in the signature mode it is given', () => {
+    const begun = beginNextFloor(newStageProgress(), { battleSeed: 4, heroes: team(1, 3), formation: F, signatures: 'manual' });
+    expect(begun.setup.signatures).toBe('manual');
+    expect(startBattle(begun.setup).auto).toBe(false);
   });
 
   it('stays on the floor after a loss: nothing is lost', () => {

@@ -3,11 +3,13 @@
 // tries back; otherwise the try's damage stays. The day's record is (가장 높은 잡은 단계, 막힌 단계에
 // 한 번에 준 가장 큰 데미지) (8.3, 15장의 3번 추천). Pure.
 // The day number, the reset and the ranking groups are the server's (8.3, 13장); src/platform/server.ts
-// stands in for it today.
+// stands in for it today. A try the screen plays live comes in two halves: beginDailyTry spends the
+// try before the fight (closing the app mid-try cannot take back a bad one) and finishDailyTry.
 
 import { BOSS_POWER_MULT, CRIT_DAMAGE, powInt } from '../data/common.ts';
 import { type CritMode, DAILY_CLIMB_MAX_TRIES, DAILY_TIME_LIMIT_TICKS } from '../data/battle.ts';
 import {
+  DAILY_BOSS_ROAR,
   DAILY_BOSSES,
   DAILY_DAY_MINUTES,
   DAILY_STAGE,
@@ -20,7 +22,7 @@ import {
   type MonsterSpec,
 } from '../data/monsters.ts';
 import type { HeroesState } from '../hero/save.ts';
-import { type BattleResult, type EnemyUnit, runBattle } from '../stage/battle.ts';
+import { type BattleResult, type BattleSetup, type EnemyUnit, runBattle, type SignatureMode } from '../stage/battle.ts';
 import type { Formation } from '../stage/formation.ts';
 import { buildTeam } from '../stage/team.ts';
 
@@ -64,7 +66,7 @@ export function dailyStageFloor(stage: number): number {
   return DAILY_STAGE.firstFloor + (Math.max(1, Math.floor(stage)) - 1) * DAILY_STAGE.floorsPerStage;
 }
 
-/** The boss of a day at a stage, as a fighter. */
+/** The boss of a day at a stage, as a fighter, with its roar (data/monsters.ts DAILY_BOSS_ROAR). */
 export function dailyBossUnit(day: number, stage: number): EnemyUnit {
   const { spec, monster } = dailyBossOf(day);
   const s = powInt(FLOOR_GROWTH, dailyStageFloor(stage) - 1);
@@ -84,6 +86,7 @@ export function dailyBossUnit(day: number, stage: number): EnemyUnit {
     crit: DAILY_STAGE.crit,
     critDamage: CRIT_DAMAGE,
     intervalTicks: DAILY_STAGE.intervalTicks,
+    skill: DAILY_BOSS_ROAR,
   };
 }
 
@@ -93,6 +96,8 @@ export interface DailyContext {
   /** 일일 보스 편성 (6.3: 스테이지 편성과 따로). */
   formation: Formation;
   critMode?: CritMode;
+  /** The signature mode the fight starts in (the screen's AUTO button; default 'auto'). */
+  signatures?: SignatureMode;
 }
 
 export interface DailyTry {
@@ -108,24 +113,46 @@ export function dailyBattleKey(day: number, stage: number, attempt: number): ['b
   return ['battle', 'daily', day, stage, attempt];
 }
 
-/** One try at the next stage, or null with no tries left. */
-export function challengeDaily(state: DailyState, ctx: DailyContext): DailyTry | null {
+/** A try that has begun: its battle to run (or step live) and the state to save now. */
+export interface BegunDailyTry {
+  stage: number;
+  attempt: number;
+  setup: BattleSetup;
+  /** The state with this try spent (tries − 1, attempts + 1): save it before the fight. */
+  state: DailyState;
+}
+
+/** Spends a try at the next stage and sets up its battle, or null with no tries left. */
+export function beginDailyTry(state: DailyState, ctx: DailyContext): BegunDailyTry | null {
   if (state.tries <= 0) return null;
   const stage = state.cleared + 1;
   const attempt = state.attempts + 1;
-  const result = runBattle({
+  const setup: BattleSetup = {
     heroes: buildTeam(ctx.heroes, ctx.formation),
     enemies: [dailyBossUnit(state.day, stage)],
     limitTicks: DAILY_TIME_LIMIT_TICKS,
     seed: ctx.battleSeed,
     key: dailyBattleKey(state.day, stage, attempt),
     critMode: ctx.critMode,
-  });
+    signatures: ctx.signatures,
+  };
+  return { stage, attempt, setup, state: { ...state, tries: state.tries - 1, attempts: attempt } };
+}
+
+/** The try's end from its battle: a kill clears the stage and gives the five tries back; otherwise its damage counts. */
+export function finishDailyTry(begun: BegunDailyTry, result: BattleResult): DailyTry {
+  const { stage, attempt } = begun;
   const won = result.outcome === 'win';
   const next: DailyState = won
-    ? { ...state, cleared: stage, tries: DAILY_TRIES, bestDamage: 0, attempts: attempt }
-    : { ...state, tries: state.tries - 1, bestDamage: Math.max(state.bestDamage, result.damageDealt), attempts: attempt };
+    ? { ...begun.state, cleared: stage, tries: DAILY_TRIES, bestDamage: 0 }
+    : { ...begun.state, bestDamage: Math.max(begun.state.bestDamage, result.damageDealt) };
   return { stage, attempt, won, result, state: next };
+}
+
+/** One try at the next stage, start to end, or null with no tries left. */
+export function challengeDaily(state: DailyState, ctx: DailyContext): DailyTry | null {
+  const begun = beginDailyTry(state, ctx);
+  return begun === null ? null : finishDailyTry(begun, runBattle(begun.setup));
 }
 
 /** Tries while they win, then one loss (the day's run: 이긴 단계는 빠르게 넘긴다, 8.2 추천). */

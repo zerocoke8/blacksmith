@@ -2,10 +2,12 @@
 // within 30 s raises the best floor, losing keeps the player where they are and costs nothing.
 // The auto-challenge goes on while it wins; after a loss it waits until the team changes (level,
 // stars, formation, rows, weapons), since the same team would meet the same wall. Pure.
+// A challenge the screen plays live comes in two halves: beginNextFloor (the attempt is taken and
+// saved before the fight, so closing the app mid-fight cannot buy a fresh seed) and finishNextFloor.
 
 import { STAGE_TIME_LIMIT_TICKS, AUTO_CLIMB_MAX_BATTLES, type CritMode } from '../data/battle.ts';
 import type { HeroesState } from '../hero/save.ts';
-import { type BattleResult, runBattle } from './battle.ts';
+import { type BattleResult, type BattleSetup, type HeroUnit, runBattle, type SignatureMode } from './battle.ts';
 import { type Formation, formationProblems } from './formation.ts';
 import { floorEnemies } from './layout.ts';
 import { buildTeam, teamFingerprint } from './team.ts';
@@ -42,6 +44,8 @@ export interface StageContext {
   heroes: HeroesState;
   formation: Formation;
   critMode?: CritMode;
+  /** The signature mode the fight starts in (the screen's AUTO button; default 'auto'). */
+  signatures?: SignatureMode;
 }
 
 export interface StageChallenge {
@@ -57,24 +61,50 @@ export function stageBattleKey(floor: number, attempt: number): ['battle', 'stag
   return ['battle', 'stage', floor, attempt];
 }
 
-/** Fights the next floor once (the [도전] button, or one step of the auto-challenge). */
-export function challengeNextFloor(p: StageProgress, ctx: StageContext): StageChallenge {
+/** A next-floor challenge that has begun: its battle to run (or step live) and the progress to save now. */
+export interface BegunFloor {
+  floor: number;
+  attempt: number;
+  team: HeroUnit[];
+  setup: BattleSetup;
+  /** The progress with this attempt taken (attempts + 1): save it before the fight. */
+  progress: StageProgress;
+}
+
+/** Takes the next attempt at the next floor and sets up its battle. Throws on a formation that cannot fight. */
+export function beginNextFloor(p: StageProgress, ctx: StageContext): BegunFloor {
   const floor = nextFloor(p);
   const attempt = p.attempts + 1;
   const team = buildTeam(ctx.heroes, ctx.formation);
-  const result = runBattle({
+  const setup: BattleSetup = {
     heroes: team,
     enemies: floorEnemies(floor),
     limitTicks: STAGE_TIME_LIMIT_TICKS,
     seed: ctx.battleSeed,
     key: stageBattleKey(floor, attempt),
     critMode: ctx.critMode,
-  });
+    signatures: ctx.signatures,
+  };
+  return { floor, attempt, team, setup, progress: { ...p, attempts: attempt } };
+}
+
+/**
+ * The challenge's end from its battle: a win raises the best floor (and records the level it was
+ * done at), a loss marks the floor stuck for the team that lost it.
+ */
+export function finishNextFloor(begun: BegunFloor, result: BattleResult, levelNow: number): StageChallenge {
+  const { floor, attempt } = begun;
   const won = result.outcome === 'win';
   const progress: StageProgress = won
-    ? { ...p, best: floor, attempts: attempt, stuck: null, bestLevel: ctx.heroes.level.level }
-    : { ...p, attempts: attempt, stuck: { floor, team: teamFingerprint(team) } };
+    ? { ...begun.progress, best: floor, stuck: null, bestLevel: levelNow }
+    : { ...begun.progress, stuck: { floor, team: teamFingerprint(begun.team) } };
   return { floor, attempt, won, result, progress };
+}
+
+/** Fights the next floor once, start to end (one step of the auto-challenge; tools and tests). */
+export function challengeNextFloor(p: StageProgress, ctx: StageContext): StageChallenge {
+  const begun = beginNextFloor(p, ctx);
+  return finishNextFloor(begun, runBattle(begun.setup), ctx.heroes.level.level);
 }
 
 /**

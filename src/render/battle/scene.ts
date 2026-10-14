@@ -1,11 +1,13 @@
 // 전투 장면 (PixiJS, 기획서 6장 · 8.2): the field in front of the tower, the heroes on the left looking
 // right (front row nearer the middle), the monsters on the right, and the battle played back from the
-// engine's event list (timeline.ts) — the blows, the shots, the numbers (a crit bigger), the skills'
-// names, the heals' sparkles, the signatures' sunbursts, a shake on the heavy blows, the falls, and a
-// hop for a win. Everything shown is decided already (CLAUDE.md 규칙 2): this file never changes an
-// HP, it shows the HP each cue carries. The effects are the forge's flat doodle shapes
-// (render/forge/procedural.ts). Pictures load per screen and are unloaded when it closes.
-// The canvas is the shared app's (render/app.ts).
+// engine's event list (timeline.ts) — the melee fighters walking up to their foes and standing there
+// to fight (사용자 결정 2026-10-14), the blows, the shots, the numbers (a crit bigger), the skills'
+// names, the heals' sparkles, the signatures' sunbursts, the quicker and slower statuses' badges, a
+// shake on the heavy blows, the falls, and a hop for a win. Everything shown is decided already
+// (CLAUDE.md 규칙 2): this file never changes an HP, it shows the HP each cue carries. A live fight's
+// cues come a few at a time as the engine steps (runLive) and are merged in by time. The effects are
+// the forge's flat doodle shapes (render/forge/procedural.ts). Pictures load per screen and are
+// unloaded when it closes. The canvas is the shared app's (render/app.ts).
 // Numbers: each fighter keeps a short stack of them (a new one pushes the older ones up, left and
 // right in turn, at most NUMBERS.perTarget at once), so five heroes hitting one foe stay readable;
 // on a lone boss the plain hits close together add up into one number and crits stand apart. They
@@ -19,11 +21,10 @@ import { acquireApp, type AppLease, holdAsset, releaseAssets } from '../app.ts';
 import * as draw from '../forge/procedural.ts';
 import { townMapUrl } from '../town/assets.ts';
 import { type Actor, makeActor, sliceSheet } from './anim.ts';
-import { heroArtUrl, monsterArtUrl, sheetUrls } from './assets.ts';
+import { heroArtUrl, iconUrl, monsterArtUrl, sheetUrls } from './assets.ts';
 import {
   bossCenterX,
   bossFeetY,
-  dashPoint,
   enemySpots,
   FIELD,
   FIGHTER_SIZE,
@@ -31,10 +32,12 @@ import {
   type FighterSize,
   fighterHeight,
   heroSpots,
+  movePoint,
+  movePoints,
   unitHeight,
 } from './layout.ts';
-import { ANIM_SPEC, type AnimAction } from './motion.ts';
-import type { Cue, ShotStyle, Timeline } from './timeline.ts';
+import { ANIM_SPEC, type AnimAction, actionMs } from './motion.ts';
+import { byTime, type Cue, mergeCues, type ShotStyle, type Timeline } from './timeline.ts';
 
 const INK = 0x3b2a20;
 const SKY = 0xcfe3ea;
@@ -105,6 +108,9 @@ export const BATTLE_COLORS = {
   sunburst: 0xfff1b0,
   ring: 0xb9a0e6,
   speed: INK,
+  /** A status's badge and word: quicker (warm yellow), slower (blue). */
+  statusUp: 0xffd84a,
+  statusDown: 0x8cc4f2,
   element: { water: 0x7fc2f0, fire: 0xff8a5a, earth: 0xd2a56a, wind: 0x8fe0bd } as Record<Element, number>,
 } as const;
 
@@ -136,6 +142,17 @@ export interface BattleShow {
 
 export type RunEnd = 'done' | 'skipped' | 'stopped';
 
+/** A fight playing as it is simulated: its cues come a few at a time (runLive). */
+export interface LiveRun {
+  /**
+   * More cues (time-sorted, timeline.ts makeTimelineBuilder): merged by time into the part not yet
+   * played; one whose moment has already passed plays on the next frame. Nothing once it is over.
+   */
+  push(cues: readonly Cue[]): void;
+  /** Resolves when its end cue has played (or it is skipped or stopped). */
+  readonly done: Promise<RunEnd>;
+}
+
 export interface BattleSceneOptions {
   reducedMotion: boolean;
   /** Every cue as it plays (sounds, the running damage total). */
@@ -147,9 +164,15 @@ export interface BattleSceneOptions {
 export interface BattleScene {
   /** Puts a fight's fighters on the field (pictures load first). `march`: the field scrolls as they come in (a new floor). */
   setup(show: BattleShow, march: boolean): Promise<void>;
-  /** Plays a timeline; resolves when its end cue has played (or it is skipped or stopped). */
+  /** Plays a timeline; resolves when its end cue has played (or it is skipped or stopped). runLive with every cue pushed. */
   run(tl: Timeline): Promise<RunEnd>;
-  /** Jumps to the end of the running fight. */
+  /**
+   * Starts a fight whose cues are pushed as they are made (a fight running before a new one is
+   * stopped). `speed`: the playback speed the cues were laid out for (the words in the air follow
+   * it); when not given, it is read off the first action pushed.
+   */
+  runLive(opts?: { speed?: number }): LiveRun;
+  /** Jumps to the end of the running fight: every cue pushed and not yet played applies at once, quietly. */
   skip(): void;
   /** Stops the running fight where it is. */
   stop(): void;
@@ -256,24 +279,45 @@ interface Fighter {
   /** While walking in: from x (px), ms left. */
   enter: { fromX: number; t: number; dur: number } | null;
   /**
-   * A melee run (timeline 'dash'): from where it was (offset from its spot, px) up to its foe, a stay,
-   * and back; t is ms since it began.
+   * A melee fighter's walk (timeline 'move') to the foe it then stands by: from where it was (offset
+   * from its spot, px), t ms since it set off, over go ms. It stays once it has arrived (it stands
+   * there, keeping by the foe) until the next walk.
    */
-  dash: { dst: Fighter; fromX: number; fromY: number; t: number; go: number; hold: number; back: number } | null;
-  /** Where its feet are now (px): its spot, plus a walk-in or a run. */
+  move: { dst: Fighter; fromX: number; fromY: number; t: number; go: number } | null;
+  /** Where it stands now, off its spot (px): nowhere else until its first walk; a new setup starts over. */
+  offX: number;
+  offY: number;
+  /** A back-row hero or a back-column monster: at a foe it stands a step behind (layout.ts MOVE.behind). */
+  behind: boolean;
+  /** Its statuses on the fight's clock (ms): until when a quicker (up) and a slower (down) one are on; −1: none. */
+  statusUntil: { up: number; down: number };
+  /** Their badges by its HP bar, made the first time one shows. */
+  badges: { up: Container; down: Container } | null;
+  /** Where its feet are now (px): its spot, plus a walk-in or where it stands. */
   feetX: number;
   feetY: number;
 }
 
-/** How high a run hops on the way (× the runner's height). */
-const DASH_HOP = 0.07;
+/** Words over a fighter stay below this (px from the top): a lone boss's big bar is above it. */
+const TOP_CLEAR = 62;
+
+/** A melee fighter's walk [튜닝: 연출]. */
+const WALK = {
+  /** How high its steps hop (× its height), and about how long one step takes (ms). */
+  hop: 0.06,
+  stepMs: 240,
+  /** Standing by a foe that moves, it eases after it with this time constant (ms). */
+  followMs: 140,
+  /** A walk never takes less than this (ms), even when the schedule left it no time. */
+  minMs: 90,
+} as const;
 
 interface Float {
   obj: Container;
   t: number;
   dur: number;
   vy: number;
-  kind: 'number' | 'burst' | 'spark' | 'puff' | 'label' | 'ring' | 'sun' | 'speed';
+  kind: 'number' | 'burst' | 'spark' | 'puff' | 'label' | 'word' | 'ring' | 'sun' | 'speed';
   x0: number;
   y0: number;
   scale0: number;
@@ -350,6 +394,12 @@ export async function createBattleScene(host: HTMLElement, width: number, height
     const t = holdAsset(url);
     loaded.set(url, t);
     return t;
+  };
+  /** The status badges' pictures (Codex, icons/status_fast·status_slow: a bunny and a snail); null: drawn pills. */
+  let statusPics: { up: Texture | null; down: Texture | null } = { up: null, down: null };
+  const loadStatusPics = async () => {
+    const [up, down] = await Promise.all([picture(iconUrl('status_fast')), picture(iconUrl('status_slow'))]);
+    statusPics = { up, down };
   };
   const sheetsFor = async (key: string): Promise<Partial<Record<AnimAction, Texture[]>>> => {
     const out: Partial<Record<AnimAction, Texture[]>> = {};
@@ -481,6 +531,10 @@ export async function createBattleScene(host: HTMLElement, width: number, height
       f.actor.destroy();
       f.shadow.destroy();
       f.bar.destroy();
+      if (f.badges !== null) {
+        f.badges.up.destroy({ children: true });
+        f.badges.down.destroy({ children: true });
+      }
     }
     fighters = [];
     byId.clear();
@@ -501,14 +555,16 @@ export async function createBattleScene(host: HTMLElement, width: number, height
     if (f.trailHp > f.shownHp) g.roundRect(x, 0, (w * f.trailHp) / max, h, 3).fill(BATTLE_COLORS.hpTrail);
     if (f.shownHp > 0) g.roundRect(x, 0, Math.max(3, (w * f.shownHp) / max), h, 3).fill(f.spec.side === 'hero' ? BATTLE_COLORS.heroHp : BATTLE_COLORS.enemyHp);
   };
+  /** Where a lone boss's big bar is (px, the HUD's). */
+  const bossBarBox = () => {
+    const w = Math.min(W - 32, 420);
+    return { x: (W - w) / 2, y: 30, w, h: 14 };
+  };
   const drawBossBar = () => {
     bossBar.clear();
     bossName.visible = boss !== null;
     if (boss === null) return;
-    const w = Math.min(W - 32, 420);
-    const x = (W - w) / 2;
-    const y = 30;
-    const h = 14;
+    const { x, y, w, h } = bossBarBox();
     const max = Math.max(1, boss.spec.maxHp);
     bossBar.roundRect(x - 3, y - 3, w + 6, h + 6, 9).fill(INK);
     bossBar.roundRect(x, y, w, h, 6).fill(BATTLE_COLORS.hpBack);
@@ -531,28 +587,124 @@ export async function createBattleScene(host: HTMLElement, width: number, height
     f.bar.position.set(x, y - lift - f.actor.height * 1.0 - 12);
   };
 
-  // ---- Melee runs (timeline 'dash'): up to the foe, a stay, back to the spot ----
-  /** The offset from its spot where a runner stops in front of its foe. */
-  const dashTarget = (f: Fighter, d: Fighter) => {
-    const body = (u: Fighter) => ({ x: u.spot.x, y: u.spot.y, w: u.actor.width, h: u.actor.height });
-    const p = dashPoint({ ...body(f), side: f.spec.side, boss: f.spec.boss === true }, body(d));
-    return { x: p.x - f.spot.x, y: p.y - f.spot.y };
-  };
-  /** Where a run has the fighter now (offset from its spot) and how high it hops. */
-  const dashOffset = (f: Fighter): { x: number; y: number; lift: number } => {
-    const r = f.dash;
-    if (r === null) return { x: 0, y: 0, lift: 0 };
-    const to = dashTarget(f, r.dst);
-    const hop = f.actor.height * DASH_HOP;
-    if (r.t < r.go) {
-      const k = r.go <= 0 ? 1 : r.t / r.go;
-      const e = 1 - (1 - k) ** 2;
-      return { x: r.fromX + (to.x - r.fromX) * e, y: r.fromY + (to.y - r.fromY) * e, lift: Math.sin(k * Math.PI) * hop };
+  // ---- Melee walks (timeline 'move'): up to the foe, then standing by it ----
+  const walkerBody = (f: Fighter) => ({ x: f.spot.x, y: f.spot.y, w: f.actor.width, h: f.actor.height, side: f.spec.side, behind: f.behind });
+  const foeBody = (d: Fighter) => ({ x: d.spot.x + d.offX, y: d.spot.y + d.offY, w: d.actor.width, h: d.actor.height, boss: d.spec.boss === true });
+  /** This frame's places by each foe, worked out for all who stand by it together (movePoints). */
+  let stands = new Map<Fighter, { x: number; y: number }>();
+  const planStands = () => {
+    const byFoe = new Map<Fighter, Fighter[]>();
+    for (const f of fighters) {
+      const d = f.move?.dst;
+      if (d === undefined || f.actor.isDown()) continue;
+      const list = byFoe.get(d);
+      if (list === undefined) byFoe.set(d, [f]);
+      else list.push(f);
     }
-    if (r.t < r.go + r.hold) return { ...to, lift: 0 };
-    const k = r.back <= 0 ? 1 : Math.min(1, (r.t - r.go - r.hold) / r.back);
-    const e = k < 0.5 ? 2 * k * k : 1 - (-2 * k + 2) ** 2 / 2;
-    return { x: to.x * (1 - e), y: to.y * (1 - e), lift: Math.sin(k * Math.PI) * hop };
+    stands = new Map();
+    for (const [d, list] of byFoe) {
+      const at = movePoints(list.map(walkerBody), foeBody(d), W, H);
+      list.forEach((f, i) => stands.set(f, at[i] as { x: number; y: number }));
+    }
+  };
+  /** Where a fighter stands by its foe (offset from its own spot), against where the foe stands now. */
+  const stationOf = (f: Fighter, d: Fighter): { x: number; y: number } => {
+    const p = f.move?.dst === d ? stands.get(f) : undefined;
+    const at = p ?? movePoint(walkerBody(f), foeBody(d), W, H);
+    return { x: at.x - f.spot.x, y: at.y - f.spot.y };
+  };
+  /** Moves a fighter along its walk, or keeps it by its foe; returns how high its step lifts it (px). */
+  const walk = (f: Fighter, dt: number): number => {
+    const m = f.move;
+    if (m === null || f.actor.isDown()) return 0;
+    m.t += dt;
+    const to = stationOf(f, m.dst);
+    if (m.t < m.go) {
+      const k = m.t / m.go;
+      const e = 1 - (1 - k) ** 2;
+      f.offX = m.fromX + (to.x - m.fromX) * e;
+      f.offY = m.fromY + (to.y - m.fromY) * e;
+      // A little trot: one hop per step.
+      const steps = Math.max(1, Math.round(m.go / WALK.stepMs));
+      return Math.abs(Math.sin(k * Math.PI * steps)) * f.actor.height * WALK.hop;
+    }
+    // Standing by a foe that stands by it too, a monster holds its ground and the hero keeps to it:
+    // two who each kept to the other could push one another across the field.
+    if (f.spec.side === 'enemy' && m.dst.move?.dst === f) return 0;
+    const k = Math.min(1, dt / WALK.followMs);
+    f.offX += (to.x - f.offX) * k;
+    f.offY += (to.y - f.offY) * k;
+    return 0;
+  };
+
+  // ---- Statuses: a badge by the HP bar while one is on ----
+  const BADGE_H = 14;
+  /** The bunny (quicker) or the snail (slower) by the HP bar, this tall (px). */
+  const BADGE_PIC_H = 20;
+  const makeBadge = (up: boolean, parent: Container): Container => {
+    const c = new Container();
+    const pic = up ? statusPics.up : statusPics.down;
+    if (pic !== null) {
+      const s = new Sprite(pic);
+      s.anchor.set(0, 0.5);
+      s.scale.set(BADGE_PIC_H / Math.max(1, pic.height));
+      c.addChild(s);
+      c.visible = false;
+      parent.addChild(c);
+      return c;
+    }
+    // The pictures did not load: a drawn pill with the word.
+    const word = new Text({ text: up ? '빠름' : '느림', style: { fontFamily: FONT, fontSize: 10, fill: INK } });
+    word.anchor.set(0, 0.5);
+    const tri = 7;
+    const w = 4 + tri + 3 + word.width + 6;
+    const g = new Graphics();
+    g.roundRect(0, -BADGE_H / 2, w, BADGE_H, BADGE_H / 2).fill(up ? BATTLE_COLORS.statusUp : BATTLE_COLORS.statusDown).stroke({ width: 2, color: INK });
+    // ▲ quicker, ▼ slower, drawn (the UI font may not have the glyph).
+    const ax = 4 + tri / 2;
+    if (up) g.moveTo(ax - tri / 2, 2.5).lineTo(ax + tri / 2, 2.5).lineTo(ax, -3.5).closePath();
+    else g.moveTo(ax - tri / 2, -2.5).lineTo(ax + tri / 2, -2.5).lineTo(ax, 3.5).closePath();
+    g.fill(INK);
+    word.position.set(4 + tri + 3, 0);
+    c.addChild(g, word);
+    c.visible = false;
+    parent.addChild(c);
+    return c;
+  };
+  /** Shows a fighter's badges while its statuses are on (gone at their end, and between fights). */
+  const showBadges = (f: Fighter) => {
+    const clock = running?.clock ?? null;
+    const on = (until: number) => clock !== null && clock < until && !f.actor.isDown();
+    const up = on(f.statusUntil.up);
+    const down = on(f.statusUntil.down);
+    if (f.badges === null) {
+      if (!up && !down) return;
+      // A lone boss's badges go by its big bar at the top.
+      const parent = f === boss ? hud : fx;
+      f.badges = { up: makeBadge(true, parent), down: makeBadge(false, parent) };
+    }
+    const b = f.badges;
+    b.up.visible = up;
+    b.down.visible = down;
+    if (!up && !down) return;
+    const shown = [up ? b.up : null, down ? b.down : null].filter((x): x is Container => x !== null);
+    const total = shown.reduce((s, x) => s + x.width + 2, -2);
+    let x: number;
+    let y: number;
+    if (f === boss) {
+      // Right-aligned over the boss's bar (its name is on the left).
+      const bb = bossBarBox();
+      x = bb.x + bb.w - total;
+      y = bb.y - 4 - BADGE_H / 2;
+    } else {
+      // Just right of its bar, kept on the field.
+      x = Math.min(f.bar.position.x + barW(f) / 2 + 4, W - 4 - total);
+      y = f.bar.position.y + 3.5;
+    }
+    for (const s of shown) {
+      s.position.set(x, y);
+      x += s.width + 2;
+    }
   };
 
   const heightOf = (spec: BattleUnitSpec, aspect: number) =>
@@ -565,10 +717,17 @@ export async function createBattleScene(host: HTMLElement, width: number, height
     const back = heroes.filter((f) => f.spec.row === 'back');
     const hs = heroSpots(W, H, front.length, back.length);
     front.forEach((f, i) => (f.spot = hs.front[i] as FieldSpot));
-    back.forEach((f, i) => (f.spot = hs.back[i] as FieldSpot));
+    back.forEach((f, i) => {
+      f.spot = hs.back[i] as FieldSpot;
+      f.behind = true;
+    });
     const enemies = fighters.filter((f) => f.spec.side === 'enemy');
     const es = enemySpots(W, H, enemies.length, enemies.length === 1 && enemies[0]?.spec.boss === true);
-    enemies.forEach((f, i) => (f.spot = es[i] as FieldSpot));
+    enemies.forEach((f, i) => {
+      f.spot = es[i] as FieldSpot;
+      // enemySpots puts the first half (rounded up) in the front column, the rest behind.
+      f.behind = enemies.length > 1 && i >= Math.ceil(enemies.length / 2);
+    });
     // A big lone boss stands in the middle of the fight: its body level with the heroes', its left
     // edge clear of the front row, its right of the field's edge.
     for (const f of enemies) {
@@ -579,7 +738,7 @@ export async function createBattleScene(host: HTMLElement, width: number, height
       f.shadow.clear();
       const rx = f.actor.height * (f.spec.side === 'enemy' && f.spec.boss === true ? 0.42 : 0.3) * f.spot.depth;
       f.shadow.ellipse(0, 0, rx, rx * 0.28).fill({ color: INK, alpha: 0.16 });
-      place(f);
+      place(f, f.offX, f.offY);
       drawBar(f);
     }
   };
@@ -612,7 +771,28 @@ export async function createBattleScene(host: HTMLElement, width: number, height
       units.addChild(shadow, actor.view);
       fx.addChild(bar);
       shadow.zIndex = -1;
-      const f: Fighter = { spec, actor, spot: { x: 0, y: 0, depth: 1 }, shadow, bar, nums: [], label: null, numCount: 0, hp: spec.hp, shownHp: spec.hp, trailHp: spec.hp, enter: null, dash: null, feetX: 0, feetY: 0 };
+      const f: Fighter = {
+        spec,
+        actor,
+        spot: { x: 0, y: 0, depth: 1 },
+        shadow,
+        bar,
+        nums: [],
+        label: null,
+        numCount: 0,
+        hp: spec.hp,
+        shownHp: spec.hp,
+        trailHp: spec.hp,
+        enter: null,
+        move: null,
+        offX: 0,
+        offY: 0,
+        behind: false,
+        statusUntil: { up: -1, down: -1 },
+        badges: null,
+        feetX: 0,
+        feetY: 0,
+      };
       if (spec.hp <= 0) actor.down();
       fighters.push(f);
       byId.set(spec.id, f);
@@ -770,9 +950,22 @@ export async function createBattleScene(host: HTMLElement, width: number, height
     g.roundRect(-w / 2, -h / 2, w, h, 10).fill(big ? 0xfbe8a6 : 0xfff8ea).stroke({ width: 2.5, color: INK });
     c.addChild(g, t);
     const x = Math.max(w / 2 + 6, Math.min(W - w / 2 - 6, f.actor.view.position.x));
-    c.position.set(x, f.feetY - f.actor.height - 34);
+    // Under the boss's big bar, for a tall monster casting.
+    c.position.set(x, Math.max(TOP_CLEAR, f.feetY - f.actor.height - 34));
     addFloat(c, 'label', lifeAt(big ? 1300 : 950), -10);
     f.label = floats[floats.length - 1] ?? null;
+  };
+
+  /** A status's word as it comes on: '빨라짐!' or '느려짐!' over the head. */
+  const wordAt = (f: Fighter, up: boolean) => {
+    const t = new Text({
+      text: up ? '빨라짐!' : '느려짐!',
+      style: { fontFamily: FONT, fontSize: 14, fill: up ? BATTLE_COLORS.statusUp : BATTLE_COLORS.statusDown, stroke: { color: INK, width: 4, join: 'round' } },
+    });
+    t.anchor.set(0.5);
+    const x = Math.max(t.width / 2 + 6, Math.min(W - t.width / 2 - 6, f.actor.view.position.x));
+    t.position.set(x, Math.max(TOP_CLEAR, f.feetY - f.actor.height - 6));
+    addFloat(t, 'word', lifeAt(850), -f.actor.height * 0.2);
   };
 
   const sunAt = (f: Fighter) => {
@@ -834,10 +1027,53 @@ export async function createBattleScene(host: HTMLElement, width: number, height
     shake = Math.max(shake, amount);
   };
 
-  // ---- Playing a timeline ----
-  let running: { tl: Timeline; clock: number; next: number; resolve(end: RunEnd): void } | null = null;
-  /** The playing timeline's speed (the words in the air follow it). */
+  // ---- Playing a fight: its cues, in time order, on its clock ----
+  /**
+   * The fight playing: its cues (those before `next` have played), its clock (ms), and whether its
+   * speed is still to be read off the first action pushed.
+   */
+  interface Playing {
+    cues: Cue[];
+    next: number;
+    clock: number;
+    speedFromCues: boolean;
+    resolve(end: RunEnd): void;
+  }
+  let running: Playing | null = null;
+  /** The playing fight's speed (the words in the air follow it). */
   let playSpeed = 1;
+  const startLive = (speed: number | undefined): LiveRun => {
+    if (running !== null) {
+      const old = running;
+      running = null;
+      old.resolve('stopped');
+    }
+    if (speed !== undefined) playSpeed = speed;
+    let r!: Playing;
+    const done = new Promise<RunEnd>((resolve) => {
+      r = { cues: [], next: 0, clock: 0, speedFromCues: speed === undefined, resolve };
+    });
+    running = r;
+    return {
+      push(cues) {
+        if (running !== r) return;
+        if (r.speedFromCues) {
+          // An action's length is its sheet's ÷ the speed it was laid out for.
+          const a = cues.find((c) => c.kind === 'act');
+          if (a !== undefined && a.kind === 'act' && a.dur > 0) {
+            playSpeed = actionMs(a.action) / a.dur;
+            r.speedFromCues = false;
+          }
+        }
+        if (cues.length === 0) return;
+        // Into the part not yet played (the played ones go); the builder gives each batch in time
+        // order, and sorting again keeps a hand-made batch right too.
+        r.cues = mergeCues(r.cues.slice(r.next), byTime(cues));
+        r.next = 0;
+      },
+      done,
+    };
+  };
   const applyCue = (c: Cue, quiet: boolean) => {
     switch (c.kind) {
       case 'act': {
@@ -847,16 +1083,35 @@ export async function createBattleScene(host: HTMLElement, width: number, height
         if (c.action === 'ultimate') {
           sunAt(f);
           kick(f.actor.height * 0.08);
-        } else if (c.action === 'skill' && f.spec.shot === null) speedAt(f);
+        } else if (c.action === 'skill') {
+          if (f.spec.shot === null) speedAt(f);
+          // A lone boss's own skill (the daily boss's roar) shakes the ground a little.
+          if (f === boss) kick(f.actor.height * 0.03);
+        }
         return;
       }
-      case 'dash': {
+      case 'move': {
         const f = byId.get(c.unit);
         const d = byId.get(c.dst);
-        if (f === undefined || d === undefined || quiet || reduced || f.actor.isDown()) return;
-        // From wherever it is now (a run back can be caught by the next run).
-        const now = dashOffset(f);
-        f.dash = { dst: d, fromX: now.x, fromY: now.y, t: 0, go: c.go, hold: c.hold, back: c.back };
+        // A lone boss holds its ground (it leans into its blows); with reduced motion nobody walks.
+        if (f === undefined || d === undefined || reduced || f.spec.boss === true || f.actor.isDown()) return;
+        // From wherever it stands now.
+        f.move = { dst: d, fromX: f.offX, fromY: f.offY, t: 0, go: Math.max(WALK.minMs, c.go) };
+        if (quiet) {
+          // A skipped fight: straight to where it would stand.
+          f.move.t = f.move.go;
+          const to = stationOf(f, d);
+          f.offX = to.x;
+          f.offY = to.y;
+        }
+        return;
+      }
+      case 'status': {
+        const f = byId.get(c.unit);
+        if (f === undefined) return;
+        const key = c.up ? 'up' : 'down';
+        f.statusUntil[key] = Math.max(f.statusUntil[key], c.until);
+        if (!quiet && !f.actor.isDown()) wordAt(f, c.up);
         return;
       }
       case 'cast': {
@@ -917,17 +1172,17 @@ export async function createBattleScene(host: HTMLElement, width: number, height
     if (destroyed) return;
     const dt = Math.min(64, app.ticker.deltaMS);
     time += dt;
-    // The fight's clock.
-    if (running !== null) {
-      running.clock += dt;
-      const cues = running.tl.cues;
-      while (running !== null && running.next < cues.length && (cues[running.next] as Cue).at <= running.clock) {
-        const c = cues[running.next] as Cue;
-        running.next += 1;
+    // The fight's clock: every cue whose moment has come plays (a cue pushed late plays now).
+    const r = running;
+    if (r !== null) {
+      r.clock += dt;
+      // (A cue's sound may skip or stop the fight: then the rest is not this loop's.)
+      while (running === r && r.next < r.cues.length && (r.cues[r.next] as Cue).at <= r.clock) {
+        const c = r.cues[r.next] as Cue;
+        r.next += 1;
         applyCue(c, false);
         opts.onCue?.(c);
-        if (c.kind === 'end') {
-          const r = running;
+        if (c.kind === 'end' && running === r) {
           running = null;
           r.resolve('done');
         }
@@ -946,6 +1201,7 @@ export async function createBattleScene(host: HTMLElement, width: number, height
       const span = W + c.width;
       c.position.x = ((((i * 0.37 + 0.12) * W + cloudShift * (1 + i * 0.4)) % span) + span) % span - c.width / 2;
     }
+    planStands();
     for (const f of fighters) {
       let dx = 0;
       if (f.enter !== null) {
@@ -955,20 +1211,10 @@ export async function createBattleScene(host: HTMLElement, width: number, height
         dx = (f.enter.fromX - f.spot.x) * (1 - e);
         if (k >= 1) f.enter = null;
       }
-      let dy = 0;
-      let lift = 0;
-      if (f.dash !== null) {
-        f.dash.t += dt;
-        if (f.dash.t >= f.dash.go + f.dash.hold + f.dash.back) f.dash = null;
-        else {
-          const o = dashOffset(f);
-          dx += o.x;
-          dy = o.y;
-          lift = o.lift;
-        }
-      }
+      const lift = walk(f, dt);
       f.actor.update(dt, time);
-      place(f, dx, dy, lift);
+      place(f, dx + f.offX, f.offY, lift);
+      showBadges(f);
       // The bar eases to the HP; its pale trail follows a little later.
       const before = `${f.shownHp}|${f.trailHp}`;
       f.shownHp += (f.hp - f.shownHp) * Math.min(1, dt / 70);
@@ -1029,6 +1275,12 @@ export async function createBattleScene(host: HTMLElement, width: number, height
           o.position.y = f.y0 + f.vy * Math.min(1, k * 4);
           o.alpha = k > 0.8 ? 1 - (k - 0.8) / 0.2 : Math.min(1, k * 8);
           break;
+        case 'word':
+          // Pops up, rises a little, fades.
+          o.scale.set(f.scale0 * (k < 0.12 ? 0.7 + (k / 0.12) * 0.3 : 1));
+          o.position.y = f.y0 + f.vy * (1 - (1 - k) ** 2);
+          o.alpha = k > 0.7 ? 1 - (k - 0.7) / 0.3 : 1;
+          break;
         case 'sun':
           o.rotation += dt * 0.0012;
           o.scale.set(f.scale0 * (0.6 + 0.5 * Math.min(1, k * 3)));
@@ -1058,6 +1310,8 @@ export async function createBattleScene(host: HTMLElement, width: number, height
   };
 
   drawField();
+  // The badges' two small pictures, before the first fight (a failed load keeps the drawn pills).
+  await loadStatusPics().catch(() => undefined);
   app.ticker.add(tick);
   const readyMs = performance.now() - t0;
 
@@ -1072,18 +1326,19 @@ export async function createBattleScene(host: HTMLElement, width: number, height
   return {
     setup,
     run(tl) {
-      if (running !== null) running.resolve('stopped');
-      playSpeed = tl.speed;
-      return new Promise<RunEnd>((resolve) => {
-        running = { tl, clock: 0, next: 0, resolve };
-      });
+      const live = startLive(tl.speed);
+      live.push(tl.cues);
+      return live.done;
+    },
+    runLive(o) {
+      return startLive(o?.speed);
     },
     skip() {
       const r = running;
       if (r === null) return;
       running = null;
-      for (let i = r.next; i < r.tl.cues.length; i++) applyCue(r.tl.cues[i] as Cue, true);
-      for (const f of fighters) f.dash = null;
+      // Everything pushed and not yet played, at once and quietly: the HP, the falls, where everyone stands.
+      for (let i = r.next; i < r.cues.length; i++) applyCue(r.cues[i] as Cue, true);
       clearFx();
       r.resolve('skipped');
     },

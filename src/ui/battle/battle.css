@@ -1,6 +1,7 @@
-/* 스테이지·도전 화면 (bt-): the field between a paper top band and a paper bottom band, in the doodle
-   look (app.css --dd-*). Touch first: no hover, targets at least 44 px; the notch and the home bar
-   stay clear. */
+/* 스테이지·도전 화면 (bt-): the field between a paper top band and, under the hero cards
+   (herorow.css), a paper bottom band, in the doodle look (app.css --dd-*). The bottom band is kept
+   short (one line of what is going on, the buttons) so the field stays big. Touch first: no hover,
+   targets at least 44 px; the notch and the home bar stay clear. */
 
 .bt-root {
   position: fixed;
@@ -341,10 +342,19 @@
   display: flex;
   flex: none;
   flex-direction: column;
-  gap: 6px;
-  padding: 8px 8px 10px;
+  gap: 5px;
+  padding: 6px 8px 8px;
   border-top: var(--dd-stroke-fat) solid var(--dd-ink);
   background: var(--dd-paper);
+}
+
+/* What is going on, and the facts beside it (they drop under it when the line is long). */
+.bt-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0 10px;
 }
 
 .bt-status {
@@ -354,6 +364,11 @@
   font-size: 0.82rem;
   line-height: 1.3;
   word-break: keep-all;
+}
+
+.bt-line .bt-status {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 /* Stuck: where the way on is (6.7). */
@@ -372,10 +387,12 @@
 /* 편성 전투력 · 시간당 덩어리 (6.9). */
 .bt-facts {
   display: flex;
-  gap: 14px;
-  margin: 0;
+  flex: none;
+  gap: 10px;
+  margin: 0 0 0 auto;
   color: var(--dd-ink-soft);
   font-size: 0.8rem;
+  white-space: nowrap;
 }
 
 .bt-facts b {
@@ -391,7 +408,7 @@
 }
 
 .bt-controls .kc-btn {
-  min-height: 46px;
+  min-height: 44px;
   padding: 0 10px;
   white-space: nowrap;
 }

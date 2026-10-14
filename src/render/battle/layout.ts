@@ -167,16 +167,21 @@ export function clampFighterSize(s: Partial<Record<keyof FighterSize, unknown>>)
 }
 
 /**
- * Where a melee fighter's run stops [튜닝: 연출] (사용자 결정 2026-10-14: '근접은 적 근처까지 가서 친다'):
- * just in front of its foe, the facing edges of the two pictures `gap` (× the runner's height) apart;
- * its lunge at the blow (motion.ts MOTION.lunge) then closes the gap. `edge`: the share of a
- * picture's half width that counts as its body (a sword or a tail sticks out past it). `lane`: how
- * far up or down toward its foe's lane it goes — not all the way, so two who run at one foe from two
- * lanes stand apart, not on top of each other; a lone boss less still (a big body does not hop lanes).
+ * Where a melee fighter stands by its foe [튜닝: 연출] (사용자 결정 2026-10-14: '적군 쪽으로 이동 후 그냥 서서
+ * 공격, 목표가 죽으면 다음 목표 쪽으로'): just in front of it, the facing edges of the two pictures `gap`
+ * (× the walker's height) apart; its lunge at the blow (motion.ts MOTION.lunge) then closes the gap.
+ * `edge`: the share of a picture's half width that counts as its body (a sword or a tail sticks out
+ * past it). `lane`: how far up or down toward its foe's lane it goes — less than half, so fighters
+ * keep mostly to their own lanes (every hero hits the front-most monster: all the way, they all stood
+ * in its lane in one heap); at a lone boss (`bossLane`) less still. `spread`: fighters at one foe
+ * stand at least this far apart up and down (× their height), pushed apart round where they would
+ * stand and kept on the lanes (movePoints). `behind`: a back-row hero or a back-column monster stands
+ * this much (× its height) farther back, so it does not stand on a front-liner from the lane next to
+ * its own. `margin`: px kept clear at the field's edges.
  */
-export const DASH = { gap: 0.1, edge: 0.7, lane: 0.7, bossLane: 0.35 } as const;
+export const MOVE = { gap: 0.1, edge: 0.7, lane: 0.35, bossLane: 0.3, spread: 0.55, behind: 0.35, margin: 4 } as const;
 
-export interface DashBody {
+export interface MoveBody {
   readonly x: number;
   /** Feet (px from the top). */
   readonly y: number;
@@ -184,10 +189,60 @@ export interface DashBody {
   readonly h: number;
 }
 
-/** The feet of a runner (side: heroes run right, monsters left) standing in front of its foe. */
-export function dashPoint(runner: DashBody & { side: 'hero' | 'enemy'; boss: boolean }, foe: DashBody): { x: number; y: number } {
-  const toward = runner.side === 'hero' ? 1 : -1;
-  const x = foe.x - toward * (DASH.edge * (foe.w / 2 + runner.w / 2) + DASH.gap * runner.h);
-  const y = runner.y + (foe.y - runner.y) * (runner.boss ? DASH.bossLane : DASH.lane);
-  return { x, y };
+/**
+ * The feet of a melee fighter standing by its foe (side: heroes face right, monsters left). `walker`
+ * is at its own spot (its lane is the one it comes from), `foe` where it stands now: the scene asks
+ * every frame, so a fighter keeps by a foe that moves. Kept on the w × h field: inside its width and
+ * on the lanes.
+ */
+export function movePoint(
+  walker: MoveBody & { side: 'hero' | 'enemy'; behind?: boolean },
+  foe: MoveBody & { boss?: boolean },
+  w: number,
+  h: number,
+): { x: number; y: number } {
+  return movePoints([walker], foe, w, h)[0] as { x: number; y: number };
+}
+
+/**
+ * Where every melee fighter standing by one foe stands (in the walkers' order): each in front of it
+ * as movePoint says, then pushed apart up and down so they are at least MOVE.spread × their height
+ * apart (the group kept round where they would have stood, and on the lanes) — three heroes on one
+ * monster stand in a column before it, not in a heap.
+ */
+export function movePoints(
+  walkers: readonly (MoveBody & { side: 'hero' | 'enemy'; behind?: boolean })[],
+  foe: MoveBody & { boss?: boolean },
+  w: number,
+  h: number,
+): { x: number; y: number }[] {
+  const top = laneY(h, 0);
+  const bottom = laneY(h, 1);
+  const pull = foe.boss === true ? MOVE.bossLane : MOVE.lane;
+  const want = walkers.map((k) => Math.min(Math.max(k.y + (foe.y - k.y) * pull, top), bottom));
+  const ys = [...want];
+  if (walkers.length > 1) {
+    const gap = Math.min(MOVE.spread * Math.max(...walkers.map((k) => k.h)), (bottom - top) / (walkers.length - 1));
+    const order = walkers.map((_, i) => i).sort((a, b) => (want[a] as number) - (want[b] as number) || a - b);
+    // Push apart downward, then slide the column back so it sits round where they wanted to stand.
+    for (let j = 1; j < order.length; j++) {
+      const a = order[j - 1] as number;
+      const b = order[j] as number;
+      ys[b] = Math.max(ys[b] as number, (ys[a] as number) + gap);
+    }
+    const mean = (xs: readonly number[]) => xs.reduce((s, v) => s + v, 0) / xs.length;
+    const lo = Math.min(...ys);
+    const hi = Math.max(...ys);
+    const shift = Math.min(Math.max(mean(want) - mean(ys), top - lo), bottom - hi);
+    for (let i = 0; i < ys.length; i++) ys[i] = (ys[i] as number) + shift;
+  }
+  return walkers.map((walker, i) => movePointAt(walker, foe, w, ys[i] as number));
+}
+
+function movePointAt(walker: MoveBody & { side: 'hero' | 'enemy'; behind?: boolean }, foe: MoveBody, w: number, y: number): { x: number; y: number } {
+  const toward = walker.side === 'hero' ? 1 : -1;
+  const reach = MOVE.edge * (foe.w / 2 + walker.w / 2) + MOVE.gap * walker.h + (walker.behind === true ? MOVE.behind * walker.h : 0);
+  const x = foe.x - toward * reach;
+  const half = walker.w / 2 + MOVE.margin;
+  return { x: Math.min(Math.max(x, half), Math.max(half, w - half)), y };
 }

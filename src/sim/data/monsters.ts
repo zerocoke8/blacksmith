@@ -3,6 +3,7 @@
 // value; the curves are [미정] in the doc (16장의 11·12·13번). Change them here, not at call sites.
 
 import type { BodyType, Element } from '../core/types.ts';
+import type { EnemySkill } from './battle.ts';
 import { BOSS_POWER_MULT, DEMON_LORD_POWER_MULT, ENEMY_GROWTH_PER_FLOOR } from './common.ts';
 import { DAY_MINUTES, SECTION_BOSS_LAST_FLOOR } from './world.ts';
 
@@ -158,6 +159,20 @@ export const DAILY_STAGE = {
   crit: 0.05,
   intervalTicks: 20,
 } as const;
+
+/**
+ * Every daily boss's roar [튜닝]: the heroes' attack speed ×0.8 for 4 s, first at 8 s and every
+ * 12 s after (five in a 60 s try). It is the boss's action on its tick (no blow that tick, and its
+ * next blow waits a whole interval). The first monster skill, the 'foes' side of 공격 속도 as a stat
+ * (사용자 결정 2026-10-14).
+ */
+export const DAILY_BOSS_ROAR: EnemySkill = {
+  id: 'roar',
+  name: '쿵쿵 울부짖기',
+  firstTick: 80,
+  everyTicks: 120,
+  status: { stat: 'atkSpeed', mult: 0.8, ticks: 40, on: 'foes' },
+};
 
 /** 하루 도전 횟수 (사용자 결정): 5, back to 5 on reaching the next stage. */
 export const DAILY_TRIES = 5;

@@ -43,7 +43,8 @@
     "fire_goodOmen": {"w":100,"h":140,"scale":0.188,"alpha":true,"trim":{"x":361,"y":264,"w":532,"h":742,"ow":1254,"oh":1254}},
     "icon_heat": {"w":80,"h":110,"scale":0.179,"alpha":true,"trim":{"x":404,"y":322,"w":447,"h":611,"ow":1254,"oh":1254}},
     "icon_progress": {"w":110,"h":93,"scale":0.1871,"alpha":true,"trim":{"x":353,"y":420,"w":588,"h":495,"ow":1254,"oh":1254}},
-    "icon_quality": {"w":110,"h":102,"scale":0.1355,"alpha":true,"trim":{"x":269,"y":249,"w":812,"h":755,"ow":1254,"oh":1254}}
+    "icon_quality": {"w":110,"h":102,"scale":0.1355,"alpha":true,"trim":{"x":269,"y":249,"w":812,"h":755,"ow":1254,"oh":1254}},
+    "ult_ready": {"w":237,"h":360,"scale":0.2529,"alpha":true,"trim":{"x":44,"y":28,"w":937,"h":1423,"ow":1024,"oh":1536}}
   },
   "cards": {
     "hammer": {"w":540,"h":400,"scale":0.3907,"alpha":false,"trim":{"x":-179,"y":0,"w":1382,"h":1024,"ow":1024,"oh":1024}},
@@ -212,6 +213,10 @@
     "star_silver": {"w":64,"h":63,"scale":0.0704,"alpha":true,"trim":{"x":173,"y":187,"w":909,"h":891,"ow":1254,"oh":1254}},
     "star_gold": {"w":64,"h":63,"scale":0.0705,"alpha":true,"trim":{"x":173,"y":187,"w":908,"h":891,"ow":1254,"oh":1254}},
     "star_moon": {"w":57,"h":64,"scale":0.0671,"alpha":true,"trim":{"x":201,"y":157,"w":850,"h":959,"ow":1254,"oh":1254}},
-    "star_sun": {"w":64,"h":64,"scale":0.0636,"alpha":true,"trim":{"x":123,"y":120,"w":1007,"h":1000,"ow":1254,"oh":1254}}
+    "star_sun": {"w":64,"h":64,"scale":0.0636,"alpha":true,"trim":{"x":123,"y":120,"w":1007,"h":1000,"ow":1254,"oh":1254}},
+    "ui_auto": {"w":96,"h":91,"scale":0.1017,"alpha":true,"trim":{"x":161,"y":185,"w":944,"h":891,"ow":1254,"oh":1254}},
+    "ui_speed": {"w":96,"h":60,"scale":0.1071,"alpha":true,"trim":{"x":180,"y":352,"w":896,"h":564,"ow":1254,"oh":1254}},
+    "status_fast": {"w":96,"h":89,"scale":0.0952,"alpha":true,"trim":{"x":119,"y":160,"w":1008,"h":939,"ow":1254,"oh":1254}},
+    "status_slow": {"w":96,"h":68,"scale":0.0952,"alpha":true,"trim":{"x":140,"y":310,"w":1008,"h":709,"ow":1254,"oh":1254}}
   }
 }

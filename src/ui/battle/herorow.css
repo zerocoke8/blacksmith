@@ -1,0 +1,305 @@
+/* 전투 화면의 용사 카드 줄 (bc-, HeroCardRow.tsx): the example picture's row of hero cards in the
+   doodle look (app.css --dd-*): arched paper-and-colour stickers with the fat dark-brown line and the
+   hard shadow, the evolution colours of the hero cards (heroes.css --hc-*), Jua for names. Touch
+   first: a card is a big tap target; no hover. A full card wears the doodle flame ring (ui/ult_ready,
+   drawn with Codex like the rest of the art) and breathes; with reduced motion it stays still. */
+
+.bc-row {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 8px 6px;
+  border-top: var(--dd-stroke-fat) solid var(--dd-ink);
+  background: var(--dd-wood-2);
+}
+
+.bc-cards {
+  display: grid;
+  flex: 1;
+  grid-template-columns: repeat(var(--bc-n, 5), minmax(0, 1fr));
+  gap: 5px;
+  min-width: 0;
+}
+
+.bc-card {
+  --hc-bg: var(--hc-purple, #c9b3ee);
+  --hc-bg-2: var(--hc-purple-2, #a98bdc);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  min-width: 0;
+  margin: 0;
+  padding: 3px 3px 2px;
+  border: var(--dd-stroke) solid var(--dd-ink);
+  border-radius: 22px 22px 10px 10px;
+  background: var(--hc-bg);
+  box-shadow: var(--dd-pop-s);
+  color: var(--dd-ink);
+  font-family: var(--dd-font-round);
+  cursor: default;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+
+.bc-card.hc-gold {
+  --hc-bg: var(--hc-gold, #f6d36a);
+  --hc-bg-2: var(--hc-gold-2, #e5b638);
+}
+
+.bc-card.hc-red {
+  --hc-bg: var(--hc-red, #ef8f7a);
+  --hc-bg-2: var(--hc-red-2, #d9644d);
+}
+
+.bc-card.hc-white {
+  --hc-bg: var(--hc-white, #fbf7ef);
+  --hc-bg-2: var(--hc-white-2, #ddd5c6);
+}
+
+/* 특급: a small gold gem on the arch (as on the hero cards, 5.9). */
+.bc-card.special::after {
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  width: 10px;
+  height: 10px;
+  border: 2px solid var(--dd-ink);
+  border-radius: 3px;
+  background: var(--hc-special, #f3c845);
+  content: '';
+  transform: translateX(-50%) rotate(45deg);
+}
+
+/* The face: the hero's picture, cut round the head (face.ts), mirrored to look at the monsters. */
+.bc-face {
+  position: relative;
+  display: block;
+  aspect-ratio: 1 / 0.86;
+  overflow: hidden;
+  border: 2px solid var(--dd-ink);
+  border-radius: 18px 18px 6px 6px;
+  background: color-mix(in srgb, var(--hc-bg) 50%, var(--dd-paper-3));
+}
+
+.bc-face img {
+  position: absolute;
+  left: 50%;
+  width: auto;
+  max-width: none;
+  transition: opacity 0.15s;
+  pointer-events: none;
+}
+
+.bc-face img.wait {
+  opacity: 0;
+}
+
+.bc-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 3px;
+}
+
+.bc-hp,
+.bc-sig {
+  display: block;
+  height: 7px;
+  overflow: hidden;
+  border: 1.5px solid var(--dd-ink);
+  border-radius: 999px;
+  background: var(--dd-paper-2);
+}
+
+.bc-hp i,
+.bc-sig i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+}
+
+.bc-hp i {
+  background: var(--dd-green);
+  transition: width 0.18s linear;
+}
+
+.bc-card.low .bc-hp i {
+  background: var(--dd-red);
+}
+
+.bc-sig i {
+  background: var(--dd-orange);
+}
+
+/* No signature (a normal hero, a special before gold): the gauge is there but asleep. */
+.bc-card.nosig .bc-sig {
+  border-style: dashed;
+  opacity: 0.38;
+}
+
+.bc-name {
+  margin-top: 2px;
+  overflow: hidden;
+  font-size: 0.72rem;
+  line-height: 1.15;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Full: the flame ring round the card (its hole is the card; it lies over the card's edge, so the
+   flames lick the ink line), breathing. A tap fires it. The gauge stays orange, full and bright with a
+   white streak: on a gold card a butter gauge read as empty. */
+.bc-card.ready {
+  z-index: 1;
+  cursor: pointer;
+  animation: bc-breathe 1.1s ease-in-out infinite;
+}
+
+.bc-flame {
+  position: absolute;
+  top: 46%;
+  left: 50%;
+  z-index: 2;
+  width: 134%;
+  height: 128%;
+  max-width: none;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  animation: bc-flicker 0.9s ease-in-out infinite alternate;
+}
+
+.bc-card.ready .bc-sig i {
+  background: linear-gradient(to bottom, color-mix(in srgb, var(--dd-orange) 55%, white) 0 35%, var(--dd-orange) 35%);
+}
+
+@keyframes bc-flicker {
+  to {
+    transform: translate(-50%, -51.5%) scale(1.03, 1.06);
+  }
+}
+
+.bc-card.ready .bc-name {
+  color: var(--dd-ink);
+}
+
+@keyframes bc-breathe {
+  50% {
+    transform: translateY(-2px) scale(1.04);
+  }
+}
+
+/* Tapped: pressed in, its signature on its way. */
+.bc-card.ordered {
+  box-shadow: 0 0 0 3px var(--dd-butter);
+  transform: translateY(2px);
+}
+
+.bc-card.ordered .bc-sig i {
+  background: var(--dd-orange);
+}
+
+/* Fallen (no one dies, 사용자 결정): greyed until the next fight. */
+.bc-card.down {
+  filter: grayscale(0.85);
+  opacity: 0.62;
+}
+
+/* AUTO and the speed: round stickers beside the cards (as in the example). */
+.bc-side {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.bc-round {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin: 0;
+  padding: 0;
+  border: var(--dd-stroke) solid var(--dd-ink);
+  border-radius: 50%;
+  background: var(--dd-paper-3);
+  box-shadow: var(--dd-pop-s);
+  color: var(--dd-ink);
+  font-family: var(--dd-font-round);
+  font-size: 0.9rem;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.bc-round:active {
+  transform: translateY(2px);
+  box-shadow: none;
+}
+
+/* The icon (Codex: ui_auto, ui_speed) with a small word under it. */
+.bc-round img {
+  display: block;
+  width: 24px;
+  height: 22px;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.bc-round small {
+  margin-top: -3px;
+  font-size: 0.6rem;
+  line-height: 1;
+}
+
+.bc-round {
+  align-content: center;
+  gap: 0;
+}
+
+/* Off: paper, the arrows faded. On: butter, and the arrows turn (the signatures look after themselves). */
+.bc-auto {
+  background: var(--dd-paper-2);
+  color: var(--dd-ink-soft);
+}
+
+.bc-auto img {
+  opacity: 0.45;
+  filter: grayscale(0.6);
+}
+
+.bc-auto.on {
+  background: var(--dd-butter);
+  color: var(--dd-ink);
+}
+
+.bc-auto.on img {
+  opacity: 1;
+  filter: none;
+  animation: bc-spin 2.4s linear infinite;
+}
+
+@keyframes bc-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.bt-root.reduced .bc-card.ready,
+.bt-root.reduced .bc-flame,
+.bt-root.reduced .bc-auto.on img {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bc-card.ready,
+  .bc-flame,
+  .bc-auto.on img {
+    animation: none;
+  }
+}

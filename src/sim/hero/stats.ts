@@ -135,6 +135,8 @@ export interface HeroStats {
   /** Crit rate 0..1 (weapon type + 예리 + passive). */
   crit: number;
   critDamage: number;
+  /** 공격 속도 (사용자 결정 2026-10-14): 1, + the hero's own 'atkSpeed' passive. The weapon's rhythm is its interval, apart. */
+  atkSpeed: number;
 }
 
 /**
@@ -149,7 +151,7 @@ export function heroStats(key: HeroKey, copies: number, level: number, weapon: W
   const rar = RARITY_BASE_MULT[spec.rarity];
   const w = weaponCombat(weapon, spec.weapon);
   const p = passiveOpen(spec.rarity, step.color) ? spec.passive : null;
-  const own = (kind: 'atk' | 'hp' | 'def' | 'crit'): number => (p !== null && p.kind === kind ? p.value : 0);
+  const own = (kind: 'atk' | 'hp' | 'def' | 'crit' | 'atkSpeed'): number => (p !== null && p.kind === kind ? p.value : 0);
   const hpMult = levelHpMult(level) * starHpMult(step.index) * rar;
   return {
     maxHp: Math.max(1, Math.round(base.hp * hpMult * (1 + own('hp')))),
@@ -157,13 +159,17 @@ export function heroStats(key: HeroKey, copies: number, level: number, weapon: W
     def: Math.max(0, Math.round(base.def * hpMult * (1 + own('def')))),
     crit: Math.min(1, WEAPON_SPEC[w.type].critRate + w.critRateAdd + own('crit')),
     critDamage: w.critDamage,
+    atkSpeed: 1 + own('atkSpeed'),
   };
 }
 
 /**
  * 전투력 (6.4): the one summary number on the screen. Not used to decide anything (the battle does).
- * √(공격 × 체력) × (1 + 방어 ÷ 공격 × POWER_DEF_WEIGHT), rounded [튜닝].
+ * √(공격 × 공격 속도 × 체력) × (1 + 방어 ÷ 공격 × POWER_DEF_WEIGHT), rounded [튜닝]. Attack speed
+ * counts as attack does (both scale the damage a second); the weapon's own interval does not, since
+ * every weapon's normal attacks do the same damage a second.
  */
-export function heroPower(s: Pick<HeroStats, 'maxHp' | 'atk' | 'def'>): number {
-  return Math.round(Math.sqrt(s.atk * s.maxHp) * (1 + (s.def / Math.max(1, s.atk)) * POWER_DEF_WEIGHT));
+export function heroPower(s: Pick<HeroStats, 'maxHp' | 'atk' | 'def'> & { atkSpeed?: number }): number {
+  const speed = s.atkSpeed ?? 1;
+  return Math.round(Math.sqrt(s.atk * speed * s.maxHp) * (1 + (s.def / Math.max(1, s.atk)) * POWER_DEF_WEIGHT));
 }

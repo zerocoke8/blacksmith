@@ -13,6 +13,7 @@ import {
   heroSpec,
   passiveText,
   SIGNATURES,
+  skillText,
   STAR_POWER,
   STAR_STEP_COPIES,
   starAttackMult,
@@ -100,6 +101,13 @@ describe('roster data (5.8, roster.json)', () => {
       expect(SIGNATURES[k as keyof typeof SIGNATURES]).toBeDefined();
       expect(ACTIVE_SKILLS[k as keyof typeof ACTIVE_SKILLS].cooldownTicks).toBeGreaterThan(0);
     }
+  });
+
+  it('words attack speed for the hero screen: the passive and a skill\'s status', () => {
+    expect(passiveText({ kind: 'atkSpeed', value: 0.15 })).toBe('공격 속도 +15%');
+    expect(skillText(SIGNATURES.greatsword)).toBe('적 모두에게 공격의 250%, 맞은 적의 공격 속도 −30% (4초)');
+    expect(skillText(SIGNATURES.healer)).toBe('편성 모두의 체력을 45% 채운다, 편성 모두의 공격 속도 +30% (5초)');
+    expect(skillText(ACTIVE_SKILLS.oneHandSword)).toBe('맨 앞의 적에게 공격의 240%');
   });
 });
 

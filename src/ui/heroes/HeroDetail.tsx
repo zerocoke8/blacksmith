@@ -1,4 +1,5 @@
-// 용사 자세히 (기획서 5.9): the picture large, the four stats (체력·공격·방어·치명타), the active skill,
+// 용사 자세히 (기획서 5.9): the picture large, the stats (체력·공격·방어·치명타, and 공격 속도 as blows a
+// second: the weapon's rhythm times the hero's own speed, 사용자 결정 2026-10-14), the active skill,
 // the passive and the signature (with when they open), the star and evolution progress, the line,
 // and the weapon held with the list to swap it for (4.11: any time, the old one goes back to the
 // list, a weapon another hero held leaves their hands). No level-up button (5.3).
@@ -24,7 +25,7 @@ import {
   STAR_MARKS,
   STAR_PIPS_PER_MARK,
 } from '../../sim/data/heroes.ts';
-import { BATTLE_TICK_MS } from '../../sim/data/battle.ts';
+import { BATTLE_TICK_MS, HERO_ATTACK_INTERVAL_TICKS } from '../../sim/data/battle.ts';
 import {
   equipWeapon,
   type HeroesState,
@@ -90,6 +91,8 @@ export function HeroDetail(props: {
   const sk = skillKeyOf(spec);
   const active = ACTIVE_SKILLS[sk];
   const haste = card.passiveOpen && spec.passive.kind === 'haste' ? spec.passive.value : 0;
+  /** Normal attacks a second (the weapon type's interval, the hero's own attack speed). */
+  const perSecond = (1000 / (HERO_ATTACK_INTERVAL_TICKS[spec.weapon] * BATTLE_TICK_MS)) * stats.atkSpeed;
   const cd = (Math.max(1, Math.round(active.cooldownTicks * (1 - haste))) * BATTLE_TICK_MS) / 1000;
   const sig = SIGNATURES[sk];
   const nextColor = EVOLUTION_LADDER[spec.rarity].find((c) => EVOLUTION_AT_STAR[c] > card.starIndex);
@@ -151,6 +154,13 @@ export function HeroDetail(props: {
               <dt>치명타</dt>
               <dd>
                 {Math.round(stats.crit * 100)}%<small> ×{stats.critDamage.toFixed(1)}</small>
+              </dd>
+            </div>
+            <div>
+              <dt>공격 속도</dt>
+              <dd>
+                {perSecond.toFixed(1)}
+                <small>번/초</small>
               </dd>
             </div>
           </dl>

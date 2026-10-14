@@ -2145,6 +2145,49 @@ const ICONS: readonly Entry[] = [
     'Rank mark icon, the sun (the highest rank, above the moon): one round flat warm orange (#f29a3f) disc with eight short rounded triangular rays around it in flat warm gold (#f6c945), each ray with its own outline. Drawn at the same size and weight as the star in the second image so it sits in the same row. Nothing else.',
     { max: STAR_MAX },
   ),
+  // 전투 화면 (기획서 6.9, B.22, 2026-10-14): 필살기 카드 줄 옆의 [자동]·[배속] 단추, 전투원 머리 위의 상태
+  // 표시(공격 속도 빠름·느림). 단추 둘은 역할 아이콘을, 상태 둘은 속성 아이콘을 따라 한 벌로 보이게 했다.
+  icon(
+    'ui_auto',
+    '자동 (필살기 AUTO 켜기·끄기)',
+    'role_melee',
+    'Auto mode icon: two fat chunky curved arrows chasing each other around in a circle (a round "repeat" loop), each arrow a thick ribbon ending in a big rounded arrowhead, both in one flat warm orange (#f2a65a). The middle of the loop is empty. Nothing else.',
+  ),
+  icon(
+    'ui_speed',
+    '배속 (빨리 감기)',
+    'ui_auto',
+    'Fast-forward icon: two fat triangles with softly rounded corners pointing right, side by side and just touching (a "fast forward" sign), both in one flat warm butter yellow (#f3d36a). Nothing else.',
+  ),
+  icon(
+    'status_fast',
+    '빠름 (공격 속도가 오른 동안)',
+    'element_water',
+    'Speed-up status icon: the round head of a little bunny seen from the front with two tall upright rounded ears, in one flat cream white (#fbf7ef) with soft pink (#f2b8b0) inner ears, and three short straight horizontal speed lines in flat warm orange (#f2a65a) trailing off its left side. Nothing else.',
+  ),
+  icon(
+    'status_slow',
+    '느림 (공격 속도가 내린 동안)',
+    'status_fast',
+    'Slow-down status icon: a little snail seen from the side, crawling to the right: a big round spiral shell in one flat soft blue (#8ec8ee) with one spiral line, on a soft cream (#f6ebd5) body with two short round-tipped eye stalks. Nothing else.',
+  ),
+];
+
+/**
+ * 전투 화면의 큰 그림 (기획서 6.9, B.22, 2026-10-14). ult_ready: 필살기 게이지가 찬 용사 카드 뒤에 깔리는 불꽃 테.
+ * 사용자가 보낸 예시(다른 게임)에서 찬 카드가 불길에 싸인 것을 낙서풍으로 옮겼다. 가운데는 카드가 앉을 빈 구멍.
+ */
+const BATTLE_UI: readonly Entry[] = [
+  {
+    key: 'ult_ready',
+    label: '필살기가 찬 카드 뒤의 불꽃 테',
+    size: '1024x1536',
+    transparent: true,
+    max: 360,
+    refs: ['d_dwarf_idle', '@ui/fire_normal'],
+    prompt:
+      'A doodle ring of cartoon fire that goes around an EMPTY portrait card shape. Picture an invisible rounded rectangle (portrait 2:3, corners well rounded) filling the middle two thirds of the canvas, and chunky flat cartoon flames growing outward from all four of its edges: small low flames along the sides and the bottom, taller tongues licking up from the top edge. The flames are drawn in the same style as the flame in the second attached image but have NO face: flat warm orange (#f2a65a) outer flames with flat butter yellow (#f3d36a) inner tongues, each with the same fat dark brown outline. The inside of the rounded rectangle is completely EMPTY and fully transparent (a clean hole where a card will sit), and everything outside the flames is transparent too. Symmetric left and right. Transparent background with a real alpha channel.',
+  },
 ];
 
 // ── 전체 목록 ───────────────────────────────────────────────────────────
@@ -2157,6 +2200,7 @@ const inGroup =
 export const ART_ASSETS: readonly ArtAsset[] = [
   ...SCENE.map(inGroup('scene')),
   ...UI.map(inGroup('ui')),
+  ...BATTLE_UI.map(inGroup('ui')),
   ...[...CARDS_A, ...CARDS_B].map(inGroup('cards')),
   ...REFINE.map(inGroup('refine')),
   ...TOWN.map(inGroup('town')),

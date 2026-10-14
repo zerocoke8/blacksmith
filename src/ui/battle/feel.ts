@@ -1,5 +1,5 @@
-// The battle's sound, speed and fighter sizes (platform/audio.ts; the speed and the sizes the 크기
-// panel tried are per-device settings through platform/storage.ts). Sounds are the synthesised
+// The battle's sound, speed, AUTO and fighter sizes (platform/audio.ts; the speed, the AUTO button
+// and the sizes the 크기 panel tried are per-device settings through platform/storage.ts). Sounds are the synthesised
 // stand-ins until the ElevenLabs files arrive (tools/art/README.md): a blow, a crit, a heal, never
 // more often than the ear can tell apart.
 
@@ -24,6 +24,20 @@ export function saveSpeed(s: BattleSpeed): void {
 
 export function nextSpeed(s: BattleSpeed): BattleSpeed {
   return BATTLE_SPEEDS[(BATTLE_SPEEDS.indexOf(s) + 1) % BATTLE_SPEEDS.length] as BattleSpeed;
+}
+
+const AUTO_KEY = 'pref.battleAuto';
+
+/**
+ * The AUTO button (사용자 결정 2026-10-14 '필살기는 누르면 수동으로도, 자동 모드를 켜서 자동으로도'): on,
+ * the signatures go off by themselves; off, they wait for a tap. On unless this device turned it off.
+ */
+export async function loadSignatureAuto(): Promise<boolean> {
+  return (await webStore.load(AUTO_KEY)) !== 'off';
+}
+
+export function saveSignatureAuto(on: boolean): void {
+  void webStore.save(AUTO_KEY, on ? 'on' : 'off');
 }
 
 /** Sounds for the cues, spaced (ms) so a flurry is a patter, not a roar. */

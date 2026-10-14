@@ -4,14 +4,15 @@ import {
   bossCenterX,
   bossFeetY,
   clampFighterSize,
-  DASH,
-  dashPoint,
   enemySpots,
   FIELD,
   FIGHTER_SIZE,
   FIGHTER_SIZE_RANGE,
   fighterHeight,
   heroSpots,
+  MOVE,
+  movePoint,
+  movePoints,
   unitHeight,
 } from './layout.ts';
 
@@ -118,33 +119,76 @@ describe('fighter sizes (the 크기 panel)', () => {
   });
 });
 
-describe('where a melee run stops (dashPoint)', () => {
+describe('where a melee fighter stands by its foe (movePoint)', () => {
   const [w, h] = [390, 600];
   const uh = unitHeight(w, h);
-  const hero = { x: w * 0.36, y: h * 0.74, w: uh * 0.7, h: uh, side: 'hero' as const, boss: false };
+  const hero = { x: w * 0.36, y: h * 0.74, w: uh * 0.7, h: uh, side: 'hero' as const };
   const foe = { x: w * 0.63, y: h * 0.62, w: uh * 0.6, h: uh * 0.6 };
 
   it('a hero stops just left of its foe, most of the way to its lane', () => {
-    const p = dashPoint(hero, foe);
+    const p = movePoint(hero, foe, w, h);
     expect(p.x).toBeGreaterThan(hero.x);
     expect(p.x).toBeLessThan(foe.x);
     // The bodies meet: less than the two half widths apart, but not on top of each other.
-    expect(foe.x - p.x).toBeLessThan((hero.w + foe.w) / 2 + DASH.gap * hero.h + 1e-9);
+    expect(foe.x - p.x).toBeLessThan((hero.w + foe.w) / 2 + MOVE.gap * hero.h + 1e-9);
     expect(foe.x - p.x).toBeGreaterThan(hero.w * 0.25);
-    expect(p.y).toBeCloseTo(hero.y + (foe.y - hero.y) * DASH.lane);
-    // Two runners from two lanes at one foe stand apart.
-    const other = dashPoint({ ...hero, y: h * 0.58 }, foe);
+    expect(p.y).toBeCloseTo(hero.y + (foe.y - hero.y) * MOVE.lane);
+    // Mostly in its own lane: less than half the way to the foe's.
+    expect(MOVE.lane).toBeLessThan(0.5);
+    // Two from two lanes at one foe stand apart.
+    const other = movePoint({ ...hero, y: h * 0.58 }, foe, w, h);
     expect(Math.abs(other.y - p.y)).toBeGreaterThan(5);
   });
 
-  it('a monster stops right of its hero; a lone boss only leans toward the hero’s lane', () => {
-    const mon = { ...foe, side: 'enemy' as const, boss: false };
+  it('a back-row walker stands a step behind; a monster stands right of its hero', () => {
+    const front = movePoint(hero, foe, w, h);
+    const back = movePoint({ ...hero, behind: true }, foe, w, h);
+    expect(front.x - back.x).toBeCloseTo(MOVE.behind * hero.h);
+    const mon = { ...foe, side: 'enemy' as const };
     const target = { x: hero.x, y: hero.y, w: hero.w, h: hero.h };
-    expect(dashPoint(mon, target).x).toBeGreaterThan(target.x);
-    const boss = { x: w * 0.74, y: h * 0.8, w: uh * 1.4, h: uh * 1.3, side: 'enemy' as const, boss: true };
-    const top = { ...target, y: h * 0.58 };
-    const p = dashPoint(boss, top);
-    expect(p.y).toBeCloseTo(boss.y + (top.y - boss.y) * DASH.bossLane);
-    expect(p.x).toBeGreaterThan(top.x);
+    expect(movePoint(mon, target, w, h).x).toBeGreaterThan(target.x);
+  });
+
+  it('at a lone boss heroes keep mostly to their own lanes', () => {
+    const boss = { x: w * 0.76, y: h * 0.84, w: uh * 1.4, h: uh * 1.3, boss: true };
+    const top = { ...hero, y: h * 0.6 };
+    const p = movePoint(top, boss, w, h);
+    expect(p.y).toBeCloseTo(top.y + (boss.y - top.y) * MOVE.bossLane);
+    expect(p.x).toBeLessThan(boss.x - boss.w * 0.25);
+  });
+
+  it('three heroes on the front-most monster stand in a column before it, not in a heap', () => {
+    const three = [0.58, 0.74, 0.9].map((k) => ({ ...hero, y: h * k }));
+    const top = { ...foe, y: h * FIELD.laneTop };
+    const at = movePoints(three, top, w, h);
+    const ys = at.map((p) => p.y).sort((a, b) => a - b);
+    for (let i = 1; i < ys.length; i++) expect((ys[i] as number) - (ys[i - 1] as number)).toBeGreaterThanOrEqual(MOVE.spread * hero.h - 1e-9);
+    for (const p of at) {
+      expect(p.y).toBeGreaterThanOrEqual(h * FIELD.laneTop - 1e-9);
+      expect(p.y).toBeLessThanOrEqual(h * FIELD.laneBottom + 1e-9);
+      expect(p.x).toBeLessThan(top.x);
+    }
+    // Each keeps its order (the top lane's hero stays on top).
+    expect((at[0] as { y: number }).y).toBeLessThan((at[2] as { y: number }).y);
+    // Alone, it is movePoint.
+    expect(movePoints([hero], foe, w, h)).toEqual([movePoint(hero, foe, w, h)]);
+  });
+
+  it('a crowd taller than the lanes squeezes in rather than leaving them', () => {
+    const many = Array.from({ length: 6 }, (_, i) => ({ ...hero, y: h * 0.74 + i }));
+    for (const p of movePoints(many, foe, w, h)) {
+      expect(p.y).toBeGreaterThanOrEqual(h * FIELD.laneTop - 1e-9);
+      expect(p.y).toBeLessThanOrEqual(h * FIELD.laneBottom + 1e-9);
+    }
+  });
+
+  it('never leaves the field: inside its width and on the lanes', () => {
+    // A foe at the left edge (a hero would stand off the field) and one below the lanes (a boss's feet).
+    const p = movePoint(hero, { x: 6, y: h * 0.99, w: 40, h: 40 }, w, h);
+    expect(p.x - hero.w / 2).toBeGreaterThanOrEqual(0);
+    expect(p.y).toBeLessThanOrEqual(h * FIELD.laneBottom + 1e-9);
+    const q = movePoint({ ...foe, side: 'enemy' }, { x: w - 4, y: h * 0.3, w: 40, h: 40 }, w, h);
+    expect(q.x + foe.w / 2).toBeLessThanOrEqual(w);
+    expect(q.y).toBeGreaterThanOrEqual(h * FIELD.laneTop - 1e-9);
   });
 });

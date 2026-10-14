@@ -4,6 +4,7 @@
 // element, weapon, role, line. The roster file's 불·물·땅·바람 are the doc's 화·수·지·풍.
 
 import type { Element, WeaponType } from '../core/types.ts';
+import { BATTLE_TICK_MS, type StatusSpec } from './battle.ts';
 import { powInt } from './common.ts';
 
 // ---------- Rarity, role, row ----------
@@ -62,12 +63,12 @@ export const RARITY_BASE_MULT: Record<HeroRarity, number> = { special: 1, normal
 
 // ---------- Skills (5.4) [튜닝] ----------
 
-/** What a skill does when it goes off. */
+/** What a skill does when it goes off; `status` (if any) is put on after the hits or heals. */
 export type SkillEffect =
   /** Hits the front-most living enemies: `targets` of them (or all), `hits` times each, power × attack. */
-  | { kind: 'hit'; targets: number | 'all'; hits: number; power: number }
+  | { kind: 'hit'; targets: number | 'all'; hits: number; power: number; status?: StatusSpec }
   /** Heals every living ally by `share` of that ally's max HP. */
-  | { kind: 'heal'; share: number };
+  | { kind: 'heal'; share: number; status?: StatusSpec };
 
 export interface SkillSpec {
   id: string;
@@ -102,16 +103,29 @@ export const ACTIVE_SKILLS: Record<SkillKey, SkillSpec> = {
 
 /**
  * 필살기 (5.4, 5.6): specials only, opened by the gold evolution and made stronger (×SIGNATURE_RED_MULT)
- * by the red one. Goes off by itself when its gauge fills (15장의 6번 추천). cooldownTicks is unused.
+ * by the red one. Goes off when its gauge fills, by itself in auto mode or on the player's tap
+ * (사용자 결정 2026-10-14). cooldownTicks is unused. Two carry an attack speed status [튜닝], the
+ * first examples of 공격 속도 as a stat (사용자 결정 2026-10-14): 땅 가르기 slows what it hits,
+ * 다들 일어나 hurries the whole formation.
  */
 export const SIGNATURES: Record<SkillKey, SkillSpec> = {
   oneHandSword: { id: 'breakthrough', name: '정면 돌파', effect: { kind: 'hit', targets: 1, hits: 1, power: 6 }, cooldownTicks: 0 },
-  greatsword: { id: 'groundSplit', name: '땅 가르기', effect: { kind: 'hit', targets: 'all', hits: 1, power: 2.5 }, cooldownTicks: 0 },
+  greatsword: {
+    id: 'groundSplit',
+    name: '땅 가르기',
+    effect: { kind: 'hit', targets: 'all', hits: 1, power: 2.5, status: { stat: 'atkSpeed', mult: 0.7, ticks: 40, on: 'targets' } },
+    cooldownTicks: 0,
+  },
   dagger: { id: 'shadowDance', name: '그림자 난도질', effect: { kind: 'hit', targets: 1, hits: 6, power: 1 }, cooldownTicks: 0 },
   bow: { id: 'arrowRain', name: '화살비', effect: { kind: 'hit', targets: 'all', hits: 1, power: 2.2 }, cooldownTicks: 0 },
   crossbow: { id: 'oneShot', name: '한 발 승부', effect: { kind: 'hit', targets: 1, hits: 1, power: 6.5 }, cooldownTicks: 0 },
   staff: { id: 'bigSpell', name: '큰 주문', effect: { kind: 'hit', targets: 'all', hits: 1, power: 2.5 }, cooldownTicks: 0 },
-  healer: { id: 'allUp', name: '다들 일어나', effect: { kind: 'heal', share: 0.45 }, cooldownTicks: 0 },
+  healer: {
+    id: 'allUp',
+    name: '다들 일어나',
+    effect: { kind: 'heal', share: 0.45, status: { stat: 'atkSpeed', mult: 1.3, ticks: 50, on: 'allies' } },
+    cooldownTicks: 0,
+  },
 };
 
 /** 빨강 진화의 필살기 강화 (5.6): the signature's power or heal × this. */
@@ -130,6 +144,8 @@ export const SIGNATURE_RED_MULT = 1.5;
  * - heal: healing done +value.
  * - lastStand: attack +value while the hero is at half HP or under.
  * - opener: the hero's first attack of a battle × (1 + value).
+ * - atkSpeed: the hero's own attack speed +value (share). No hero has it yet (사용자 결정 2026-10-14
+ *   made 공격 속도 a stat; this is the passive's way to it, for later).
  */
 export type PassiveKind =
   | 'atk'
@@ -144,7 +160,8 @@ export type PassiveKind =
   | 'teamHp'
   | 'heal'
   | 'lastStand'
-  | 'opener';
+  | 'opener'
+  | 'atkSpeed';
 
 export interface PassiveSpec {
   name: string;
@@ -185,16 +202,27 @@ export function passiveText(p: Pick<PassiveSpec, 'kind' | 'value'>): string {
       return `체력이 절반 아래면 공격 +${pct(p.value)}%`;
     case 'opener':
       return `전투의 첫 공격 피해 ×${Math.round((1 + p.value) * 10) / 10}`;
+    case 'atkSpeed':
+      return `공격 속도 +${pct(p.value)}%`;
   }
+}
+
+/** A status's words for the hero screen, e.g. '맞은 적의 공격 속도 −30% (4초)'. */
+export function statusText(st: StatusSpec): string {
+  const who = st.on === 'allies' ? '편성 모두의' : st.on === 'targets' ? '맞은 적의' : '적 모두의';
+  const change = st.mult >= 1 ? `+${pct(st.mult - 1)}%` : `−${pct(1 - st.mult)}%`;
+  const seconds = Math.round((st.ticks * BATTLE_TICK_MS) / 100) / 10;
+  return `${who} 공격 속도 ${change} (${seconds}초)`;
 }
 
 /** A skill's line for the hero screen. */
 export function skillText(s: SkillSpec, mult = 1): string {
   const e = s.effect;
-  if (e.kind === 'heal') return `편성 모두의 체력을 ${pct(e.share * mult)}% 채운다`;
+  const extra = e.status === undefined ? '' : `, ${statusText(e.status)}`;
+  if (e.kind === 'heal') return `편성 모두의 체력을 ${pct(e.share * mult)}% 채운다${extra}`;
   const who = e.targets === 'all' ? '적 모두' : e.targets === 1 ? '맨 앞의 적' : `앞의 적 ${e.targets}마리`;
   const power = Math.round(e.power * mult * 100);
-  return e.hits > 1 ? `${who}에게 공격의 ${power}%로 ${e.hits}번` : `${who}에게 공격의 ${power}%`;
+  return (e.hits > 1 ? `${who}에게 공격의 ${power}%로 ${e.hits}번` : `${who}에게 공격의 ${power}%`) + extra;
 }
 
 // ---------- The roster (5.8, roster.json) ----------

@@ -62,6 +62,7 @@ export function buildTeam(heroes: HeroesState, formation: Formation): HeroUnit[]
       crit: s.crit,
       critDamage: s.critDamage,
       intervalTicks: HERO_ATTACK_INTERVAL_TICKS[spec.weapon],
+      atkSpeed: s.atkSpeed,
       weapon: weaponCombat(weapon, spec.weapon),
       rowBonus: rowBonusFor(spec.role, row),
       active,
@@ -79,10 +80,26 @@ export function teamPower(team: readonly HeroUnit[]): number {
 
 /**
  * Everything about a team that can change a battle, as one string. The auto-challenge waits on a
- * failed floor until this changes (6.7: 레벨·별·진화·편성·열·무기가 바뀌면 다시 도전).
+ * failed floor until this changes (6.7: 레벨·별·진화·편성·열·무기가 바뀌면 다시 도전). With rolled
+ * crits (사용자 결정 2026-10-14) the same team could get luckier, but the auto-challenge still waits:
+ * it should not grind a floor for a lucky seed; the [도전] button is there for a try by hand.
  */
 export function teamFingerprint(team: readonly HeroUnit[]): string {
   return JSON.stringify(
-    team.map((u) => [u.heroKey, u.row, u.maxHp, u.atk, u.def, u.crit, u.critDamage, u.weapon, u.activeCooldown, u.passive?.kind ?? '', u.signature?.mult ?? 0]),
+    team.map((u) => [
+      u.heroKey,
+      u.row,
+      u.maxHp,
+      u.atk,
+      u.def,
+      u.crit,
+      u.critDamage,
+      u.intervalTicks,
+      u.atkSpeed ?? 1,
+      u.weapon,
+      u.activeCooldown,
+      u.passive?.kind ?? '',
+      u.signature?.mult ?? 0,
+    ]),
   );
 }
